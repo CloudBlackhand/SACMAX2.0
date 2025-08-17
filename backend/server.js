@@ -253,6 +253,128 @@ class SacsMaxServer {
                 res.status(500).json({ error: error.message });
             }
         });
+
+        // Servir frontend estático
+        this.app.use(express.static(path.join(__dirname, '../frontend')));
+        
+        // Rota raiz - Interface Web
+        this.app.get('/', (req, res) => {
+            res.send(`
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SacsMax Automation - Sistema de Automação WhatsApp</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .container { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); max-width: 800px; width: 90%; text-align: center; }
+        .logo { font-size: 3rem; margin-bottom: 1rem; }
+        h1 { color: #333; margin-bottom: 1rem; font-size: 2.5rem; }
+        .subtitle { color: #666; margin-bottom: 2rem; font-size: 1.2rem; }
+        .status { display: flex; justify-content: space-around; margin: 2rem 0; }
+        .status-item { padding: 1rem; background: #f8f9fa; border-radius: 10px; flex: 1; margin: 0 0.5rem; }
+        .status-title { font-weight: bold; color: #333; margin-bottom: 0.5rem; }
+        .status-value { font-size: 1.1rem; }
+        .online { color: #28a745; }
+        .offline { color: #dc3545; }
+        .api-section { margin: 2rem 0; padding: 1.5rem; background: #f8f9fa; border-radius: 10px; }
+        .api-title { font-size: 1.5rem; margin-bottom: 1rem; color: #333; }
+        .endpoint { margin: 1rem 0; padding: 1rem; background: white; border-radius: 5px; border-left: 4px solid #667eea; }
+        .method { font-weight: bold; color: #667eea; }
+        .path { font-family: monospace; background: #f1f3f4; padding: 0.2rem 0.5rem; border-radius: 3px; }
+        .description { color: #666; margin-top: 0.5rem; }
+        .footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #eee; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">📱</div>
+        <h1>SacsMax Automation</h1>
+        <p class="subtitle">Sistema de Automação WhatsApp para Envio em Massa</p>
+        
+        <div class="status">
+            <div class="status-item">
+                <div class="status-title">Servidor</div>
+                <div class="status-value online">✅ Online</div>
+            </div>
+            <div class="status-item">
+                <div class="status-title">WhatsApp</div>
+                <div class="status-value offline">⏳ Aguardando</div>
+            </div>
+            <div class="status-item">
+                <div class="status-title">API</div>
+                <div class="status-value online">✅ Disponível</div>
+            </div>
+        </div>
+
+        <div class="api-section">
+            <h2 class="api-title">🔗 Endpoints da API</h2>
+            
+            <div class="endpoint">
+                <span class="method">GET</span> <span class="path">/health</span>
+                <div class="description">Verificar status do sistema</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">POST</span> <span class="path">/whatsapp/start</span>
+                <div class="description">Inicializar WhatsApp Web</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">GET</span> <span class="path">/api/whatsapp/qr</span>
+                <div class="description">Obter QR Code para autenticação</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">POST</span> <span class="path">/api/upload</span>
+                <div class="description">Upload de planilha Excel com contatos</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">POST</span> <span class="path">/api/send-messages</span>
+                <div class="description">Enviar mensagens em massa</div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>🚀 SacsMax v1.0 - Sistema rodando no Railway</p>
+            <p>Desenvolvido para automação profissional de WhatsApp</p>
+        </div>
+    </div>
+
+    <script>
+        // Atualizar status em tempo real
+        async function updateStatus() {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                
+                const whatsappStatus = document.querySelector('.status-item:nth-child(2) .status-value');
+                if (data.whatsapp.connected) {
+                    whatsappStatus.innerHTML = '✅ Conectado';
+                    whatsappStatus.className = 'status-value online';
+                } else if (data.whatsapp.initialized) {
+                    whatsappStatus.innerHTML = '🔄 Inicializando';
+                    whatsappStatus.className = 'status-value';
+                } else {
+                    whatsappStatus.innerHTML = '⏳ Aguardando';
+                    whatsappStatus.className = 'status-value offline';
+                }
+            } catch (error) {
+                console.log('Erro ao atualizar status:', error);
+            }
+        }
+        
+        // Atualizar a cada 5 segundos
+        setInterval(updateStatus, 5000);
+        updateStatus();
+    </script>
+</body>
+</html>
+            `);
+        });
     }
 
     setupSocketHandlers() {
