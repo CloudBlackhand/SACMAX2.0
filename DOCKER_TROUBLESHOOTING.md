@@ -38,6 +38,36 @@ RUN apk add --no-cache \
 RUN pip3 install --upgrade pip setuptools wheel
 ```
 
+#### 2.2. **Erro "externally managed environment" (PEP 668)**
+**Problema**: Alpine Linux 3.19+ implementou PEP 668 que previne instalações pip no ambiente do sistema
+**Erro típico**:
+```
+× This environment is externally managed
+╰─> The system-wide python installation should be maintained using the system package manager (apk) only.
+```
+
+**Soluções**:
+
+**Opção 1: Remover arquivo EXTERNALLY-MANAGED (Recomendado para Docker)**
+```dockerfile
+# Remove o arquivo que bloqueia pip installs
+RUN rm -f /usr/lib/python*/EXTERNALLY-MANAGED
+```
+
+**Opção 2: Usar --break-system-packages**
+```dockerfile
+RUN pip3 install --break-system-packages -r requirements.txt
+```
+
+**Opção 3: Usar ambiente virtual**
+```dockerfile
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN pip install -r requirements.txt
+```
+
+**Nota**: Para containers Docker, a Opção 1 é mais segura e eficiente, pois o ambiente é isolado.
+
 #### 3. **WORKDIR Incorreto**
 **Problema**: Arquivos não encontrados no diretório correto
 **Solução**: Verifique o contexto de build:

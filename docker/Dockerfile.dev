@@ -26,6 +26,9 @@ COPY python_modules/requirements.txt ./python_modules/
 # Instalar todas as dependências (incluindo dev)
 RUN npm ci --no-audit --no-fund
 
+# Remove EXTERNALLY-MANAGED file to allow pip installs in Docker
+RUN rm -f /usr/lib/python*/EXTERNALLY-MANAGED
+
 # Atualizar pip e instalar dependências Python
 RUN pip3 install --upgrade pip setuptools wheel && \
     pip3 install --no-cache-dir -r python_modules/requirements.txt
