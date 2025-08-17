@@ -63,7 +63,66 @@ npm start
 
 ## 🐳 Docker
 
-### Opção 1: Scripts de inicialização
+### Pré-requisitos
+- [Docker Desktop instalado](INSTALL_DOCKER.md)
+- [Docker Compose](https://docs.docker.com/compose/install/)
+
+### Build da Imagem Docker
+
+#### Scripts Disponíveis
+```bash
+# Build de produção otimizado
+npm run docker:build:prod
+
+# Build de desenvolvimento
+npm run docker:build:dev
+
+# Build simples
+npm run docker:build
+
+# Testar build (Windows)
+npm run docker:test:win
+
+# Testar build (Linux/Mac)
+npm run docker:test
+```
+
+#### Build Manual
+```bash
+# Produção otimizada
+docker build -f docker/Dockerfile.production -t sacsmax-automation:prod .
+
+# Desenvolvimento com hot reload
+docker build -f docker/Dockerfile.dev -t sacsmax-automation:dev .
+
+# Build simples
+docker build -f docker/Dockerfile -t sacsmax-automation .
+```
+
+### Execução com Docker
+
+#### Docker Compose
+```bash
+# Desenvolvimento com volumes e hot reload
+npm run docker:dev
+
+# Produção
+npm run docker:prod
+
+# Parar containers
+npm run docker:stop
+```
+
+#### Docker Run
+```bash
+# Produção
+docker run -p 3000:3000 sacsmax-automation:prod
+
+# Desenvolvimento
+docker run -p 3000:3000 -v $(pwd):/app sacsmax-automation:dev
+```
+
+### Opção 1: Scripts de inicialização (legado)
 ```bash
 # Windows PowerShell
 .\docker\start.ps1
@@ -72,7 +131,7 @@ npm start
 ./docker/start.sh
 ```
 
-### Opção 2: Docker Compose manual
+### Opção 2: Docker Compose manual (legado)
 ```bash
 # Desenvolvimento
 docker-compose -f docker-compose.dev.yml up --build
@@ -80,6 +139,12 @@ docker-compose -f docker-compose.dev.yml up --build
 # Produção
 docker-compose -f docker/docker-compose.yml up --build -d
 ```
+
+### Solução de Problemas
+Se encontrar erros durante o build:
+1. Consulte [DOCKER_TROUBLESHOOTING.md](DOCKER_TROUBLESHOOTING.md)
+2. Verifique [INSTALL_DOCKER.md](INSTALL_DOCKER.md)
+3. Use os scripts de teste para diagnóstico
 
 ## 🚄 Deploy na Railway
 

@@ -1,0 +1,63 @@
+# Multi-stage build otimizado para produção
+FROM node:18-alpine AS dependencies
+
+# Instalar dependências de compilação
+RUN apk add --no-cache \
+    python3 \
+    py3-pip \
+    make \
+    g++ \
+    libc6-compat
+
+WORKDIR /app
+
+# Copiar arquivos de dependências
+COPY package*.json ./
+COPY python_modules/requirements.txt ./python_modules/
+
+# Instalar dependências Python
+RUN pip3 install --no-cache-dir -r python_modules/requirements.txt
+
+# Instalar dependências Node.js
+RUN npm ci --only=production --no-audit --no-fund
+
+# Stage de build
+FROM node:18-alpine AS build
+
+WORKDIR /app
+
+# Copiar dependências do stage anterior
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY --from=dependencies /usr/lib/python3.11/site-packages /usr/lib/python3.11/site-packages
+
+# Copiar código fonte
+COPY . .
+
+# Stage final de produção
+FROM node:18-alpine AS production
+
+# Instalar apenas runtime necessário
+RUN apk add --no-cache python3 py3-pip
+
+# Criar usuário não-root
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+WORKDIR /app
+
+# Copiar dependências e código
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY --from=dependencies /usr/lib/python3.11/site-packages /usr/lib/python3.11/site-packages
+COPY --from=build /app ./
+
+# Criar diretórios com permissões
+RUN mkdir -p uploads logs config && \
+    chown -R nodejs:nodejs /app
+
+USER nodejs
+
+EXPOSE 3000
+
+ENV NODE_ENV=production
+
+CMD ["npm", "start"]

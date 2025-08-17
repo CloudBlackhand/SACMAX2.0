@@ -1,0 +1,31 @@
+# Dockerfile para desenvolvimento com hot reload
+FROM node:18-alpine
+
+# Instalar dependências de sistema
+RUN apk add --no-cache \
+    python3 \
+    py3-pip \
+    make \
+    g++ \
+    libc6-compat
+
+WORKDIR /app
+
+# Copiar arquivos de dependências
+COPY package*.json ./
+COPY python_modules/requirements.txt ./python_modules/
+
+# Instalar todas as dependências (incluindo dev)
+RUN npm ci --no-audit --no-fund
+
+# Instalar dependências Python
+RUN pip3 install --no-cache-dir -r python_modules/requirements.txt
+
+# Criar diretórios necessários
+RUN mkdir -p uploads logs config
+
+# Expor porta para desenvolvimento
+EXPOSE 3000
+
+# Comando para desenvolvimento com hot reload
+CMD ["npm", "run", "dev"]
