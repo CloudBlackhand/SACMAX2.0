@@ -71,12 +71,94 @@ class SacsMaxServer {
 
     setupRoutes() {
         // Health check
-        this.app.get('/health', (req, res) => {
-            res.json({ 
-                status: 'ok', 
+        this.app.get('/health', async (req, res) => {
+            let chromeAvailable = false;
+            
+            // Verificar se o Chrome/Chromium está disponível
+            try {
+                const { execSync } = require('child_process');
+                const chromePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
+                execSync(`which chromium-browser || which chrome || test -f ${chromePath}`, { stdio: 'ignore' });
+                chromeAvailable = true;
+            } catch (error) {
+                chromeAvailable = false;
+            }
+
+            const healthStatus = {
+                status: 'ok',
                 timestamp: new Date().toISOString(),
-                whatsappConnected: this.whatsappService.isConnected()
-            });
+                server: 'running',
+                chrome: {
+                    available: chromeAvailable,
+                    path: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser'
+                },
+                whatsapp: {
+                    connected: this.whatsappService.isConnected(),
+                    ready: this.whatsappService.isReady(),
+                    initialized: this.whatsappService.isInitialized ? this.whatsappService.isInitialized() : false
+                },
+                uptime: process.uptime(),
+                memory: process.memoryUsage(),
+                version: process.env.npm_package_version || '1.0.0',
+                environment: {
+                    node: process.version,
+                    platform: process.platform,
+                    arch: process.arch
+                }
+            };
+            
+            // Se o Chrome não estiver disponível, retornar 503
+            const statusCode = chromeAvailable ? 200 : 503;
+            res.status(statusCode).json(healthStatus);
+        });
+
+        // WhatsApp control endpoints
+        this.app.post('/whatsapp/start', async (req, res) => {
+            try {
+                if (this.whatsappService.isInitialized && this.whatsappService.isInitialized()) {
+                    return res.json({ 
+                        success: false, 
+                        message: 'WhatsApp já está inicializado' 
+                    });
+                }
+                
+                await this.whatsappService.initialize();
+                res.json({ 
+                    success: true, 
+                    message: 'WhatsApp inicializado com sucesso',
+                    connected: this.whatsappService.isConnected(),
+                    ready: this.whatsappService.isReady()
+                });
+            } catch (error) {
+                logger.error('Erro ao iniciar WhatsApp via endpoint', error);
+                res.status(500).json({ 
+                    success: false, 
+                    error: error.message 
+                });
+            }
+        });
+
+        this.app.post('/whatsapp/stop', async (req, res) => {
+            try {
+                if (!this.whatsappService.isInitialized || !this.whatsappService.isInitialized()) {
+                    return res.json({ 
+                        success: false, 
+                        message: 'WhatsApp não está inicializado' 
+                    });
+                }
+                
+                await this.whatsappService.disconnect();
+                res.json({ 
+                    success: true, 
+                    message: 'WhatsApp desconectado com sucesso'
+                });
+            } catch (error) {
+                logger.error('Erro ao parar WhatsApp via endpoint', error);
+                res.status(500).json({ 
+                    success: false, 
+                    error: error.message 
+                });
+            }
         });
 
         // Upload de planilhas
@@ -143,7 +225,7 @@ class SacsMaxServer {
         });
 
         // Status do WhatsApp
-        this.app.get('/api/whatsapp/status', (req, res) => {
+        this.app.get('/whatsapp/status', (req, res) => {
             res.json({
                 connected: this.whatsappService.isConnected(),
                 ready: this.whatsappService.isReady(),
@@ -213,13 +295,11 @@ class SacsMaxServer {
         try {
             const port = process.env.PORT || 3000;
             
-            // Inicializar WhatsApp
-            await this.whatsappService.initialize();
-            
-            // Iniciar servidor
+            // Iniciar servidor HTTP apenas - WhatsApp será controlado pelo frontend
             this.server.listen(port, () => {
                 logger.info(`Servidor iniciado na porta ${port}`);
                 console.log(`🚀 SacsMax Automation rodando em http://localhost:${port}`);
+                console.log(`📱 WhatsApp Web será iniciado via frontend quando necessário`);
             });
 
         } catch (error) {

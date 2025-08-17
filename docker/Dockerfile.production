@@ -31,7 +31,7 @@ RUN pip3 install --upgrade pip setuptools wheel && \
     pip3 install --no-cache-dir -r python_modules/requirements.txt
 
 # Instalar dependências Node.js
-RUN npm ci --only=production --no-audit --no-fund
+RUN npm install --omit=dev --no-audit --no-fund
 
 # Stage de build
 FROM node:18-alpine AS build

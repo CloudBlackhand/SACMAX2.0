@@ -68,7 +68,29 @@ RUN pip install -r requirements.txt
 
 **Nota**: Para containers Docker, a Opção 1 é mais segura e eficiente, pois o ambiente é isolado.
 
-#### 3. **WORKDIR Incorreto**
+#### 3. **Erro "npm ci" - package-lock.json não encontrado**
+**Problema**: O comando `npm ci` falha porque não encontra package-lock.json
+**Erro típico**:
+```
+npm error The `npm ci` command can only install with an existing package-lock.json or
+npm error npm-shrinkwrap.json with lockfileVersion >= 1
+```
+**Solução**:
+- Gerar package-lock.json: `npm install`
+- Usar `npm install --omit=dev` ao invés de `npm ci` nos Dockerfiles
+
+#### 4. **Falha no Healthcheck - Service Unavailable**
+**Problema**: O healthcheck falha porque o servidor não responde durante a inicialização do WhatsApp
+**Sintomas**:
+- Build do Docker bem-sucedido
+- Healthcheck falha repetidamente com "service unavailable"
+- Aplicação trava na inicialização do WhatsApp Web
+**Solução**:
+- Iniciar servidor HTTP antes da inicialização do WhatsApp
+- Executar inicialização do WhatsApp em background (não bloqueante)
+- Melhorar endpoint `/health` para fornecer mais informações de status
+
+#### 5. **WORKDIR Incorreto**
 **Problema**: Arquivos não encontrados no diretório correto
 **Solução**: Verifique o contexto de build:
 ```bash

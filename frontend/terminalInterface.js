@@ -38,7 +38,7 @@ class TerminalInterface extends EventEmitter {
     async showMainMenu() {
         console.log('\x1b[1;33mMENU PRINCIPAL\x1b[0m');
         console.log('1. 📊 Processar Planilha Excel');
-        console.log('2. 📱 Verificar Status WhatsApp');
+        console.log('2. 📱 Controle WhatsApp');
         console.log('3. 💬 Enviar Mensagens');
         console.log('4. 📈 Classificar Feedback');
         console.log('5. 📊 Estatísticas do Sistema');
@@ -53,7 +53,7 @@ class TerminalInterface extends EventEmitter {
                 await this.processExcelMenu();
                 break;
             case '2':
-                await this.checkWhatsAppStatus();
+                await this.whatsappControlMenu();
                 break;
             case '3':
                 await this.sendMessagesMenu();
@@ -123,21 +123,113 @@ class TerminalInterface extends EventEmitter {
         await this.question('Pressione ENTER para voltar...');
     }
 
+    async whatsappControlMenu() {
+        console.clear();
+        this.showHeader();
+        console.log('\x1b[1;33mCONTROLE WHATSAPP\x1b[0m\n');
+
+        try {
+            // Mostrar status atual
+            const status = await this.apiCall('/whatsapp/status');
+            
+            console.log(`\x1b[36mStatus Atual:\x1b[0m`);
+            console.log(`Inicializado: ${status.initialized ? '\x1b[32m✅ Sim' : '\x1b[31m❌ Não'}\x1b[0m`);
+            console.log(`Conectado: ${status.connected ? '\x1b[32m✅ Sim' : '\x1b[31m❌ Não'}\x1b[0m`);
+            console.log(`Pronto: ${status.ready ? '\x1b[32m✅ Sim' : '\x1b[31m❌ Não'}\x1b[0m`);
+            
+            if (status.qrCode) {
+                console.log(`\x1b[32m📱 QR Code disponível - escaneie para conectar\x1b[0m`);
+            }
+            console.log('');
+
+            console.log('\x1b[1;33mOpções:\x1b[0m');
+            console.log('1. 🚀 Iniciar WhatsApp');
+            console.log('2. ⏹️  Parar WhatsApp');
+            console.log('3. 🔄 Atualizar Status');
+            console.log('4. ⬅️  Voltar');
+            console.log('');
+
+            const choice = await this.question('Escolha uma opção: ');
+
+            switch (choice) {
+                case '1':
+                    await this.startWhatsApp();
+                    break;
+                case '2':
+                    await this.stopWhatsApp();
+                    break;
+                case '3':
+                    await this.whatsappControlMenu();
+                    break;
+                case '4':
+                    return;
+                default:
+                    console.log('\x1b[31mOpção inválida!\x1b[0m\n');
+                    await this.sleep(1000);
+            }
+
+        } catch (error) {
+            console.log(`\x1b[31m❌ Erro: ${error.message}\x1b[0m\n`);
+            await this.question('Pressione ENTER para voltar...');
+        }
+    }
+
+    async startWhatsApp() {
+        console.log('\n\x1b[36mIniciando WhatsApp...\x1b[0m\n');
+        
+        try {
+            const response = await this.apiCall('/whatsapp/start', 'POST');
+            
+            if (response.success) {
+                console.log(`\x1b[32m✅ ${response.message}\x1b[0m\n`);
+                console.log(`Conectado: ${response.connected ? '\x1b[32m✅ Sim' : '\x1b[33m⏳ Aguardando QR Code'}\x1b[0m`);
+                console.log(`Pronto: ${response.ready ? '\x1b[32m✅ Sim' : '\x1b[33m⏳ Aguardando'}\x1b[0m\n`);
+            } else {
+                console.log(`\x1b[33mℹ️  ${response.message}\x1b[0m\n`);
+            }
+
+        } catch (error) {
+            console.log(`\x1b[31m❌ Erro ao iniciar WhatsApp: ${error.message}\x1b[0m\n`);
+        }
+        
+        await this.question('Pressione ENTER para continuar...');
+        await this.whatsappControlMenu();
+    }
+
+    async stopWhatsApp() {
+        console.log('\n\x1b[36mParando WhatsApp...\x1b[0m\n');
+        
+        try {
+            const response = await this.apiCall('/whatsapp/stop', 'POST');
+            
+            if (response.success) {
+                console.log(`\x1b[32m✅ ${response.message}\x1b[0m\n`);
+            } else {
+                console.log(`\x1b[33mℹ️  ${response.message}\x1b[0m\n`);
+            }
+
+        } catch (error) {
+            console.log(`\x1b[31m❌ Erro ao parar WhatsApp: ${error.message}\x1b[0m\n`);
+        }
+        
+        await this.question('Pressione ENTER para continuar...');
+        await this.whatsappControlMenu();
+    }
+
     async checkWhatsAppStatus() {
         console.clear();
         this.showHeader();
         console.log('\x1b[1;33mSTATUS DO WHATSAPP\x1b[0m\n');
 
         try {
-            const response = await this.apiCall('/api/whatsapp/status');
+            const response = await this.apiCall('/whatsapp/status');
             
+            console.log(`Inicializado: ${response.initialized ? '\x1b[32m✅ Sim' : '\x1b[31m❌ Não'}\x1b[0m`);
             console.log(`Conectado: ${response.connected ? '\x1b[32m✅ Sim' : '\x1b[31m❌ Não'}\x1b[0m`);
             console.log(`Pronto: ${response.ready ? '\x1b[32m✅ Sim' : '\x1b[31m❌ Não'}\x1b[0m`);
-            console.log(`QR Code: ${response.qrReady ? '\x1b[32m✅ Disponível' : '\x1b[33m⏳ Aguardando'}\x1b[0m\n`);
-
-            if (!response.connected) {
-                console.log('\x1b[33mℹ️  Para conectar, escaneie o QR Code no navegador\x1b[0m');
-                console.log('\x1b[36mURL: http://localhost:3000/api/whatsapp/qr\x1b[0m\n');
+            
+            if (response.qrCode) {
+                console.log(`\x1b[32m📱 QR Code disponível - escaneie para conectar\x1b[0m`);
             }
 
         } catch (error) {

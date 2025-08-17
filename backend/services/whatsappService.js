@@ -15,6 +15,10 @@ class WhatsAppService extends EventEmitter {
 
     async initialize() {
         try {
+            // Configurar caminho do Chrome baseado no ambiente
+            const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || 
+                                 (process.platform === 'linux' ? '/usr/bin/chromium-browser' : undefined);
+
             this.client = new Client({
                 authStrategy: new LocalAuth({
                     dataPath: './wwebjs_auth',
@@ -22,6 +26,7 @@ class WhatsAppService extends EventEmitter {
                 }),
                 puppeteer: {
                     headless: process.env.WHATSAPP_HEADLESS !== 'false',
+                    executablePath,
                     args: [
                         '--no-sandbox',
                         '--disable-setuid-sandbox',
@@ -30,7 +35,19 @@ class WhatsAppService extends EventEmitter {
                         '--no-first-run',
                         '--no-zygote',
                         '--single-process',
-                        '--disable-gpu'
+                        '--disable-gpu',
+                        '--disable-software-rasterizer',
+                        '--disable-background-timer-throttling',
+                        '--disable-backgrounding-occluded-windows',
+                        '--disable-renderer-backgrounding',
+                        '--disable-features=TranslateUI',
+                        '--disable-extensions',
+                        '--disable-default-apps',
+                        '--no-sandbox',
+                        '--disable-web-security',
+                        '--disable-features=VizDisplayCompositor',
+                        '--disable-alsa',
+                        '--disable-audio'
                     ]
                 }
             });
@@ -113,6 +130,14 @@ class WhatsAppService extends EventEmitter {
         return this.isClientReady;
     }
 
+    isInitialized() {
+        return this.client !== null;
+    }
+
+    getQRCode() {
+        return this.qrCode;
+    }
+
     async sendMessage(contact, message) {
         try {
             if (!this.isClientReady) {
@@ -187,6 +212,23 @@ class WhatsAppService extends EventEmitter {
         }
 
         return results;
+    }
+
+    async disconnect() {
+        try {
+            if (this.client) {
+                await this.client.destroy();
+                this.client = null;
+                this.qrCode = null;
+                this.qrReady = false;
+                this.isClientReady = false;
+                this.isClientConnected = false;
+                logger.info('WhatsApp Web desconectado e cliente destruído');
+            }
+        } catch (error) {
+            logger.error('Erro ao desconectar WhatsApp', error);
+            throw error;
+        }
     }
 
     formatPhoneNumber(phone) {

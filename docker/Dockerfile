@@ -1,7 +1,7 @@
 # Multi-stage build para otimização
 FROM node:18-alpine AS base
 
-# Instalar dependências do sistema necessárias para compilação
+# Instalar dependências do sistema necessárias para compilação e Chrome
 RUN apk add --no-cache \
     python3 \
     py3-pip \
@@ -15,7 +15,16 @@ RUN apk add --no-cache \
     linux-headers \
     libc6-compat \
     libffi-dev \
-    openssl-dev
+    openssl-dev \
+    chromium \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    alsa-lib-dev \
+    alsa-utils
 
 # Criar usuário não-root para segurança
 RUN addgroup -g 1001 -S nodejs && \
@@ -36,8 +45,7 @@ RUN pip3 install --upgrade pip setuptools wheel && \
     pip3 install --no-cache-dir -r python_modules/requirements.txt
 
 # Instalar dependências Node.js com tratamento de erros
-RUN npm ci --only=production --no-audit --no-fund || \
-    (echo "npm ci falhou, tentando npm install..." && npm install --only=production --no-audit --no-fund)
+RUN npm install --omit=dev --no-audit --no-fund
 
 # Copiar código fonte
 COPY . .
@@ -52,8 +60,11 @@ USER nodejs
 # Expor porta
 EXPOSE 3000
 
-# Variáveis de ambiente para produção
+# Variáveis de ambiente para produção e configuração do Puppeteer
 ENV NODE_ENV=production
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV PUPPETEER_CACHE_DIR=/tmp/puppeteer
 
 # Comando de inicialização
 CMD ["npm", "start"]
