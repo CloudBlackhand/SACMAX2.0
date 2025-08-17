@@ -5,9 +5,17 @@ FROM node:18-alpine AS base
 RUN apk add --no-cache \
     python3 \
     py3-pip \
+    python3-dev \
+    py3-wheel \
+    py3-setuptools \
     make \
     g++ \
-    libc6-compat
+    gcc \
+    musl-dev \
+    linux-headers \
+    libc6-compat \
+    libffi-dev \
+    openssl-dev
 
 # Criar usuário não-root para segurança
 RUN addgroup -g 1001 -S nodejs && \
@@ -20,8 +28,9 @@ WORKDIR /app
 COPY package*.json ./
 COPY python_modules/requirements.txt ./python_modules/
 
-# Instalar dependências Python antes (mais rápido)
-RUN pip3 install --no-cache-dir -r python_modules/requirements.txt
+# Atualizar pip e instalar dependências Python
+RUN pip3 install --upgrade pip setuptools wheel && \
+    pip3 install --no-cache-dir -r python_modules/requirements.txt
 
 # Instalar dependências Node.js com tratamento de erros
 RUN npm ci --only=production --no-audit --no-fund || \

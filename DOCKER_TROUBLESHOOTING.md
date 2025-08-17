@@ -17,11 +17,26 @@ chmod 644 package*.json
 ```
 
 #### 2. **Dependências de Sistema Ausentes**
-**Problema**: Falta de compiladores C++ para node-gyp
+**Problema**: Falta de compiladores C++ para node-gyp ou dependências Python
 **Solução**: Use o Dockerfile atualizado que inclui:
-- `make`
-- `g++`
-- `python3`
+- `make`, `g++`, `gcc`
+- `python3`, `python3-dev`
+- `py3-pip`, `py3-wheel`, `py3-setuptools`
+- `musl-dev`, `linux-headers`, `libffi-dev`, `openssl-dev`
+
+#### 2.1. **Erro pip3 install (exit code 1)**
+**Problema**: Falha na instalação de pacotes Python como pandas, openpyxl
+**Causa**: Falta de dependências de compilação para pacotes Python nativos
+**Solução**:
+```dockerfile
+# Dependências completas para compilação Python
+RUN apk add --no-cache \
+    python3-dev py3-wheel py3-setuptools \
+    gcc musl-dev linux-headers libffi-dev openssl-dev
+
+# Atualizar pip antes da instalação
+RUN pip3 install --upgrade pip setuptools wheel
+```
 
 #### 3. **WORKDIR Incorreto**
 **Problema**: Arquivos não encontrados no diretório correto

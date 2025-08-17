@@ -5,9 +5,17 @@ FROM node:18-alpine
 RUN apk add --no-cache \
     python3 \
     py3-pip \
+    python3-dev \
+    py3-wheel \
+    py3-setuptools \
     make \
     g++ \
-    libc6-compat
+    gcc \
+    musl-dev \
+    linux-headers \
+    libc6-compat \
+    libffi-dev \
+    openssl-dev
 
 WORKDIR /app
 
@@ -18,8 +26,9 @@ COPY python_modules/requirements.txt ./python_modules/
 # Instalar todas as dependências (incluindo dev)
 RUN npm ci --no-audit --no-fund
 
-# Instalar dependências Python
-RUN pip3 install --no-cache-dir -r python_modules/requirements.txt
+# Atualizar pip e instalar dependências Python
+RUN pip3 install --upgrade pip setuptools wheel && \
+    pip3 install --no-cache-dir -r python_modules/requirements.txt
 
 # Criar diretórios necessários
 RUN mkdir -p uploads logs config
