@@ -35,15 +35,10 @@ const logger = winston.createLogger({
     ]
 });
 
-// Adicionar transporte de arquivo rotativo em produção
+// Em produção, usar apenas os transportes básicos do winston
+// DailyRotateFile removido para evitar dependência adicional
 if (process.env.NODE_ENV === 'production') {
-    logger.add(new winston.transports.DailyRotateFile({
-        filename: path.join(logDir, 'app-%DATE%.log'),
-        datePattern: 'YYYY-MM-DD',
-        zippedArchive: true,
-        maxSize: '20m',
-        maxFiles: '14d'
-    }));
+    logger.info('Logger configurado para produção com transportes básicos');
 }
 
 module.exports = logger;
