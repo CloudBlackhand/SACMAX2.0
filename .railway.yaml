@@ -1,0 +1,31 @@
+# Railway configuration
+services:
+  - name: sacsmax-automation
+    runtime: DOCKER
+    dockerfilePath: docker/Dockerfile
+    healthcheckPath: /health
+    healthcheckTimeout: 300
+    restartPolicyType: ON_FAILURE
+    restartPolicyMaxRetries: 10
+    
+    # Environment variables
+    env:
+      NODE_ENV: production
+      PORT: 3000
+      HOST: 0.0.0.0
+      WHATSAPP_HEADLESS: true
+      WHATSAPP_QR_TIMEOUT: 60000
+      MAX_FILE_SIZE: 10485760
+      LOG_LEVEL: info
+      
+    # Build configuration
+    build:
+      builder: DOCKER
+      dockerfilePath: docker/Dockerfile
+      
+    # Deploy configuration
+    deploy:
+      startCommand: npm start
+      healthcheckPath: /health
+      restartPolicyType: ON_FAILURE
+      restartPolicyMaxRetries: 10

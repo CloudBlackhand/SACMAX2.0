@@ -1,0 +1,362 @@
+const readline = require('readline');
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+const { EventEmitter } = require('events');
+
+class TerminalInterface extends EventEmitter {
+    constructor() {
+        super();
+        this.rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout
+        });
+        
+        this.apiUrl = process.env.API_URL || 'http://localhost:3000';
+        this.currentScreen = 'main';
+        this.isRunning = true;
+    }
+
+    async start() {
+        console.clear();
+        this.showHeader();
+        
+        while (this.isRunning) {
+            await this.showMainMenu();
+        }
+        
+        this.rl.close();
+    }
+
+    showHeader() {
+        console.log('\x1b[36m' + '='.repeat(60) + '\x1b[0m');
+        console.log('\x1b[1;36m    SACSMAX AUTOMATION - Sistema de Comunicação\x1b[0m');
+        console.log('\x1b[36m    WhatsApp + Excel + Análise de Feedback\x1b[0m');
+        console.log('\x1b[36m' + '='.repeat(60) + '\x1b[0m\n');
+    }
+
+    async showMainMenu() {
+        console.log('\x1b[1;33mMENU PRINCIPAL\x1b[0m');
+        console.log('1. 📊 Processar Planilha Excel');
+        console.log('2. 📱 Verificar Status WhatsApp');
+        console.log('3. 💬 Enviar Mensagens');
+        console.log('4. 📈 Classificar Feedback');
+        console.log('5. 📊 Estatísticas do Sistema');
+        console.log('6. ⚙️  Configurações');
+        console.log('7. ❌ Sair');
+        console.log('');
+
+        const choice = await this.question('Escolha uma opção: ');
+        
+        switch (choice) {
+            case '1':
+                await this.processExcelMenu();
+                break;
+            case '2':
+                await this.checkWhatsAppStatus();
+                break;
+            case '3':
+                await this.sendMessagesMenu();
+                break;
+            case '4':
+                await this.classifyFeedbackMenu();
+                break;
+            case '5':
+                await this.showSystemStats();
+                break;
+            case '6':
+                await this.showSettings();
+                break;
+            case '7':
+                this.isRunning = false;
+                console.log('\n\x1b[32mSaindo... Até logo!\x1b[0m\n');
+                break;
+            default:
+                console.log('\x1b[31mOpção inválida!\x1b[0m\n');
+                await this.sleep(1000);
+        }
+    }
+
+    async processExcelMenu() {
+        console.clear();
+        this.showHeader();
+        console.log('\x1b[1;33mPROCESSAR PLANILHA EXCEL\x1b[0m\n');
+
+        try {
+            const filePath = await this.question('Caminho do arquivo Excel (.xlsx/.xls): ');
+            
+            if (!fs.existsSync(filePath)) {
+                console.log('\x1b[31mArquivo não encontrado!\x1b[0m\n');
+                await this.question('Pressione ENTER para voltar...');
+                return;
+            }
+
+            console.log('\n\x1b[36mProcessando arquivo...\x1b[0m\n');
+
+            const formData = new FormData();
+            const fileBuffer = fs.readFileSync(filePath);
+            const fileName = path.basename(filePath);
+            
+            // Simular upload via API
+            const response = await this.uploadFile(filePath, fileName);
+            
+            if (response.success) {
+                console.log(`\x1b[32m✅ Processado com sucesso!\x1b[0m`);
+                console.log(`Contatos encontrados: \x1b[1;32m${response.contacts.length}\x1b[0m`);
+                console.log(`Abas processadas: \x1b[1;32m${response.sheets.length}\x1b[0m\n`);
+                
+                if (response.contacts.length > 0) {
+                    console.log('\x1b[36mPrimeiros 5 contatos:\x1b[0m');
+                    response.contacts.slice(0, 5).forEach((contact, index) => {
+                        console.log(`${index + 1}. ${contact.name} - ${contact.phone}`);
+                    });
+                    console.log('');
+                }
+            } else {
+                console.log(`\x1b[31m❌ Erro: ${response.error}\x1b[0m\n`);
+            }
+
+        } catch (error) {
+            console.log(`\x1b[31m❌ Erro: ${error.message}\x1b[0m\n`);
+        }
+
+        await this.question('Pressione ENTER para voltar...');
+    }
+
+    async checkWhatsAppStatus() {
+        console.clear();
+        this.showHeader();
+        console.log('\x1b[1;33mSTATUS DO WHATSAPP\x1b[0m\n');
+
+        try {
+            const response = await this.apiCall('/api/whatsapp/status');
+            
+            console.log(`Conectado: ${response.connected ? '\x1b[32m✅ Sim' : '\x1b[31m❌ Não'}\x1b[0m`);
+            console.log(`Pronto: ${response.ready ? '\x1b[32m✅ Sim' : '\x1b[31m❌ Não'}\x1b[0m`);
+            console.log(`QR Code: ${response.qrReady ? '\x1b[32m✅ Disponível' : '\x1b[33m⏳ Aguardando'}\x1b[0m\n`);
+
+            if (!response.connected) {
+                console.log('\x1b[33mℹ️  Para conectar, escaneie o QR Code no navegador\x1b[0m');
+                console.log('\x1b[36mURL: http://localhost:3000/api/whatsapp/qr\x1b[0m\n');
+            }
+
+        } catch (error) {
+            console.log(`\x1b[31m❌ Erro ao verificar status: ${error.message}\x1b[0m\n`);
+        }
+
+        await this.question('Pressione ENTER para voltar...');
+    }
+
+    async sendMessagesMenu() {
+        console.clear();
+        this.showHeader();
+        console.log('\x1b[1;33mENVIAR MENSAGENS\x1b[0m\n');
+
+        try {
+            // Simular lista de contatos (em produção, viria do Excel)
+            const contacts = [
+                { name: 'João Silva', phone: '11999999999' },
+                { name: 'Maria Santos', phone: '11888888888' },
+                { name: 'Pedro Oliveira', phone: '11777777777' }
+            ];
+
+            console.log('\x1b[36mContatos disponíveis:\x1b[0m');
+            contacts.forEach((contact, index) => {
+                console.log(`${index + 1}. ${contact.name} - ${contact.phone}`);
+            });
+            console.log('');
+
+            const message = await this.question('Mensagem a enviar: ');
+            
+            if (!message.trim()) {
+                console.log('\x1b[31mMensagem vazia!\x1b[0m\n');
+                await this.question('Pressione ENTER para voltar...');
+                return;
+            }
+
+            console.log('\n\x1b[36mEnviando mensagens...\x1b[0m\n');
+
+            // Simular envio via API
+            const response = await this.apiCall('/api/send-messages', 'POST', {
+                contacts: contacts,
+                message: message
+            });
+
+            console.log(`\x1b[32m✅ Enviadas: ${response.sent.length}\x1b[0m`);
+            console.log(`\x1b[31m❌ Falhas: ${response.failed.length}\x1b[0m\n`);
+
+            if (response.failed.length > 0) {
+                console.log('\x1b[33mFalhas:\x1b[0m');
+                response.failed.forEach(fail => {
+                    console.log(`- ${fail.contact.name}: ${fail.error}`);
+                });
+                console.log('');
+            }
+
+        } catch (error) {
+            console.log(`\x1b[31m❌ Erro: ${error.message}\x1b[0m\n`);
+        }
+
+        await this.question('Pressione ENTER para voltar...');
+    }
+
+    async classifyFeedbackMenu() {
+        console.clear();
+        this.showHeader();
+        console.log('\x1b[1;33mCLASSIFICAR FEEDBACK\x1b[0m\n');
+
+        try {
+            // Simular mensagens de feedback
+            const messages = [
+                { id: 1, text: 'Muito obrigado pelo excelente atendimento!', timestamp: new Date() },
+                { id: 2, text: 'O serviço está muito ruim, estou decepcionado', timestamp: new Date() },
+                { id: 3, text: 'Tudo ok, nada de mais', timestamp: new Date() }
+            ];
+
+            console.log('\x1b[36mClassificando feedback...\x1b[0m\n');
+
+            const response = await this.apiCall('/api/classify-feedback', 'POST', {
+                messages: messages
+            });
+
+            response.classifications.forEach(result => {
+                const emoji = result.classification === 'positive' ? '🟢' : 
+                            result.classification === 'negative' ? '🔴' : '⚪';
+                
+                console.log(`${emoji} ${result.classification.toUpperCase()} (${result.confidence * 100}%)`);
+                console.log(`   Texto: "${result.text}"`);
+                console.log(`   Motivo: ${result.reason}\n`);
+            });
+
+        } catch (error) {
+            console.log(`\x1b[31m❌ Erro: ${error.message}\x1b[0m\n`);
+        }
+
+        await this.question('Pressione ENTER para voltar...');
+    }
+
+    async showSystemStats() {
+        console.clear();
+        this.showHeader();
+        console.log('\x1b[1;33mESTATÍSTICAS DO SISTEMA\x1b[0m\n');
+
+        try {
+            const response = await this.apiCall('/health');
+            
+            console.log(`\x1b[36mStatus do Sistema:\x1b[0m ${response.status.toUpperCase()}`);
+            console.log(`\x1b[36mTimestamp:\x1b[0m ${response.timestamp}`);
+            console.log(`\x1b[36mWhatsApp Conectado:\x1b[0m ${response.whatsappConnected ? 'Sim' : 'Não'}\n`);
+
+            // Estatísticas simuladas
+            console.log('\x1b[36mEstatísticas Gerais:\x1b[0m');
+            console.log('- Arquivos processados: 15');
+            console.log('- Mensagens enviadas: 1.250');
+            console.log('- Contatos únicos: 890');
+            console.log('- Taxa de sucesso: 94%');
+            console.log('');
+
+        } catch (error) {
+            console.log(`\x1b[31m❌ Erro ao obter estatísticas: ${error.message}\x1b[0m\n`);
+        }
+
+        await this.question('Pressione ENTER para voltar...');
+    }
+
+    async showSettings() {
+        console.clear();
+        this.showHeader();
+        console.log('\x1b[1;33mCONFIGURAÇÕES\x1b[0m\n');
+
+        console.log(`\x1b[36mURL da API:\x1b[0m ${this.apiUrl}`);
+        console.log(`\x1b[36mAmbiente:\x1b[0m ${process.env.NODE_ENV || 'development'}`);
+        console.log(`\x1b[36mPorta:\x1b[0m ${process.env.PORT || 3000}\n`);
+
+        const newUrl = await this.question('Nova URL da API (deixe vazio para manter atual): ');
+        if (newUrl.trim()) {
+            this.apiUrl = newUrl.trim();
+            console.log('\x1b[32m✅ URL atualizada!\x1b[0m\n');
+        }
+
+        await this.question('Pressione ENTER para voltar...');
+    }
+
+    async question(prompt) {
+        return new Promise(resolve => {
+            this.rl.question(prompt, resolve);
+        });
+    }
+
+    async sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async apiCall(endpoint, method = 'GET', data = null) {
+        // Simular chamadas API para interface de terminal
+        // Em produção, usar axios ou fetch real
+        
+        const mockResponses = {
+            '/health': {
+                status: 'ok',
+                timestamp: new Date().toISOString(),
+                whatsappConnected: true
+            },
+            '/api/whatsapp/status': {
+                connected: true,
+                ready: true,
+                qrReady: false
+            },
+            '/api/upload': {
+                success: true,
+                contacts: [
+                    { name: 'João Silva', phone: '11999999999', date: '2024-01-15' },
+                    { name: 'Maria Santos', phone: '11888888888', date: '2024-01-16' }
+                ],
+                sheets: [{ name: 'Clientes', contacts_found: 2 }]
+            },
+            '/api/send-messages': {
+                sent: [
+                    { contact: { name: 'João Silva', phone: '11999999999' } }
+                ],
+                failed: []
+            },
+            '/api/classify-feedback': {
+                classifications: [
+                    {
+                        classification: 'positive',
+                        confidence: 0.95,
+                        reason: 'keywords positivos encontrados',
+                        text: 'Muito obrigado pelo excelente atendimento!'
+                    }
+                ]
+            }
+        };
+
+        // Simular delay de rede
+        await this.sleep(1000);
+        
+        const key = endpoint + (method !== 'GET' ? '_POST' : '');
+        return mockResponses[endpoint] || mockResponses[key] || { error: 'Endpoint não encontrado' };
+    }
+
+    async uploadFile(filePath, fileName) {
+        // Simular upload de arquivo
+        await this.sleep(2000);
+        return {
+            success: true,
+            fileName,
+            contacts: [
+                { name: 'Cliente 1', phone: '11999999999', date: '2024-01-15' },
+                { name: 'Cliente 2', phone: '11888888888', date: '2024-01-16' }
+            ],
+            sheets: [{ name: 'Planilha1', contacts_found: 2 }]
+        };
+    }
+}
+
+// Executar interface se chamada diretamente
+if (require.main === module) {
+    const terminal = new TerminalInterface();
+    terminal.start().catch(console.error);
+}
+
+module.exports = TerminalInterface;

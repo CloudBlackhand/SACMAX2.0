@@ -1,0 +1,20 @@
+[phases.setup]
+nixPkgs = ["nodejs-18_x", "python39", "python39Packages.pip"]
+
+[phases.install]
+cmds = [
+  "npm ci --production=false",
+  "pip install -r python_modules/requirements.txt"
+]
+
+[phases.build]
+cmds = [
+  "npm run build"
+]
+
+[start]
+cmd = "npm start"
+
+[env]
+NODE_ENV = "production"
+PORT = "3000"

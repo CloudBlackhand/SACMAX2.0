@@ -1,0 +1,19 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "docker/Dockerfile"
+
+[deploy]
+startCommand = "npm start"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[env]
+NODE_ENV = "production"
+PORT = "3000"
+HOST = "0.0.0.0"
+WHATSAPP_HEADLESS = "true"
+WHATSAPP_QR_TIMEOUT = "60000"
+MAX_FILE_SIZE = "10485760"
+LOG_LEVEL = "info"

@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  sacsmax-automation:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: sacsmax-automation-dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../uploads:/app/uploads
+      - ../logs:/app/logs
+      - ../config:/app/config
+      - ../wwebjs_auth:/app/wwebjs_auth  # Persistir sessão WhatsApp
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - WHATSAPP_HEADLESS=false  # Mostrar navegador para desenvolvimento
+    restart: unless-stopped
+    networks:
+      - sacsmax-network
+    stdin_open: true  # Para interação com terminal
+    tty: true
+
+networks:
+  sacsmax-network:
+    driver: bridge

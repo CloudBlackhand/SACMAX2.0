@@ -1,0 +1,5 @@
+# Dependências Python minimalistas para processamento de Excel
+openpyxl==3.1.2
+pandas==2.1.1
+python-dateutil==2.8.2
+xlrd==2.0.1
