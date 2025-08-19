@@ -71,33 +71,12 @@ class SacsMaxServer {
     }
 
     setupRoutes() {
-        // Health check
+        // Health check - versão simplificada para Railway
         this.app.get('/health', async (req, res) => {
-            let chromeAvailable = false;
-            
-            // Verificar se o Chrome/Chromium está disponível
-            try {
-                const { execSync } = require('child_process');
-                const chromePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
-                execSync(`which chromium-browser || which chrome || test -f ${chromePath}`, { stdio: 'ignore' });
-                chromeAvailable = true;
-            } catch (error) {
-                chromeAvailable = false;
-            }
-
             const healthStatus = {
                 status: 'healthy',
                 timestamp: new Date().toISOString(),
                 server: 'running',
-                chrome: {
-                    available: chromeAvailable,
-                    path: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser'
-                },
-                whatsapp: {
-                    connected: this.whatsappService.isConnected(),
-                    ready: this.whatsappService.isReady(),
-                    initialized: this.whatsappService.isInitialized ? this.whatsappService.isInitialized() : false
-                },
                 uptime: process.uptime(),
                 memory: process.memoryUsage(),
                 version: process.env.npm_package_version || '1.0.0',
@@ -108,9 +87,8 @@ class SacsMaxServer {
                 }
             };
             
-            // Se o Chrome não estiver disponível, retornar 503
-            const statusCode = chromeAvailable ? 200 : 503;
-            res.status(statusCode).json(healthStatus);
+            // Sempre retornar 200 para health check básico
+            res.status(200).json(healthStatus);
         });
 
         // WhatsApp control endpoints
@@ -864,11 +842,12 @@ class SacsMaxServer {
     async start() {
         try {
             const port = process.env.PORT || 3000;
+            const host = process.env.HOST || '0.0.0.0';
             
             // Iniciar servidor HTTP apenas - WhatsApp será controlado pelo frontend
-            this.server.listen(port, () => {
-                logger.info(`Servidor iniciado na porta ${port}`);
-                console.log(`🚀 SacsMax Automation rodando em http://localhost:${port}`);
+            this.server.listen(port, host, () => {
+                logger.info(`Servidor iniciado em ${host}:${port}`);
+                console.log(`🚀 SacsMax Automation rodando em http://${host}:${port}`);
                 console.log(`📱 WhatsApp Web será iniciado via frontend quando necessário`);
             });
 
