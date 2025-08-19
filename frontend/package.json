@@ -1,0 +1,65 @@
+{
+  "name": "sacsmax-frontend",
+  "version": "2.1.0",
+  "description": "Interface web otimizada para SACSMAX - Sistema de Automação de Contatos e Feedback",
+  "main": "webInterface-refactored.js",
+  "scripts": {
+    "start": "http-server . -p 3000 -c-1 --cors",
+    "dev": "http-server . -p 3000 -c-1 --cors",
+    "build": "npm run build:css && npm run build:js",
+    "build:css": "node scripts/build-css.js",
+    "build:js": "node scripts/build-js.js",
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "node test/unit/runner.js",
+    "test:e2e": "node test/e2e/runner.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "serve": "http-server dist -p 8080",
+    "railway:deploy": "npm run build && railway up",
+    "docker:build": "docker build -t sacsmax-frontend .",
+    "docker:run": "docker run -p 3000:3000 sacsmax-frontend"
+  },
+  "keywords": [
+    "whatsapp",
+    "automation",
+    "marketing",
+    "feedback",
+    "contacts",
+    "bulk-messaging"
+  ],
+  "author": "SacsMax Team",
+  "license": "MIT",
+  "dependencies": {
+    "http-server": "^14.1.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    "puppeteer": "^21.6.1",
+    "terser": "^5.26.0",
+    "clean-css": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sacsmax/sacsmax-frontend.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sacsmax/sacsmax-frontend/issues"
+  },
+  "homepage": "https://sacsmax.com",
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ],
+  "railway": {
+    "buildCommand": "npm run build",
+    "startCommand": "npm run start",
+    "healthcheckPath": "/health",
+    "restartPolicyType": "ON_FAILURE"
+  }
+}

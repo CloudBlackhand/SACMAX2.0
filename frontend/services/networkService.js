@@ -11,6 +11,25 @@ class FrontendNetworkService {
         this.listeners = new Set();
         this.monitoring = false;
         this.monitorInterval = null;
+        
+        // Configurações de retry e timeout
+        this.retryConfig = {
+            maxRetries: 3,
+            retryDelay: 1000,
+            backoffMultiplier: 2,
+            maxDelay: 10000
+        };
+        
+        this.timeoutConfig = {
+            default: 30000,
+            upload: 120000,
+            download: 60000
+        };
+        
+        // Gerenciamento de requisições
+        this.pendingRequests = new Map();
+        this.requestQueue = [];
+        this.isProcessingQueue = false;
     }
 
     /**
@@ -125,6 +144,187 @@ class FrontendNetworkService {
         }
 
         return status;
+    }
+
+    /**
+     * Método principal para requisições HTTP com retry e timeout
+     */
+    async makeRequest(url, options = {}) {
+        const requestId = Date.now() + Math.random();
+        const config = {
+            timeout: this.timeoutConfig[options.type] || this.timeoutConfig.default,
+            retries: 0,
+            ...options
+        };
+
+        // Adicionar à fila de requisições
+        this.requestQueue.push({ requestId, url, config });
+        this.processQueue();
+
+        return this.executeRequest(requestId, url, config);
+    }
+
+    /**
+     * Executa requisição com retry e timeout
+     */
+    async executeRequest(requestId, url, config, attempt = 0) {
+        const { timeout, retries, ...fetchOptions } = config;
+
+        // Criar controller para timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+        try {
+            const response = await fetch(url, {
+                ...fetchOptions,
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            this.pendingRequests.delete(requestId);
+            return data;
+
+        } catch (error) {
+            clearTimeout(timeoutId);
+
+            // Tratamento de erros específicos
+            if (error.name === 'AbortError') {
+                error.message = 'Tempo limite excedido';
+            }
+
+            if (attempt < this.retryConfig.maxRetries) {
+                const delay = Math.min(
+                    this.retryConfig.retryDelay * Math.pow(this.retryConfig.backoffMultiplier, attempt),
+                    this.retryConfig.maxDelay
+                );
+
+                console.warn(`Tentativa ${attempt + 1} falhou para ${url}. Retentando em ${delay}ms...`);
+                
+                await new Promise(resolve => setTimeout(resolve, delay));
+                return this.executeRequest(requestId, url, config, attempt + 1);
+            }
+
+            // Última tentativa falhou
+            this.pendingRequests.delete(requestId);
+            throw this.createErrorResponse(error, url, attempt + 1);
+        }
+    }
+
+    /**
+     * Cria resposta de erro padronizada
+     */
+    createErrorResponse(error, url, attempts) {
+        const errorResponse = {
+            success: false,
+            error: {
+                message: error.message || 'Erro desconhecido',
+                code: error.code || 'NETWORK_ERROR',
+                url: url,
+                attempts: attempts,
+                timestamp: new Date().toISOString()
+            },
+            userMessage: this.getUserFriendlyError(error.message),
+            troubleshooting: this.getTroubleshootingSteps(error)
+        };
+
+        // Log para debugging
+        if (window.envConfig && window.envConfig.DEBUG) {
+            console.error('Erro de rede:', errorResponse);
+        }
+
+        return errorResponse;
+    }
+
+    /**
+     * Processa fila de requisições
+     */
+    async processQueue() {
+        if (this.isProcessingQueue || this.requestQueue.length === 0) return;
+
+        this.isProcessingQueue = true;
+
+        while (this.requestQueue.length > 0) {
+            const { requestId, url, config } = this.requestQueue.shift();
+            
+            if (this.pendingRequests.size < (window.envConfig?.MAX_CONCURRENT_REQUESTS || 5)) {
+                this.pendingRequests.set(requestId, { url, config });
+            } else {
+                // Re-adicionar à fila se limite atingido
+                this.requestQueue.unshift({ requestId, url, config });
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+
+        this.isProcessingQueue = false;
+    }
+
+    /**
+     * Retorna mensagem amigável para o usuário
+     */
+    getUserFriendlyError(errorMessage) {
+        const errorMap = {
+            'Failed to fetch': 'Não foi possível conectar ao servidor',
+            'NetworkError': 'Problema de conexão com a rede',
+            'TimeoutError': 'Tempo limite excedido',
+            '404': 'Recurso não encontrado',
+            '500': 'Erro interno do servidor',
+            '403': 'Acesso negado',
+            '401': 'Autenticação necessária'
+        };
+
+        for (const [key, message] of Object.entries(errorMap)) {
+            if (errorMessage.includes(key)) {
+                return message;
+            }
+        }
+
+        return 'Ocorreu um erro. Por favor, tente novamente.';
+    }
+
+    /**
+     * Retorna passos de solução de problemas
+     */
+    getTroubleshootingSteps(error) {
+        const steps = {
+            'Failed to fetch': [
+                'Verifique sua conexão com a internet',
+                'Tente recarregar a página',
+                'Verifique se o servidor está disponível'
+            ],
+            'TimeoutError': [
+                'Sua conexão pode estar lenta',
+                'Tente novamente em alguns segundos',
+                'Verifique sua conexão Wi-Fi ou cabo de rede'
+            ],
+            '404': [
+                'O recurso solicitado não existe',
+                'Verifique se o URL está correto',
+                'Contate o suporte técnico'
+            ],
+            '500': [
+                'Erro interno do servidor',
+                'Tente novamente em alguns minutos',
+                'Contate o suporte técnico se persistir'
+            ]
+        };
+
+        for (const [key, stepsList] of Object.entries(steps)) {
+            if (error.message && error.message.includes(key)) {
+                return stepsList;
+            }
+        }
+
+        return [
+            'Verifique sua conexão com a internet',
+            'Tente recarregar a página',
+            'Contate o suporte técnico se o erro persistir'
+        ];
     }
 
     /**
