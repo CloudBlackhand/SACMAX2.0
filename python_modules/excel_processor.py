@@ -77,9 +77,20 @@ def extract_client_data_by_date(file_path):
                     continue
                     
                 try:
-                    date_value = pd.to_datetime(row[date_column])
-                    date_key = date_value.strftime('%Y-%m-%d')
-                except:
+                    date_value = pd.to_datetime(row[date_column], format=None, errors='coerce', dayfirst=True)
+                    if pd.isna(date_value):
+                        # Tentar formatos alternativos
+                        date_value = pd.to_datetime(str(row[date_column]), format='%d/%m/%Y', errors='coerce')
+                        if pd.isna(date_value):
+                            date_value = pd.to_datetime(str(row[date_column]), format='%d-%m-%Y', errors='coerce')
+                            if pd.isna(date_value):
+                                date_value = pd.to_datetime(str(row[date_column]), format='%Y-%m-%d', errors='coerce')
+                    
+                    if pd.notna(date_value):
+                        date_key = date_value.strftime('%Y-%m-%d')
+                    else:
+                        date_key = str(row[date_column])
+                except Exception as e:
                     date_key = str(row[date_column])
                 
                 # Identificar o cliente
@@ -224,9 +235,20 @@ def extract_contacts_from_excel(file_path):
                 # Extrair data
                 if date_column and date_column in df.columns and pd.notna(row[date_column]):
                     try:
-                        date_value = pd.to_datetime(row[date_column])
-                        contact['date'] = date_value.isoformat()
-                    except:
+                        date_value = pd.to_datetime(row[date_column], format=None, errors='coerce', dayfirst=True)
+                        if pd.isna(date_value):
+                            # Tentar formatos alternativos
+                            date_value = pd.to_datetime(str(row[date_column]), format='%d/%m/%Y', errors='coerce')
+                            if pd.isna(date_value):
+                                date_value = pd.to_datetime(str(row[date_column]), format='%d-%m-%Y', errors='coerce')
+                                if pd.isna(date_value):
+                                    date_value = pd.to_datetime(str(row[date_column]), format='%Y-%m-%d', errors='coerce')
+                        
+                        if pd.notna(date_value):
+                            contact['date'] = date_value.isoformat()
+                        else:
+                            contact['date'] = str(row[date_column])
+                    except Exception as e:
                         contact['date'] = str(row[date_column])
                 
                 # Armazenar dados adicionais

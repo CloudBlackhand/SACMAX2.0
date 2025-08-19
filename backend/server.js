@@ -320,6 +320,10 @@ class SacsMaxServer {
             }
         });
 
+        // Importar e usar rotas de network
+        const networkRoutes = require('./routes/network');
+        this.app.use('/api/network', networkRoutes);
+
         // Upload de planilhas
         this.app.post('/api/upload', this.upload.single('file'), async (req, res) => {
             try {
@@ -496,6 +500,16 @@ class SacsMaxServer {
             res.sendFile(path.join(__dirname, '../frontend/webInterface.js'));
         });
 
+        // Rota para servir o serviço de rede otimizado
+        this.app.get('/services/networkService.js', (req, res) => {
+            res.sendFile(path.join(__dirname, '../frontend/services/networkService.js'));
+        });
+
+        // Rota para servir o componente WhatsApp
+        this.app.get('/whatsappComponent.js', (req, res) => {
+            res.sendFile(path.join(__dirname, '../frontend/whatsappComponent.js'));
+        });
+
         // Rota para página HTML que carrega a interface
         this.app.get('/interface', (req, res) => {
             res.send(`
@@ -507,6 +521,8 @@ class SacsMaxServer {
     <title>SACSMAX - Interface Web</title>
 </head>
 <body>
+    <script src="/services/networkService.js"></script>
+    <script src="/whatsappComponent.js"></script>
     <script src="/web-interface.js"></script>
 </body>
 </html>

@@ -238,300 +238,7 @@
             margin-bottom: 10px;
         }
 
-        /* WhatsApp Clone Styles */
-        .whatsapp-container {
-            display: flex;
-            height: 600px;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            overflow: hidden;
-            background: white;
-        }
-
-        .whatsapp-sidebar {
-            width: 350px;
-            border-right: 1px solid #e5e7eb;
-            display: flex;
-            flex-direction: column;
-            background: #f9fafb;
-        }
-
-        .whatsapp-header {
-            background: #128c7e;
-            color: white;
-            padding: 16px;
-            font-weight: 500;
-            font-size: 16px;
-        }
-
-        .whatsapp-search {
-            padding: 12px;
-            background: white;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .whatsapp-search input {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 20px;
-            font-size: 14px;
-        }
-
-        .whatsapp-contacts {
-            flex: 1;
-            overflow-y: auto;
-        }
-
-        .whatsapp-contact {
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            border-bottom: 1px solid #f3f4f6;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .whatsapp-contact:hover {
-            background: #f3f4f6;
-        }
-
-        .whatsapp-contact.active {
-            background: #e5e7eb;
-        }
-
-        .whatsapp-contact-avatar {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            background: #6b7280;
-            margin-right: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 500;
-        }
-
-        .whatsapp-contact-info {
-            flex: 1;
-        }
-
-        .whatsapp-contact-name {
-            font-weight: 500;
-            color: #111827;
-            margin-bottom: 2px;
-        }
-
-        .whatsapp-contact-preview {
-            font-size: 13px;
-            color: #6b7280;
-        }
-
-        .whatsapp-chat {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .whatsapp-chat-header {
-            background: #f9fafb;
-            padding: 16px;
-            border-bottom: 1px solid #e5e7eb;
-            display: flex;
-            align-items: center;
-        }
-
-        .whatsapp-chat-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: #128c7e;
-            margin-right: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 500;
-            font-size: 14px;
-        }
-
-        .whatsapp-chat-name {
-            font-weight: 500;
-            color: #111827;
-        }
-
-        .whatsapp-messages {
-            flex: 1;
-            padding: 16px;
-            overflow-y: auto;
-            background: #e5ddd5;
-        }
-
-        .whatsapp-message {
-            max-width: 65%;
-            margin-bottom: 8px;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 14px;
-            line-height: 1.4;
-            position: relative;
-        }
-
-        .whatsapp-message.sent {
-            background: #dcf8c6;
-            margin-left: auto;
-            border-bottom-right-radius: 4px;
-        }
-
-        .whatsapp-message.received {
-            background: white;
-            margin-right: auto;
-            border-bottom-left-radius: 4px;
-        }
-
-        .whatsapp-message-time {
-            font-size: 11px;
-            color: #6b7280;
-            margin-top: 4px;
-            text-align: right;
-        }
-
-        .whatsapp-message-sticker {
-            max-width: 150px;
-            padding: 4px;
-            background: transparent;
-        }
-
-        .whatsapp-message-sticker img {
-            width: 100%;
-            height: auto;
-            border-radius: 8px;
-        }
-
-        .whatsapp-message-image {
-            max-width: 250px;
-            padding: 4px;
-        }
-
-        .whatsapp-message-image img {
-            width: 100%;
-            height: auto;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-
-        .whatsapp-message-document {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px;
-            background: rgba(0, 0, 0, 0.05);
-            border-radius: 8px;
-        }
-
-        .whatsapp-message-document .file-icon {
-            font-size: 24px;
-            color: #128c7e;
-        }
-
-        .whatsapp-message-document .file-info {
-            flex: 1;
-        }
-
-        .whatsapp-message-document .file-name {
-            font-size: 13px;
-            color: #111827;
-            font-weight: 500;
-        }
-
-        .whatsapp-message-document .file-size {
-            font-size: 11px;
-            color: #6b7280;
-        }
-
-        .whatsapp-stickers {
-            display: none;
-            padding: 12px;
-            background: white;
-            border-top: 1px solid #e5e7eb;
-            border-bottom: 1px solid #e5e7eb;
-            max-height: 150px;
-            overflow-y: auto;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .whatsapp-sticker-item {
-            width: 60px;
-            height: 60px;
-            cursor: pointer;
-            border-radius: 8px;
-            transition: transform 0.2s;
-        }
-
-        .whatsapp-sticker-item:hover {
-            transform: scale(1.1);
-        }
-
-        .whatsapp-sticker-item img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-
-        .whatsapp-typing {
-            display: none;
-            padding: 8px 12px;
-            font-style: italic;
-            color: #6b7280;
-            font-size: 14px;
-        }
-
-        .whatsapp-input {
-            background: white;
-            padding: 12px;
-            border-top: 1px solid #e5e7eb;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .whatsapp-input input {
-            flex: 1;
-            padding: 8px 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 20px;
-            font-size: 14px;
-        }
-
-        .whatsapp-input button {
-            background: #128c7e;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background 0.2s;
-        }
-
-        .whatsapp-input button:hover {
-            background: #075e54;
-        }
-
-        .whatsapp-attachment {
-            background: none;
-            border: none;
-            color: #6b7280;
-            cursor: pointer;
-            font-size: 20px;
-            padding: 4px;
-        }
-
-        .whatsapp-attachment:hover {
-            color: #128c7e;
-        }
+        /* Estilos removidos - usando WhatsApp Component */
             padding: 10px;
             background: white;
             border-radius: 5px;
@@ -1099,19 +806,14 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>Região:</label>
-                            <select id="massSendRegion" class="form-control">
-                                <option value="">Todas as Regiões</option>
-                                <option value="sudeste">Sudeste</option>
-                                <option value="sul">Sul</option>
-                                <option value="norte">Norte</option>
-                                <option value="nordeste">Nordeste</option>
-                                <option value="centro-oeste">Centro-Oeste</option>
+                            <label>Template de Mensagem:</label>
+                            <select id="massSendTemplate" class="form-control" onchange="loadTemplateContent()">
+                                <option value="">Selecionar template...</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Mensagem:</label>
-                            <textarea id="massSendMessage" class="form-control" rows="3" placeholder="Digite a mensagem a ser enviada em massa..."></textarea>
+                            <label>Mensagem Personalizada:</label>
+                            <textarea id="massSendMessage" class="form-control" rows="3" placeholder="Digite a mensagem ou selecione um template..."></textarea>
                         </div>
                         <div style="margin-top: 15px;">
                             <button class="btn btn-primary" id="previewMassSend" onclick="previewMassSend()">👁️ Pré-visualizar</button>
@@ -1133,49 +835,8 @@
                 <!-- Aba Interface WhatsApp -->
                 <div class="section" id="whatsapp">
                     <h2>💬 Interface WhatsApp</h2>
-                    <div class="whatsapp-container">
-                        <div class="whatsapp-sidebar">
-                            <div class="whatsapp-header">
-                                WhatsApp Clone
-                            </div>
-                            <div class="whatsapp-search">
-                                <input type="text" placeholder="Buscar contatos..." id="whatsapp-search-input">
-                            </div>
-                            <div class="whatsapp-contacts" id="whatsapp-contacts-list">
-                                <!-- Contatos serão carregados dinamicamente -->
-                            </div>
-                        </div>
-                        <div class="whatsapp-chat">
-                            <div class="whatsapp-chat-header" id="whatsapp-chat-header" style="display: none;">
-                                <div class="whatsapp-chat-avatar" id="chat-avatar">U</div>
-                                <div class="whatsapp-chat-name" id="chat-name">Selecione um contato</div>
-                            </div>
-                            <div class="whatsapp-messages" id="whatsapp-messages">
-                                <div style="text-align: center; color: #6b7280; margin-top: 50px;">
-                                    Selecione um contato para iniciar conversa
-                                </div>
-                            </div>
-                            <div class="whatsapp-stickers" id="whatsapp-stickers">
-                                <div class="whatsapp-sticker-item" onclick="sendSticker('😊')">😊</div>
-                                <div class="whatsapp-sticker-item" onclick="sendSticker('👍')">👍</div>
-                                <div class="whatsapp-sticker-item" onclick="sendSticker('❤️')">❤️</div>
-                                <div class="whatsapp-sticker-item" onclick="sendSticker('🎉')">🎉</div>
-                                <div class="whatsapp-sticker-item" onclick="sendSticker('😂')">😂</div>
-                                <div class="whatsapp-sticker-item" onclick="sendSticker('😍')">😍</div>
-                                <div class="whatsapp-sticker-item" onclick="sendSticker('🔥')">🔥</div>
-                                <div class="whatsapp-sticker-item" onclick="sendSticker('✅')">✅</div>
-                                <div class="whatsapp-sticker-item" onclick="sendSticker('📞')">📞</div>
-                                <div class="whatsapp-sticker-item" onclick="sendSticker('💬')">💬</div>
-                                <div class="whatsapp-sticker-item" onclick="sendSticker('👋')">👋</div>
-                                <div class="whatsapp-sticker-item" onclick="sendSticker('🙏')">🙏</div>
-                            </div>
-                            <div class="whatsapp-input" id="whatsapp-input" style="display: none;">
-                                <button class="whatsapp-attachment" onclick="toggleStickers()" title="Figurinhas" style="font-size: 18px;">😊</button>
-                                <button class="whatsapp-attachment" onclick="attachFile()" title="Anexar arquivo">📎</button>
-                                <input type="text" id="whatsapp-message-input" placeholder="Digite uma mensagem...">
-                                <button onclick="sendMessage()">Enviar</button>
-                            </div>
-                        </div>
+                    <div id="whatsapp-component-container">
+                        <!-- WhatsApp Component será carregado aqui -->
                     </div>
                     <div style="margin-top: 20px;">
                         <button class="btn btn-success" id="sendMessages">📤 Enviar Mensagens</button>
@@ -1370,6 +1031,36 @@
             });
             html += '</div>';
             contactsContent.innerHTML = html;
+        }
+
+        async loadMassTemplates() {
+            try {
+                const response = await fetch('/api/feedback/templates');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const select = document.getElementById('massSendTemplate');
+                    select.innerHTML = '<option value="">Selecionar template...</option>';
+                    
+                    data.data.forEach(template => {
+                        const option = document.createElement('option');
+                        option.value = template.id;
+                        option.textContent = template.name;
+                        option.dataset.template = template.template;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar templates:', error);
+            }
+        }
+
+        async loadTemplateContent() {
+            const select = document.getElementById('massSendTemplate');
+            const selectedOption = select.options[select.selectedIndex];
+            const templateText = selectedOption?.dataset.template || '';
+            
+            document.getElementById('massMessage').value = templateText;
         }
 
         async startBot() {
@@ -2179,10 +1870,10 @@
                     <div class="feedback-container">
                         <div class="feedback-tabs">
                             <button class="feedback-tab active" data-feedback-tab="dashboard">📊 Dashboard</button>
-                            <button class="feedback-tab" data-feedback-tab="feedbacks">💬 Feedbacks</button>
-                            <button class="feedback-tab" data-feedback-tab="templates">📋 Templates</button>
-                            <button class="feedback-tab" data-feedback-tab="mass-templates">📱 Templates Mensagens</button>
-                            <button class="feedback-tab" data-feedback-tab="sent-contacts">📞 Contatos Enviados</button>
+        <button class="feedback-tab" data-feedback-tab="feedbacks">💬 Feedbacks</button>
+        <button class="feedback-tab" data-feedback-tab="templates">📋 Templates de Resposta</button>
+        <button class="feedback-tab" data-feedback-tab="mass-templates">📱 Templates de Envio</button>
+        <button class="feedback-tab" data-feedback-tab="sent-contacts">📞 Histórico de Envios</button>
                         </div>
                         
                         <div class="feedback-content">
@@ -2379,21 +2070,7 @@
                     </div>
                 </div>
 
-                <!-- Modal de Chat -->
-                <div id="chatModal" class="modal">
-                    <div class="modal-content" style="width: 90%; max-width: 600px;">
-                        <div class="modal-header">
-                            <h3>Chat com Cliente</h3>
-                            <span class="close" onclick="closeChatModal()">&times;</span>
-                        </div>
-                        <div id="chat-client-info" style="margin-bottom: 15px; font-weight: bold;"></div>
-                        <div id="chat-messages" style="height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; background: #f9fafb;"></div>
-                        <div style="display: flex; gap: 10px;">
-                            <input type="text" id="chat-input" placeholder="Digite sua mensagem..." style="flex: 1; padding: 8px;">
-                            <button class="btn btn-primary" onclick="sendChatMessage()">Enviar</button>
-                        </div>
-                    </div>
-                </div>
+
 
                 <!-- Modal de Templates de Mensagens em Massa -->
                 <div id="massTemplateModal" class="modal">
@@ -2452,7 +2129,20 @@
             loadFeedbackDashboard();
             loadTemplates();
             loadMassTemplates();
-            checkNetworkStatus();
+            
+            // Inicializar WhatsApp Component com contatos de exemplo
+            if (typeof WhatsAppComponent !== 'undefined') {
+                const container = document.getElementById('whatsapp-component-container');
+                if (container) {
+                    window.whatsappComponent = new WhatsAppComponent(container);
+                    loadWhatsAppContacts();
+                }
+            }
+            
+            // Verificar conexão se o serviço estiver disponível
+            if (window.networkService && window.networkService.checkConnection) {
+                window.networkService.checkConnection();
+            }
         }
 
         function setupFeedbackEventListeners() {
@@ -2520,6 +2210,7 @@
         async function loadFeedbackDashboard() {
             try {
                 const response = await fetch('/api/feedback/stats');
+                if (!response.ok) throw new Error('Erro na resposta');
                 const data = await response.json();
                 
                 document.getElementById('positive-count').textContent = data.positive || 0;
@@ -2540,8 +2231,9 @@
         async function loadRecentFeedbacks() {
             try {
                 const response = await fetch('/api/feedback?limit=5');
+                if (!response.ok) throw new Error('Erro na resposta');
                 const feedbacks = await response.json();
-                displayRecentFeedbacks(feedbacks);
+                displayRecentFeedbacks(Array.isArray(feedbacks) ? feedbacks : []);
             } catch (error) {
                 console.error('Erro ao carregar feedbacks recentes:', error);
                 // Dados mock
@@ -2621,8 +2313,9 @@
         async function loadTemplates() {
             try {
                 const response = await fetch('/api/feedback/templates');
+                if (!response.ok) throw new Error('Erro na resposta');
                 const templates = await response.json();
-                displayTemplates(templates);
+                displayTemplates(Array.isArray(templates) ? templates : []);
             } catch (error) {
                 console.error('Erro ao carregar templates:', error);
                 // Dados mock
@@ -2726,14 +2419,29 @@
         }
 
         function startChat(clientName, phone) {
-            feedbackState.currentChat = { clientName, phone };
-            document.getElementById('chat-client-info').textContent = `Cliente: ${clientName} (${phone})`;
-            document.getElementById('chatModal').style.display = 'block';
-            loadChatHistory(phone);
+            if (!window.whatsappComponent) {
+                const container = document.getElementById('whatsapp-component-container');
+                if (container) {
+                    window.whatsappComponent = new WhatsAppComponent(container);
+                }
+            }
+            
+            const contact = {
+                id: phone,
+                name: clientName,
+                phone: phone,
+                email: '',
+                address: '',
+                lastMessage: 'Clique para conversar'
+            };
+            
+            window.whatsappComponent.openChat(contact);
         }
 
         function closeChatModal() {
-            document.getElementById('chatModal').style.display = 'none';
+            if (window.whatsappComponent) {
+                window.whatsappComponent.hide();
+            }
             feedbackState.currentChat = null;
         }
 
@@ -2895,6 +2603,48 @@
             return [];
         }
 
+        function loadWhatsAppContacts() {
+            // Carregar contatos de exemplo para demonstração
+            const contacts = [
+                {
+                    id: 'cliente1',
+                    name: 'João Silva',
+                    phone: '+55 11 98765-4321',
+                    email: 'joao@email.com',
+                    address: 'São Paulo, SP',
+                    lastMessage: 'Preciso de suporte técnico'
+                },
+                {
+                    id: 'cliente2',
+                    name: 'Maria Santos',
+                    phone: '+55 21 99876-5432',
+                    email: 'maria@email.com',
+                    address: 'Rio de Janeiro, RJ',
+                    lastMessage: 'Obrigada pelo atendimento!'
+                },
+                {
+                    id: 'cliente3',
+                    name: 'Carlos Oliveira',
+                    phone: '+55 31 91234-5678',
+                    email: 'carlos@email.com',
+                    address: 'Belo Horizonte, MG',
+                    lastMessage: 'Quero agendar uma visita técnica'
+                }
+            ];
+            
+            if (window.whatsappComponent) {
+                window.whatsappComponent.loadContacts(contacts);
+            }
+        }
+
+        // Função fallback para checkNetworkStatus
+        async function checkNetworkStatus() {
+            if (window.networkService && window.networkService.checkConnection) {
+                return await window.networkService.checkConnection();
+            }
+            return true; // Fallback simples
+        }
+
         function attachFile() {
             const input = document.createElement('input');
             input.type = 'file';
@@ -2984,7 +2734,7 @@
     window.previewMassSend = function() {
         const startDate = document.getElementById('massSendStartDate').value;
         const endDate = document.getElementById('massSendEndDate').value;
-        const region = document.getElementById('massSendRegion').value;
+        const templateId = document.getElementById('massSendTemplate').value;
         const message = document.getElementById('massSendMessage').value;
         
         if (!message.trim()) {
@@ -2994,19 +2744,14 @@
 
         // Simular busca de contatos filtrados
         const mockContacts = [
-            { name: 'João Silva', phone: '5511999999999', region: 'sudeste', dateAdded: '2024-01-15' },
-            { name: 'Maria Santos', phone: '5511888888888', region: 'sul', dateAdded: '2024-01-20' },
-            { name: 'Carlos Oliveira', phone: '5511777777777', region: 'norte', dateAdded: '2024-01-25' },
-            { name: 'Ana Paula', phone: '5511666666666', region: 'sudeste', dateAdded: '2024-01-10' },
-            { name: 'Pedro Costa', phone: '5511555555555', region: 'nordeste', dateAdded: '2024-01-18' }
+            { name: 'João Silva', phone: '5511999999999', dateAdded: '2024-01-15' },
+            { name: 'Maria Santos', phone: '5511888888888', dateAdded: '2024-01-20' },
+            { name: 'Carlos Oliveira', phone: '5511777777777', dateAdded: '2024-01-25' },
+            { name: 'Ana Paula', phone: '5511666666666', dateAdded: '2024-01-10' },
+            { name: 'Pedro Costa', phone: '5511555555555', dateAdded: '2024-01-18' }
         ];
 
         let filteredContacts = mockContacts;
-
-        // Filtrar por região
-        if (region) {
-            filteredContacts = filteredContacts.filter(contact => contact.region === region);
-        }
 
         // Filtrar por datas
         if (startDate) {
@@ -3031,12 +2776,11 @@
                 <ul>
                     ${startDate ? `<li>Data inicial: ${new Date(startDate).toLocaleDateString('pt-BR')}</li>` : ''}
                     ${endDate ? `<li>Data final: ${new Date(endDate).toLocaleDateString('pt-BR')}</li>` : ''}
-                    ${region ? `<li>Região: ${region.charAt(0).toUpperCase() + region.slice(1)}</li>` : ''}
                 </ul>
                 <p><strong>Exemplo de contatos:</strong></p>
                 <ul>
                     ${filteredContacts.slice(0, 5).map(contact => 
-                        `<li>${contact.name} (${contact.phone}) - Região: ${contact.region}</li>`
+                        `<li>${contact.name} (${contact.phone})</li>`
                     ).join('')}
                     ${filteredContacts.length > 5 ? `<li>... e mais ${filteredContacts.length - 5} contatos</li>` : ''}
                 </ul>
@@ -3051,7 +2795,6 @@
     window.startMassSend = function() {
         const startDate = document.getElementById('massSendStartDate').value;
         const endDate = document.getElementById('massSendEndDate').value;
-        const region = document.getElementById('massSendRegion').value;
         const message = document.getElementById('massSendMessage').value;
         
         if (!message.trim()) {
@@ -3141,44 +2884,40 @@
 
 // === FUNÇÕES PARA GERENCIAMENTO DE TEMPLATES DE MENSAGENS EM MASSA ===
 
-// Verificar status da rede
-async function checkNetworkStatus() {
-    try {
-        const response = await fetch(`${API_URL}/network-status`, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' }
-        });
-        const data = await response.json();
-        
-        const networkIndicator = document.getElementById('network-status');
-        if (networkIndicator) {
-            if (data.connected) {
-                networkIndicator.innerHTML = '<span style="color: #28a745;">✓ Online</span>';
-            } else {
-                networkIndicator.innerHTML = '<span style="color: #dc3545;">✗ Offline</span>';
-            }
-        }
-        return data.connected;
-    } catch (error) {
-        console.error('Erro ao verificar rede:', error);
-        const networkIndicator = document.getElementById('network-status');
-        if (networkIndicator) {
-            networkIndicator.innerHTML = '<span style="color: #dc3545;">✗ Erro de conexão</span>';
-        }
-        return false;
-    }
-}
 
-// Carregar templates de mensagens em massa
+
+// Carregar templates de mensagens em massa - Otimizado com verificações de rede
 async function loadMassTemplates() {
     try {
         const templatesContainer = document.getElementById('mass-templates-container');
         if (!templatesContainer) return;
 
-        // Verificar rede antes de carregar
-        const isOnline = await checkNetworkStatus();
-        if (!isOnline) {
-            templatesContainer.innerHTML = '<p style="color: #dc3545;">Sem conexão com o servidor</p>';
+        // Verificar rede antes de carregar com mensagem detalhada
+        try {
+            await window.networkService.checkBeforeAction('carregar templates');
+        } catch (error) {
+            templatesContainer.innerHTML = `
+                <div style="padding: 20px; text-align: center; color: #dc3545;">
+                    <h4>⚠️ Problema de Conexão</h4>
+                    <p>${error.message}</p>
+                    <button class="btn btn-secondary" onclick="loadMassTemplates()">🔄 Tentar Novamente</button>
+                </div>
+            `;
+            
+            // Mostrar alerta visual
+            window.networkService.showConnectionAlert({
+                connected: false,
+                overall: {
+                    title: "❌ Sem Conexão",
+                    message: error.message,
+                    type: "error"
+                },
+                troubleshooting: [
+                    "Verifique sua conexão com a internet",
+                    "Reinicie seu modem/roteador",
+                    "Contate sua operadora de internet"
+                ]
+            });
             return;
         }
 
@@ -3193,14 +2932,14 @@ async function loadMassTemplates() {
         // Limpar container
         templatesContainer.innerHTML = '';
         
-        // Templates padrão se não houver nenhum
+        // Templates otimizados para empresa de internet
         const defaultTemplates = [
-            { id: 'promo', name: 'Promoção', category: 'promocao', content: 'Olá {nome}! Temos uma super promoção para você: {promocao}. Aproveite agora!' },
-            { id: 'aniversario', name: 'Aniversário', category: 'aniversario', content: 'Feliz aniversário, {nome}! Desejamos um dia incrível com muitas felicidades!' },
-            { id: 'feedback', name: 'Feedback', category: 'feedback', content: 'Olá {nome}, como foi sua experiência conosco? Sua opinião é muito importante!' },
-            { id: 'revisao', name: 'Revisão', category: 'revisao', content: '{nome}, está na hora de revisar seu {servico}. Agende agora e garanta desconto!' },
-            { id: 'boasvindas', name: 'Boas-vindas', category: 'boasvindas', content: 'Bem-vindo(a), {nome}! É um prazer ter você conosco. Como posso ajudar?' },
-            { id: 'followup', name: 'Follow-up', category: 'followup', content: 'Oi {nome}, só passando para ver se você recebeu nossa última mensagem sobre {assunto}.' }
+            { id: 'internet-problema', name: 'Problema de Internet', category: 'suporte', content: 'Olá {nome}! Recebemos seu chamado sobre problemas de internet. Nossa equipe técnica já está ciente e entrará em contato em até 30 minutos. Pedimos desculpas pelo inconveniente.' },
+            { id: 'internet-revisao', name: 'Revisão Técnica', category: 'manutencao', content: 'Prezado(a) {nome}, sua revisão técnica está agendada para {data} às {hora}. Nosso técnico {tecnico} entrará em contato 30 min antes da visita. Mantenha seu modem ligado!' },
+            { id: 'internet-promocao', name: 'Promoção Internet', category: 'promocao', content: '{nome}, aproveite nossa promoção especial! Upgrade para {plano} por apenas {valor}/mês. Ligue agora: {telefone} e garanta velocidade turbo para sua casa!' },
+            { id: 'internet-cobranca', name: 'Cobrança Amigável', category: 'cobranca', content: 'Olá {nome}! Seu boleto vence em {dias} dias. Evite cortes, pague pelo app ou WhatsApp. Precisa de ajuda? Responda "ajuda" e falaremos com você!' },
+            { id: 'internet-instalacao', name: 'Confirmação Instalação', category: 'instalacao', content: 'Instalação confirmada! {nome}, nosso técnico chegará dia {data} entre {horario}. Tenha documento e comprovante de endereço em mãos. WhatsApp suporte: {whatsapp}' },
+            { id: 'internet-feedback', name: 'Feedback Pós-Serviço', category: 'feedback', content: '{nome}, como foi seu atendimento hoje? Sua opinião nos ajuda a melhorar! Avalie de 1-5 respondendo esta mensagem. Obrigado por confiar na nossa internet!' }
         ];
 
         const allTemplates = templates.length > 0 ? templates : defaultTemplates;
@@ -3312,7 +3051,7 @@ function openMassTemplateModal(template = null) {
     modal.style.display = 'block';
 }
 
-// Salvar template
+// Salvar template - Otimizado com verificações de rede
 async function saveMassTemplate(event) {
     event.preventDefault();
     
@@ -3328,11 +3067,13 @@ async function saveMassTemplate(event) {
     };
 
     try {
-        const isOnline = await checkNetworkStatus();
-        if (!isOnline) {
-            alert('Sem conexão com o servidor');
-            return;
-        }
+        await window.networkService.checkBeforeAction('salvar template');
+        
+        // Mostrar indicador de salvamento
+        const saveBtn = event.target.querySelector('button[type="submit"]');
+        const originalText = saveBtn.textContent;
+        saveBtn.textContent = '💾 Salvando...';
+        saveBtn.disabled = true;
 
         const method = formData.get('template-id') ? 'PUT' : 'POST';
         const response = await fetch(`${API_URL}/mass-templates`, {
@@ -3648,6 +3389,61 @@ function showContactsError(message) {
 
 // Event listener para a aba de contatos enviados
 document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar serviço de rede otimizado
+    if (window.networkService) {
+        window.networkService.startMonitoring();
+        
+        // Adicionar indicador de conexão ao header
+        const header = document.querySelector('.header');
+        if (header) {
+            const connectionIndicator = document.createElement('div');
+            connectionIndicator.id = 'connection-indicator';
+            connectionIndicator.style.cssText = `
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                padding: 8px 12px;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: bold;
+                z-index: 1000;
+                transition: all 0.3s ease;
+            `;
+            
+            // Atualizar indicador baseado no status de conexão
+            const updateConnectionIndicator = (status) => {
+                switch(status) {
+                    case 'online':
+                        connectionIndicator.style.backgroundColor = '#d1fae5';
+                        connectionIndicator.style.color = '#065f46';
+                        connectionIndicator.innerHTML = '🟢 Online';
+                        break;
+                    case 'offline':
+                        connectionIndicator.style.backgroundColor = '#fee2e2';
+                        connectionIndicator.style.color = '#991b1b';
+                        connectionIndicator.innerHTML = '🔴 Offline - Verifique sua conexão com a internet';
+                        break;
+                    case 'server_error':
+                        connectionIndicator.style.backgroundColor = '#fef3c7';
+                        connectionIndicator.style.color = '#92400e';
+                        connectionIndicator.innerHTML = '🟡 Problema com servidor local';
+                        break;
+                }
+            };
+            
+            // Adicionar ao DOM
+            header.appendChild(connectionIndicator);
+            
+            // Atualizar status inicial
+            checkNetworkStatus().then(updateConnectionIndicator);
+            
+            // Escutar mudanças de status
+            document.addEventListener('networkStatusChange', (e) => {
+                updateConnectionIndicator(e.detail.status);
+            });
+        }
+    }
+
     // Adicionar evento para quando a aba de contatos for selecionada
     document.addEventListener('click', function(e) {
         if (e.target.classList.contains('feedback-tab') && e.target.dataset.feedbackTab === 'sent-contacts') {

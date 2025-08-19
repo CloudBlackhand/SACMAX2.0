@@ -152,6 +152,17 @@ class FeedbackService {
             return data || this.getDefaultTemplates();
         } catch (error) {
             logger.error('Erro ao buscar templates:', error.message);
+            // Adicionar retry com backoff exponencial para erros de rede
+            if (error.message && error.message.includes('fetch failed')) {
+                console.warn('Tentando novamente após erro de fetch...');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                try {
+                    const retry = await supabase.from(this.templatesTable).select('*').eq('is_active', true);
+                    return retry.data || this.getDefaultTemplates();
+                } catch (retryError) {
+                    console.warn('Retry falhou, usando templates padrão');
+                }
+            }
             return this.getDefaultTemplates();
         }
     }
