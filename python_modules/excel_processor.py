@@ -40,10 +40,111 @@ def find_date_column(df):
     
     return None
 
+def extract_client_data_by_date(file_path):
+    """
+    Extrai dados organizados por cliente, incluindo todas as informações associadas
+    para cada data encontrada na coluna de data
+    """
+    try:
+        excel_file = pd.ExcelFile(file_path)
+        client_data_by_date = {}
+        sheets_info = []
+        
+        for sheet_name in excel_file.sheet_names:
+            df = pd.read_excel(file_path, sheet_name=sheet_name)
+            
+            if df.empty:
+                continue
+                
+            date_column = find_date_column(df)
+            if not date_column:
+                continue
+                
+            # Identificar colunas de identificação do cliente
+            client_columns = []
+            for col in df.columns:
+                col_lower = str(col).lower().strip()
+                if any(pattern in col_lower for pattern in ['cliente', 'customer', 'nome', 'name', 'id', 'código', 'codigo']):
+                    client_columns.append(col)
+            
+            if not client_columns:
+                # Usar a primeira coluna como identificador se não encontrar
+                client_columns = [df.columns[0]]
+            
+            # Processar cada linha
+            for idx, row in df.iterrows():
+                if date_column not in df.columns or pd.isna(row[date_column]):
+                    continue
+                    
+                try:
+                    date_value = pd.to_datetime(row[date_column])
+                    date_key = date_value.strftime('%Y-%m-%d')
+                except:
+                    date_key = str(row[date_column])
+                
+                # Identificar o cliente
+                client_id = None
+                client_name = None
+                for col in client_columns:
+                    if col in df.columns and pd.notna(row[col]):
+                        client_id = str(row[col]).strip()
+                        client_name = str(row[col]).strip()
+                        break
+                
+                if not client_id:
+                    continue
+                
+                # Criar estrutura do cliente se não existir
+                if date_key not in client_data_by_date:
+                    client_data_by_date[date_key] = {}
+                
+                if client_id not in client_data_by_date[date_key]:
+                    client_data_by_date[date_key][client_id] = {
+                        'client_id': client_id,
+                        'client_name': client_name or client_id,
+                        'sheet': sheet_name,
+                        'data': []
+                    }
+                
+                # Coletar todos os dados da linha
+                row_data = {}
+                for col in df.columns:
+                    if col != date_column:
+                        value = row[col]
+                        if pd.notna(value):
+                            row_data[str(col)] = str(value)
+                
+                client_data_by_date[date_key][client_id]['data'].append({
+                    'row': idx + 2,
+                    'data': row_data
+                })
+            
+            sheets_info.append({
+                'name': sheet_name,
+                'total_rows': len(df),
+                'date_column': date_column,
+                'client_columns': client_columns
+            })
+        
+        return {
+            'client_data_by_date': client_data_by_date,
+            'sheets': sheets_info,
+            'total_dates': len(client_data_by_date),
+            'file_processed': os.path.basename(file_path)
+        }
+        
+    except Exception as e:
+        return {
+            'error': str(e),
+            'client_data_by_date': {},
+            'sheets': []
+        }
+
 def extract_contacts_from_excel(file_path):
     """
     Extrai contatos de um arquivo Excel
     Identifica colunas de telefone, nome e data automaticamente
+    Agrupa dados por cliente baseado na coluna 'data'
     """
     try:
         # Ler todas as abas do Excel
@@ -166,22 +267,75 @@ def extract_contacts_from_excel(file_path):
 def main():
     """
     Função principal para uso via linha de comando
+    Aceita modo de processamento: 'contacts' ou 'client_data'
     """
     if len(sys.argv) < 2:
         print(json.dumps({'error': 'Caminho do arquivo não fornecido'}))
         return
     
     file_path = sys.argv[1]
+    mode = sys.argv[2] if len(sys.argv) > 2 else 'contacts'
     
     if not os.path.exists(file_path):
         print(json.dumps({'error': f'Arquivo não encontrado: {file_path}'}))
         return
     
     try:
-        result = extract_contacts_from_excel(file_path)
+        if mode == 'client_data':
+            result = extract_client_data_by_date(file_path)
+        else:
+            result = extract_contacts_from_excel(file_path)
         print(json.dumps(result, ensure_ascii=False))
     except Exception as e:
         print(json.dumps({'error': str(e)}))
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) < 2:
+        print("Uso: python excel_processor.py <arquivo.xlsx> [mode: client_data|contacts]")
+        sys.exit(1)
+    
+    file_path = sys.argv[1]
+    mode = sys.argv[2] if len(sys.argv) > 2 else 'contacts'
+    
+    if not os.path.exists(file_path):
+        print(json.dumps({'error': f'Arquivo não encontrado: {file_path}'}))
+        sys.exit(1)
+    
+    try:
+        if mode == 'client_data':
+            result = extract_client_data_by_date(file_path)
+        else:
+            result = extract_contacts_from_excel(file_path)
+        
+        # Salvar resultado no Supabase automaticamente
+        try:
+            import requests
+            
+            # Determinar URL do servidor baseado no diretório atual
+            server_url = "http://localhost:3000"
+            
+            # Fazer upload para o Supabase
+            upload_response = requests.post(
+                f"{server_url}/api/supabase/save-data",
+                json={
+                    'spreadsheetData': result,
+                    'fileName': os.path.basename(file_path),
+                    'mode': mode
+                },
+                headers={'Content-Type': 'application/json'},
+                timeout=30
+            )
+            
+            if upload_response.status_code == 200:
+                upload_result = upload_response.json()
+                print(f"✅ Dados salvos no Supabase: {upload_result.get('message', 'Sucesso')}")
+            else:
+                print(f"⚠️ Erro ao salvar no Supabase: {upload_response.text}")
+                
+        except Exception as e:
+            print(f"⚠️ Não foi possível salvar no Supabase: {e}")
+            
+        print(json.dumps(result, ensure_ascii=False))
+        
+    except Exception as e:
+        print(json.dumps({'error': str(e)}))

@@ -1,19 +1,30 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "docker/Dockerfile"
+dockerfilePath = "docker/Dockerfile.production"
 
 [deploy]
-startCommand = "npm start"
+startCommand = "chmod +x start.sh && ./start.sh"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 10
+restartPolicyMaxRetries = 3
 
-[env]
-NODE_ENV = "production"
+[env]\NODE_ENV = "production"
 PORT = "3000"
 HOST = "0.0.0.0"
 WHATSAPP_HEADLESS = "true"
 WHATSAPP_QR_TIMEOUT = "60000"
 MAX_FILE_SIZE = "10485760"
-LOG_LEVEL = "info"
+LOG_LEVEL = "warn"
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
+PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium-browser"
+PUPPETEER_CACHE_DIR = "/tmp/puppeteer_cache"
+PYTHON_PATH = "python3"
+
+# Configurações de performance para Railway
+MAX_CONCURRENT_UPLOADS = "3"
+CACHE_TTL = "3600"
+DB_POOL_SIZE = "10"
+DB_TIMEOUT = "30000"
+REQUEST_TIMEOUT = "30000"
+MEMORY_LIMIT = "512"

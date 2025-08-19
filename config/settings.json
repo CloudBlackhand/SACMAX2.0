@@ -1,0 +1,8 @@
+{
+  "delayBetweenMessages": 2000,
+  "maxRetries": 3,
+  "autoResponse": true,
+  "messageTemplate": "Olá {name}, esta é uma mensagem automática do SACSMAX!",
+  "enableLogging": true,
+  "logLevel": "info"
+}

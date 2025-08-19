@@ -9,7 +9,7 @@ class ExcelProcessor {
         this.processorPath = path.join(__dirname, '../../python_modules/excel_processor.py');
     }
 
-    async processFile(filePath) {
+    async processFile(filePath, mode = 'contacts') {
         try {
             // Verificar se o arquivo existe
             if (!fs.existsSync(filePath)) {
@@ -21,20 +21,28 @@ class ExcelProcessor {
                 throw new Error(`Script Python não encontrado: ${this.processorPath}`);
             }
 
-            logger.info('Iniciando processamento de Excel', { filePath });
+            logger.info('Iniciando processamento de Excel', { filePath, mode });
 
             // Executar script Python
-            const result = await this.executePythonScript(filePath);
+            const result = await this.executePythonScript(filePath, mode);
             
             if (result.error) {
                 throw new Error(result.error);
             }
 
-            logger.info('Excel processado com sucesso', {
+            const logData = {
                 filePath,
-                totalContacts: result.contacts?.length || 0,
+                mode,
                 sheets: result.sheets?.length || 0
-            });
+            };
+
+            if (mode === 'contacts') {
+                logData.totalContacts = result.contacts?.length || 0;
+            } else if (mode === 'client_data') {
+                logData.totalDates = result.client_data_by_date ? Object.keys(result.client_data_by_date).length : 0;
+            }
+
+            logger.info('Excel processado com sucesso', logData);
 
             return result;
 
@@ -44,9 +52,9 @@ class ExcelProcessor {
         }
     }
 
-    async executePythonScript(filePath) {
+    async executePythonScript(filePath, mode = 'contacts') {
         return new Promise((resolve, reject) => {
-            const pythonProcess = spawn(this.pythonPath, [this.processorPath, filePath]);
+            const pythonProcess = spawn(this.pythonPath, [this.processorPath, filePath, mode]);
             
             let stdout = '';
             let stderr = '';

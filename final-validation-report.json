@@ -1,0 +1,30 @@
+{
+  "passed": 5,
+  "failed": 1,
+  "details": [
+    {
+      "message": "Railway config: Encontrado",
+      "passed": true
+    },
+    {
+      "message": "Railway ignore: Encontrado",
+      "passed": true
+    },
+    {
+      "message": "Dockerfile production: Encontrado",
+      "passed": true
+    },
+    {
+      "message": "Variáveis de ambiente configuradas: 0/2",
+      "passed": false
+    },
+    {
+      "message": "Script de inicialização configurado",
+      "passed": "node backend/server.js"
+    },
+    {
+      "message": "Usando usuário não-root no Docker",
+      "passed": true
+    }
+  ]
+}

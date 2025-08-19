@@ -10,6 +10,7 @@ const WhatsAppService = require('./services/whatsappService');
 const ExcelProcessor = require('./services/excelProcessor');
 const FeedbackClassifier = require('./services/feedbackClassifier');
 const logger = require('./utils/logger');
+const cacheService = require('./services/cacheService');
 
 require('dotenv').config();
 
@@ -85,7 +86,7 @@ class SacsMaxServer {
             }
 
             const healthStatus = {
-                status: 'ok',
+                status: 'healthy',
                 timestamp: new Date().toISOString(),
                 server: 'running',
                 chrome: {
@@ -157,6 +158,200 @@ class SacsMaxServer {
                 res.status(500).json({ 
                     success: false, 
                     error: error.message 
+                });
+            }
+        });
+
+        // API endpoints para o frontend web
+        
+        // Upload de Excel - rota específica para o frontend
+        this.app.post('/api/excel/upload', this.upload.single('file'), async (req, res) => {
+            try {
+                if (!req.file) {
+                    return res.status(400).json({ success: false, error: 'Nenhum arquivo enviado' });
+                }
+
+                const result = await this.excelProcessor.processFile(req.file.path);
+                
+                // Limpar arquivo temporário
+                fs.unlink(req.file.path, () => {});
+                
+                res.json({
+                    success: true,
+                    contacts: result.contacts || [],
+                    sheets: result.sheets || [],
+                    message: `Processado ${result.contacts?.length || 0} contatos`
+                });
+            } catch (error) {
+                logger.error('Erro no upload:', error);
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Upload de Excel para dados de cliente por data
+        this.app.post('/api/excel/client-data', this.upload.single('file'), async (req, res) => {
+            try {
+                if (!req.file) {
+                    return res.status(400).json({ success: false, error: 'Nenhum arquivo enviado' });
+                }
+
+                const result = await this.excelProcessor.processFile(req.file.path, 'client_data');
+                
+                // Limpar arquivo temporário
+                fs.unlink(req.file.path, () => {});
+                
+                res.json({
+                    success: true,
+                    client_data_by_date: result.client_data_by_date || {},
+                    sheets: result.sheets || [],
+                    total_dates: result.total_dates || 0,
+                    message: `Processado ${result.total_dates || 0} datas com dados de clientes`
+                });
+            } catch (error) {
+                logger.error('Erro no upload de Excel - client_data', error);
+                
+                // Limpar arquivo em caso de erro
+                if (req.file) {
+                    fs.unlink(req.file.path, () => {});
+                }
+                
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Status do WhatsApp - rota para o frontend
+        this.app.get('/api/whatsapp/status', async (req, res) => {
+            try {
+                const status = {
+                    initialized: this.whatsappService.isInitialized ? this.whatsappService.isInitialized() : false,
+                    connected: this.whatsappService.isConnected ? this.whatsappService.isConnected() : false,
+                    ready: this.whatsappService.isReady ? this.whatsappService.isReady() : false,
+                    qrCode: this.whatsappService.qrCode || null
+                };
+                
+                res.json(status);
+            } catch (error) {
+                logger.error('Erro ao obter status:', error);
+                res.json({
+                    initialized: false,
+                    connected: false,
+                    ready: false,
+                    qrCode: null,
+                    error: error.message
+                });
+            }
+        });
+
+        // Iniciar WhatsApp - rota para o frontend
+        this.app.post('/api/whatsapp/start', async (req, res) => {
+            try {
+                const result = await this.whatsappService.initialize();
+                res.json({
+                    success: true,
+                    message: 'WhatsApp iniciado com sucesso',
+                    connected: this.whatsappService.isConnected(),
+                    ready: this.whatsappService.isReady()
+                });
+            } catch (error) {
+                logger.error('Erro ao iniciar WhatsApp:', error);
+                res.status(500).json({
+                    success: false,
+                    message: error.message
+                });
+            }
+        });
+
+        // Parar WhatsApp - rota para o frontend
+        this.app.post('/api/whatsapp/stop', async (req, res) => {
+            try {
+                await this.whatsappService.disconnect();
+                res.json({
+                    success: true,
+                    message: 'WhatsApp parado com sucesso'
+                });
+            } catch (error) {
+                logger.error('Erro ao parar WhatsApp:', error);
+                res.status(500).json({
+                    success: false,
+                    message: error.message
+                });
+            }
+        });
+
+        // Enviar mensagens - rota para o frontend
+        this.app.post('/api/whatsapp/send-messages', async (req, res) => {
+            try {
+                const { contacts, config } = req.body;
+                
+                if (!contacts || !Array.isArray(contacts)) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Contatos não fornecidos ou formato inválido'
+                    });
+                }
+
+                // Processar mensagens com base nas configurações
+                const results = await this.whatsappService.sendMessages(contacts, config);
+                
+                res.json({
+                    success: true,
+                    sent: results.sent || 0,
+                    failed: results.failed || 0,
+                    total: contacts.length
+                });
+            } catch (error) {
+                logger.error('Erro ao enviar mensagens:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Configurações - salvar
+        this.app.post('/api/config/save', async (req, res) => {
+            try {
+                const config = req.body;
+                
+                // Salvar configurações
+                const configPath = path.join(__dirname, '../config/settings.json');
+                fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+                
+                res.json({
+                    success: true,
+                    message: 'Configurações salvas com sucesso'
+                });
+            } catch (error) {
+                logger.error('Erro ao salvar configurações:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Configurações - obter
+        this.app.get('/api/config', (req, res) => {
+            try {
+                const configPath = path.join(__dirname, '../config/settings.json');
+                let config = {
+                    delayBetweenMessages: 2000,
+                    maxRetries: 3,
+                    autoResponse: true
+                };
+                
+                if (fs.existsSync(configPath)) {
+                    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                }
+                
+                res.json(config);
+            } catch (error) {
+                logger.error('Erro ao ler configurações:', error);
+                res.status(500).json({
+                    error: error.message
                 });
             }
         });
@@ -257,123 +452,376 @@ class SacsMaxServer {
         // Servir frontend estático
         this.app.use(express.static(path.join(__dirname, '../frontend')));
         
-        // Rota raiz - Interface Web
+        // Rota raiz com interface web
         this.app.get('/', (req, res) => {
+            res.send(`
+                <!DOCTYPE html>
+                <html lang="pt-BR">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>SACSMAX - Sistema de Automação de Comunicação</title>
+                    <style>
+                        * { margin: 0; padding: 0; box-sizing: border-box; }
+                        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; color: #333; }
+                        .container { max-width: 1200px; margin: 0 auto; padding: 20px; min-height: 100vh; display: flex; flex-direction: column; }
+                        .header { background: white; border-radius: 15px; padding: 30px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; }
+                        .header h1 { color: #667eea; font-size: 2.5em; margin-bottom: 10px; }
+                        .header p { color: #666; font-size: 1.2em; }
+                        .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 20px 0; }
+                        .status-card { background: white; border-radius: 15px; padding: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; }
+                        .status-icon { font-size: 3em; margin-bottom: 15px; }
+                        .status-title { font-size: 1.3em; font-weight: bold; margin-bottom: 10px; }
+                        .status-text { color: #666; }
+                        .btn { background: #667eea; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; transition: all 0.3s ease; margin: 10px; text-decoration: none; display: inline-block; }
+                        .btn:hover { background: #5a6fd8; transform: translateY(-1px); }
+                        .features { background: white; border-radius: 15px; padding: 30px; margin: 20px 0; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+                        .features h2 { color: #667eea; margin-bottom: 20px; text-align: center; }
+                        .feature-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+                        .feature-item { background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>🚀 SACSMAX - Sistema Ativo</h1>
+                            <p>Sistema de Automação de Comunicação via WhatsApp</p>
+                        </div>
+                        
+                        <div class="status-grid">
+                            <div class="status-card">
+                                <div class="status-icon">🟢</div>
+                                <div class="status-title">Servidor</div>
+                                <div class="status-text">Online na porta ${process.env.PORT || 3000}</div>
+                            </div>
+                            <div class="status-card">
+                                <div class="status-icon">📱</div>
+                                <div class="status-title">WhatsApp</div>
+                                <div class="status-text">${this.whatsappService.isInitialized && this.whatsappService.isInitialized() ? '✅ Conectado' : '❌ Desconectado'}</div>
+                            </div>
+                            <div class="status-card">
+                                <div class="status-icon">🌐</div>
+                                <div class="status-title">Interface</div>
+                                <div class="status-text">Interface web completa disponível</div>
+                            </div>
+                        </div>
+                        
+                        <div class="features">
+                            <h2>🎯 Funcionalidades Disponíveis</h2>
+                            <div class="feature-list">
+                                <div class="feature-item">📊 Upload de Planilhas Excel</div>
+                                <div class="feature-item">📱 Controle do WhatsApp</div>
+                                <div class="feature-item">🔄 Status em Tempo Real</div>
+                                <div class="feature-item">⚙️ Configurações Dinâmicas</div>
+                                <div class="feature-item">📤 Envio de Mensagens</div>
+                                <div class="feature-item">📋 Dashboard de Progresso</div>
+                            </div>
+                        </div>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="/interface" class="btn">🚀 Acessar Interface Completa</a>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `);
+        });
+
+        // Rota para servir a interface como JavaScript
+        this.app.get('/web-interface.js', (req, res) => {
+            res.sendFile(path.join(__dirname, '../frontend/webInterface.js'));
+        });
+
+        // Rota para página HTML que carrega a interface
+        this.app.get('/interface', (req, res) => {
             res.send(`
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SacsMax Automation - Sistema de Automação WhatsApp</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .container { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); max-width: 800px; width: 90%; text-align: center; }
-        .logo { font-size: 3rem; margin-bottom: 1rem; }
-        h1 { color: #333; margin-bottom: 1rem; font-size: 2.5rem; }
-        .subtitle { color: #666; margin-bottom: 2rem; font-size: 1.2rem; }
-        .status { display: flex; justify-content: space-around; margin: 2rem 0; }
-        .status-item { padding: 1rem; background: #f8f9fa; border-radius: 10px; flex: 1; margin: 0 0.5rem; }
-        .status-title { font-weight: bold; color: #333; margin-bottom: 0.5rem; }
-        .status-value { font-size: 1.1rem; }
-        .online { color: #28a745; }
-        .offline { color: #dc3545; }
-        .api-section { margin: 2rem 0; padding: 1.5rem; background: #f8f9fa; border-radius: 10px; }
-        .api-title { font-size: 1.5rem; margin-bottom: 1rem; color: #333; }
-        .endpoint { margin: 1rem 0; padding: 1rem; background: white; border-radius: 5px; border-left: 4px solid #667eea; }
-        .method { font-weight: bold; color: #667eea; }
-        .path { font-family: monospace; background: #f1f3f4; padding: 0.2rem 0.5rem; border-radius: 3px; }
-        .description { color: #666; margin-top: 0.5rem; }
-        .footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #eee; color: #666; }
-    </style>
+    <title>SACSMAX - Interface Web</title>
 </head>
 <body>
-    <div class="container">
-        <div class="logo">📱</div>
-        <h1>SacsMax Automation</h1>
-        <p class="subtitle">Sistema de Automação WhatsApp para Envio em Massa</p>
-        
-        <div class="status">
-            <div class="status-item">
-                <div class="status-title">Servidor</div>
-                <div class="status-value online">✅ Online</div>
-            </div>
-            <div class="status-item">
-                <div class="status-title">WhatsApp</div>
-                <div class="status-value offline">⏳ Aguardando</div>
-            </div>
-            <div class="status-item">
-                <div class="status-title">API</div>
-                <div class="status-value online">✅ Disponível</div>
-            </div>
-        </div>
-
-        <div class="api-section">
-            <h2 class="api-title">🔗 Endpoints da API</h2>
-            
-            <div class="endpoint">
-                <span class="method">GET</span> <span class="path">/health</span>
-                <div class="description">Verificar status do sistema</div>
-            </div>
-            
-            <div class="endpoint">
-                <span class="method">POST</span> <span class="path">/whatsapp/start</span>
-                <div class="description">Inicializar WhatsApp Web</div>
-            </div>
-            
-            <div class="endpoint">
-                <span class="method">GET</span> <span class="path">/api/whatsapp/qr</span>
-                <div class="description">Obter QR Code para autenticação</div>
-            </div>
-            
-            <div class="endpoint">
-                <span class="method">POST</span> <span class="path">/api/upload</span>
-                <div class="description">Upload de planilha Excel com contatos</div>
-            </div>
-            
-            <div class="endpoint">
-                <span class="method">POST</span> <span class="path">/api/send-messages</span>
-                <div class="description">Enviar mensagens em massa</div>
-            </div>
-        </div>
-
-        <div class="footer">
-            <p>🚀 SacsMax v1.0 - Sistema rodando no Railway</p>
-            <p>Desenvolvido para automação profissional de WhatsApp</p>
-        </div>
-    </div>
-
-    <script>
-        // Atualizar status em tempo real
-        async function updateStatus() {
-            try {
-                const response = await fetch('/health');
-                const data = await response.json();
-                
-                const whatsappStatus = document.querySelector('.status-item:nth-child(2) .status-value');
-                if (data.whatsapp.connected) {
-                    whatsappStatus.innerHTML = '✅ Conectado';
-                    whatsappStatus.className = 'status-value online';
-                } else if (data.whatsapp.initialized) {
-                    whatsappStatus.innerHTML = '🔄 Inicializando';
-                    whatsappStatus.className = 'status-value';
-                } else {
-                    whatsappStatus.innerHTML = '⏳ Aguardando';
-                    whatsappStatus.className = 'status-value offline';
-                }
-            } catch (error) {
-                console.log('Erro ao atualizar status:', error);
-            }
-        }
-        
-        // Atualizar a cada 5 segundos
-        setInterval(updateStatus, 5000);
-        updateStatus();
-    </script>
+    <script src="/web-interface.js"></script>
 </body>
 </html>
             `);
+        });
+
+        // Rotas de API para o frontend web
+        
+        // Upload de Excel
+        this.app.post('/api/excel/upload', this.upload.single('file'), async (req, res) => {
+            try {
+                if (!req.file) {
+                    return res.status(400).json({ success: false, error: 'Nenhum arquivo enviado' });
+                }
+
+                const result = await this.excelProcessor.processFile(req.file.path);
+                
+                // Limpar arquivo temporário
+                fs.unlink(req.file.path, () => {});
+                
+                res.json({
+                    success: true,
+                    contacts: result.contacts || [],
+                    sheets: result.sheets || [],
+                    message: `Processado ${result.contacts?.length || 0} contatos`
+                });
+            } catch (error) {
+                console.error('Erro no upload:', error);
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Status do WhatsApp
+        this.app.get('/api/whatsapp/status', async (req, res) => {
+            try {
+                const status = await this.whatsappService.getStatus();
+                res.json({
+                    initialized: status.initialized,
+                    connected: status.connected,
+                    ready: status.ready,
+                    qrCode: status.qrCode || null
+                });
+            } catch (error) {
+                console.error('Erro ao obter status:', error);
+                res.json({
+                    initialized: false,
+                    connected: false,
+                    ready: false,
+                    qrCode: null,
+                    error: error.message
+                });
+            }
+        });
+
+        // Iniciar WhatsApp
+        this.app.post('/api/whatsapp/start', async (req, res) => {
+            try {
+                const result = await this.whatsappService.initialize();
+                res.json({
+                    success: true,
+                    message: 'WhatsApp iniciado com sucesso',
+                    connected: result.connected,
+                    ready: result.ready
+                });
+            } catch (error) {
+                console.error('Erro ao iniciar WhatsApp:', error);
+                res.status(500).json({
+                    success: false,
+                    message: error.message
+                });
+            }
+        });
+
+        // Parar WhatsApp
+        this.app.post('/api/whatsapp/stop', async (req, res) => {
+            try {
+                await this.whatsappService.stop();
+                res.json({
+                    success: true,
+                    message: 'WhatsApp parado com sucesso'
+                });
+            } catch (error) {
+                console.error('Erro ao parar WhatsApp:', error);
+                res.status(500).json({
+                    success: false,
+                    message: error.message
+                });
+            }
+        });
+
+        // Enviar mensagens
+        this.app.post('/api/whatsapp/send-messages', async (req, res) => {
+            try {
+                const { contacts, config } = req.body;
+                
+                if (!contacts || !Array.isArray(contacts)) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Contatos não fornecidos ou formato inválido'
+                    });
+                }
+
+                const result = await this.whatsappService.sendMessages(contacts, config);
+                res.json({
+                    success: true,
+                    sent: result.sent || 0,
+                    failed: result.failed || 0,
+                    total: contacts.length
+                });
+            } catch (error) {
+                console.error('Erro ao enviar mensagens:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Salvar configurações
+        this.app.post('/api/config/save', async (req, res) => {
+            try {
+                const config = req.body;
+                
+                // Salvar configurações (pode ser em arquivo ou banco)
+                const configPath = path.join(__dirname, '../config/settings.json');
+                fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+                
+                res.json({
+                    success: true,
+                    message: 'Configurações salvas com sucesso'
+                });
+            } catch (error) {
+                console.error('Erro ao salvar configurações:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Obter configurações
+        this.app.get('/api/config', (req, res) => {
+            try {
+                const configPath = path.join(__dirname, '../config/settings.json');
+                let config = {
+                    delayBetweenMessages: 2000,
+                    maxRetries: 3,
+                    autoResponse: true
+                };
+                
+                if (fs.existsSync(configPath)) {
+                    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                }
+                
+                res.json(config);
+            } catch (error) {
+                console.error('Erro ao ler configurações:', error);
+                res.status(500).json({
+                    error: error.message
+                });
+            }
+        });
+
+        // === INTEGRAÇÃO SUPABASE ===
+        const SupabaseService = require('./services/supabaseService');
+
+        // === INTEGRAÇÃO FEEDBACK ===
+        const feedbackRoutes = require('./routes/feedback');
+        this.app.use('/api/feedback', feedbackRoutes);
+
+        // === INTEGRAÇÃO CACHE (ADMIN) ===
+        const cacheRoutes = require('./routes/cache');
+        this.app.use('/api/cache', cacheRoutes);
+
+        // Salvar dados da planilha no Supabase
+        this.app.post('/api/supabase/save-data', async (req, res) => {
+            try {
+                const { spreadsheetData, fileName, mode } = req.body;
+                
+                if (!spreadsheetData || !fileName) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Dados da planilha ou nome do arquivo não fornecidos'
+                    });
+                }
+
+                const result = await SupabaseService.saveSpreadsheetData(
+                    spreadsheetData, 
+                    fileName, 
+                    mode || 'client_data'
+                );
+
+                res.json({
+                    success: true,
+                    ...result,
+                    message: `Dados salvos com sucesso: ${result.total_records} registros processados`
+                });
+            } catch (error) {
+                logger.error('Erro ao salvar dados no Supabase:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Buscar todos os clientes
+        this.app.get('/api/supabase/clients', async (req, res) => {
+            try {
+                const clients = await SupabaseService.getAllClients();
+                res.json({
+                    success: true,
+                    clients,
+                    total: clients.length
+                });
+            } catch (error) {
+                logger.error('Erro ao buscar clientes:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Buscar dados de um cliente específico
+        this.app.get('/api/supabase/clients/:id/data', async (req, res) => {
+            try {
+                const { id } = req.params;
+                const clientData = await SupabaseService.getClientData(id);
+                
+                res.json({
+                    success: true,
+                    clientData,
+                    total: clientData.length
+                });
+            } catch (error) {
+                logger.error('Erro ao buscar dados do cliente:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Buscar histórico de uploads
+        this.app.get('/api/supabase/upload-history', async (req, res) => {
+            try {
+                const history = await SupabaseService.getUploadHistory();
+                res.json({
+                    success: true,
+                    history,
+                    total: history.length
+                });
+            } catch (error) {
+                logger.error('Erro ao buscar histórico:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Deletar cliente
+        this.app.delete('/api/supabase/clients/:id', async (req, res) => {
+            try {
+                const { id } = req.params;
+                await SupabaseService.deleteClient(id);
+                
+                res.json({
+                    success: true,
+                    message: 'Cliente deletado com sucesso'
+                });
+            } catch (error) {
+                logger.error('Erro ao deletar cliente:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
         });
     }
 

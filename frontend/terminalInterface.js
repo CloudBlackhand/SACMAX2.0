@@ -29,22 +29,23 @@ class TerminalInterface extends EventEmitter {
     }
 
     showHeader() {
-        console.log('\x1b[36m' + '='.repeat(60) + '\x1b[0m');
-        console.log('\x1b[1;36m    SACSMAX AUTOMATION - Sistema de Comunicação\x1b[0m');
-        console.log('\x1b[36m    WhatsApp + Excel + Análise de Feedback\x1b[0m');
-        console.log('\x1b[36m' + '='.repeat(60) + '\x1b[0m\n');
+        console.log('='.repeat(60));
+        console.log('    SACSMAX - Sistema de Comunicação');
+        console.log('    WhatsApp + Excel + Análise de Feedback');
+        console.log('='.repeat(60));
+        console.log();
     }
 
     async showMainMenu() {
-        console.log('\x1b[1;33mMENU PRINCIPAL\x1b[0m');
-        console.log('1. 📊 Processar Planilha Excel');
-        console.log('2. 📱 Controle WhatsApp');
-        console.log('3. 💬 Enviar Mensagens');
-        console.log('4. 📈 Classificar Feedback');
-        console.log('5. 📊 Estatísticas do Sistema');
-        console.log('6. ⚙️  Configurações');
-        console.log('7. ❌ Sair');
-        console.log('');
+        console.log('MENU PRINCIPAL');
+        console.log('1. Processar Planilha Excel');
+        console.log('2. Controle WhatsApp');
+        console.log('3. Enviar Mensagens');
+        console.log('4. Classificar Feedback');
+        console.log('5. Estatísticas do Sistema');
+        console.log('6. Configurações');
+        console.log('7. Sair');
+        console.log();
 
         const choice = await this.question('Escolha uma opção: ');
         
@@ -69,10 +70,10 @@ class TerminalInterface extends EventEmitter {
                 break;
             case '7':
                 this.isRunning = false;
-                console.log('\n\x1b[32mSaindo... Até logo!\x1b[0m\n');
+                console.log('\nSaindo...\n');
                 break;
             default:
-                console.log('\x1b[31mOpção inválida!\x1b[0m\n');
+                console.log('Opção inválida!\n');
                 await this.sleep(1000);
         }
     }
@@ -91,7 +92,7 @@ class TerminalInterface extends EventEmitter {
                 return;
             }
 
-            console.log('\n\x1b[36mProcessando arquivo...\x1b[0m\n');
+            console.log('\nProcessando arquivo...\n');
 
             const formData = new FormData();
             const fileBuffer = fs.readFileSync(filePath);
@@ -101,23 +102,23 @@ class TerminalInterface extends EventEmitter {
             const response = await this.uploadFile(filePath, fileName);
             
             if (response.success) {
-                console.log(`\x1b[32m✅ Processado com sucesso!\x1b[0m`);
-                console.log(`Contatos encontrados: \x1b[1;32m${response.contacts.length}\x1b[0m`);
-                console.log(`Abas processadas: \x1b[1;32m${response.sheets.length}\x1b[0m\n`);
+                console.log('Processado com sucesso!');
+                console.log(`Contatos encontrados: ${response.contacts.length}`);
+                console.log(`Abas processadas: ${response.sheets.length}\n`);
                 
                 if (response.contacts.length > 0) {
-                    console.log('\x1b[36mPrimeiros 5 contatos:\x1b[0m');
+                    console.log('Primeiros 5 contatos:');
                     response.contacts.slice(0, 5).forEach((contact, index) => {
                         console.log(`${index + 1}. ${contact.name} - ${contact.phone}`);
                     });
                     console.log('');
                 }
             } else {
-                console.log(`\x1b[31m❌ Erro: ${response.error}\x1b[0m\n`);
+                console.log(`Erro: ${response.error}\n`);
             }
 
         } catch (error) {
-            console.log(`\x1b[31m❌ Erro: ${error.message}\x1b[0m\n`);
+            console.log(`Erro: ${error.message}\n`);
         }
 
         await this.question('Pressione ENTER para voltar...');
@@ -126,28 +127,28 @@ class TerminalInterface extends EventEmitter {
     async whatsappControlMenu() {
         console.clear();
         this.showHeader();
-        console.log('\x1b[1;33mCONTROLE WHATSAPP\x1b[0m\n');
+        console.log('CONTROLE WHATSAPP\n');
 
         try {
             // Mostrar status atual
             const status = await this.apiCall('/whatsapp/status');
             
-            console.log(`\x1b[36mStatus Atual:\x1b[0m`);
-            console.log(`Inicializado: ${status.initialized ? '\x1b[32m✅ Sim' : '\x1b[31m❌ Não'}\x1b[0m`);
-            console.log(`Conectado: ${status.connected ? '\x1b[32m✅ Sim' : '\x1b[31m❌ Não'}\x1b[0m`);
-            console.log(`Pronto: ${status.ready ? '\x1b[32m✅ Sim' : '\x1b[31m❌ Não'}\x1b[0m`);
+            console.log('Status Atual:');
+            console.log(`Inicializado: ${status.initialized ? 'Sim' : 'Não'}`);
+            console.log(`Conectado: ${status.connected ? 'Sim' : 'Não'}`);
+            console.log(`Pronto: ${status.ready ? 'Sim' : 'Não'}`);
             
             if (status.qrCode) {
-                console.log(`\x1b[32m📱 QR Code disponível - escaneie para conectar\x1b[0m`);
+                console.log('QR Code disponível - escaneie para conectar');
             }
-            console.log('');
+            console.log();
 
-            console.log('\x1b[1;33mOpções:\x1b[0m');
-            console.log('1. 🚀 Iniciar WhatsApp');
-            console.log('2. ⏹️  Parar WhatsApp');
-            console.log('3. 🔄 Atualizar Status');
-            console.log('4. ⬅️  Voltar');
-            console.log('');
+            console.log('Opções:');
+            console.log('1. Iniciar WhatsApp');
+            console.log('2. Parar WhatsApp');
+            console.log('3. Atualizar Status');
+            console.log('4. Voltar');
+            console.log();
 
             const choice = await this.question('Escolha uma opção: ');
 
@@ -175,21 +176,21 @@ class TerminalInterface extends EventEmitter {
     }
 
     async startWhatsApp() {
-        console.log('\n\x1b[36mIniciando WhatsApp...\x1b[0m\n');
+        console.log('\nIniciando WhatsApp...\n');
         
         try {
             const response = await this.apiCall('/whatsapp/start', 'POST');
             
             if (response.success) {
-                console.log(`\x1b[32m✅ ${response.message}\x1b[0m\n`);
-                console.log(`Conectado: ${response.connected ? '\x1b[32m✅ Sim' : '\x1b[33m⏳ Aguardando QR Code'}\x1b[0m`);
-                console.log(`Pronto: ${response.ready ? '\x1b[32m✅ Sim' : '\x1b[33m⏳ Aguardando'}\x1b[0m\n`);
+                console.log(`${response.message}\n`);
+                console.log(`Conectado: ${response.connected ? 'Sim' : 'Aguardando QR Code'}`);
+                console.log(`Pronto: ${response.ready ? 'Sim' : 'Aguardando'}\n`);
             } else {
-                console.log(`\x1b[33mℹ️  ${response.message}\x1b[0m\n`);
+                console.log(`${response.message}\n`);
             }
 
         } catch (error) {
-            console.log(`\x1b[31m❌ Erro ao iniciar WhatsApp: ${error.message}\x1b[0m\n`);
+            console.log(`Erro ao iniciar WhatsApp: ${error.message}\n`);
         }
         
         await this.question('Pressione ENTER para continuar...');
@@ -197,7 +198,7 @@ class TerminalInterface extends EventEmitter {
     }
 
     async stopWhatsApp() {
-        console.log('\n\x1b[36mParando WhatsApp...\x1b[0m\n');
+        console.log('\nParando WhatsApp...\n');
         
         try {
             const response = await this.apiCall('/whatsapp/stop', 'POST');
