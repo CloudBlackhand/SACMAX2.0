@@ -128,6 +128,11 @@ class FeedbackService {
     // Templates de mensagens
     async getMessageTemplates(category = null) {
         try {
+            if (!supabase) {
+                console.warn('Supabase não configurado, retornando templates padrão');
+                return this.getDefaultTemplates();
+            }
+
             let query = supabase
                 .from(this.templatesTable)
                 .select('*')
@@ -138,12 +143,44 @@ class FeedbackService {
             }
 
             const { data, error } = await query.order('name');
-            if (error) throw error;
-            return data;
+            
+            if (error) {
+                console.warn('Erro ao buscar templates do Supabase, usando padrões:', error.message);
+                return this.getDefaultTemplates();
+            }
+            
+            return data || this.getDefaultTemplates();
         } catch (error) {
-            logger.error('Erro ao buscar templates:', error);
-            throw error;
+            logger.error('Erro ao buscar templates:', error.message);
+            return this.getDefaultTemplates();
         }
+    }
+
+    // Templates padrão quando Supabase não está disponível
+    getDefaultTemplates() {
+        return [
+            {
+                id: 'default_thanks',
+                name: 'Agradecimento Simples',
+                category: 'positive',
+                template: 'Obrigado pelo seu feedback, {{client_name}}!',
+                variables: ['client_name']
+            },
+            {
+                id: 'default_followup',
+                name: 'Acompanhamento',
+                category: 'neutral',
+                template: 'Olá {{client_name}}, gostaríamos de entender melhor seu feedback.',
+                variables: ['client_name']
+            },
+            {
+                id: 'default_apology',
+                name: 'Desculpas',
+                category: 'negative',
+                template: 'Lamentamos {{client_name}}, vamos melhorar!',
+                variables: ['client_name']
+            }
+        ];
     }
 
     async createMessageTemplate(name, category, template, variables = []) {
@@ -375,15 +412,29 @@ class FeedbackService {
     // Estatísticas de feedback
     async getFeedbackStats() {
         try {
-            const [total, byCategory, recent] = await Promise.all([
+            const [total, allFeedback, recent] = await Promise.all([
                 supabase.from(this.table).select('count', { count: 'exact' }),
-                supabase.from(this.table).select('category,count').group('category'),
+                supabase.from(this.table).select('category'),
                 supabase.from(this.table).select('*').limit(10).order('created_at', { ascending: false })
             ]);
 
+            // Agrupar manualmente por categoria
+            const categoryCounts = {};
+            if (allFeedback.data) {
+                allFeedback.data.forEach(item => {
+                    const category = item.category || 'uncategorized';
+                    categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+                });
+            }
+
+            const byCategory = Object.entries(categoryCounts).map(([category, count]) => ({
+                category,
+                count
+            }));
+
             return {
                 total: total.data?.[0]?.count || 0,
-                byCategory: byCategory.data || [],
+                byCategory,
                 recent: recent.data || []
             };
         } catch (error) {
