@@ -830,20 +830,27 @@ class SacsMaxServer {
             const port = process.env.PORT || 3000;
             const host = process.env.HOST || '0.0.0.0';
             
+            console.log(`=== SacsMax Diagnostic ===`);
+            console.log(`PORT: ${port}`);
+            console.log(`HOST: ${host}`);
+            console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+            console.log(`============================`);
+            
             // Iniciar servidor HTTP imediatamente para passar no health check
             this.server.listen(port, host, () => {
                 logger.info(`Servidor iniciado em ${host}:${port}`);
+                console.log(`✅ HEALTH CHECK READY: http://${host}:${port}/health`);
                 console.log(`🚀 SacsMax Automation rodando em http://${host}:${port}`);
-                console.log(`📱 WhatsApp Web será iniciado via frontend quando necessário`);
             });
 
             // Serviços serão inicializados apenas via interface (botões)
             setTimeout(() => {
                 logger.info('Sistema pronto - WhatsApp pode ser iniciado via interface');
-            }, 2000);
+            }, 1000);
 
         } catch (error) {
             logger.error('Erro ao iniciar servidor', error);
+            console.error('❌ ERRO CRÍTICO:', error.message);
             process.exit(1);
         }
     }
