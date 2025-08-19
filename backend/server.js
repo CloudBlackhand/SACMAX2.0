@@ -71,24 +71,10 @@ class SacsMaxServer {
     }
 
     setupRoutes() {
-        // Health check - versão simplificada para Railway
-        this.app.get('/health', async (req, res) => {
-            const healthStatus = {
-                status: 'healthy',
-                timestamp: new Date().toISOString(),
-                server: 'running',
-                uptime: process.uptime(),
-                memory: process.memoryUsage(),
-                version: process.env.npm_package_version || '1.0.0',
-                environment: {
-                    node: process.version,
-                    platform: process.platform,
-                    arch: process.arch
-                }
-            };
-            
-            // Sempre retornar 200 para health check básico
-            res.status(200).json(healthStatus);
+        // Health check - versão ultra-simplificada para Railway
+        this.app.get('/health', (req, res) => {
+            // Resposta imediata sem verificações complexas
+            res.status(200).json({ status: 'ok', timestamp: Date.now() });
         });
 
         // WhatsApp control endpoints
@@ -844,12 +830,17 @@ class SacsMaxServer {
             const port = process.env.PORT || 3000;
             const host = process.env.HOST || '0.0.0.0';
             
-            // Iniciar servidor HTTP apenas - WhatsApp será controlado pelo frontend
+            // Iniciar servidor HTTP imediatamente para passar no health check
             this.server.listen(port, host, () => {
                 logger.info(`Servidor iniciado em ${host}:${port}`);
                 console.log(`🚀 SacsMax Automation rodando em http://${host}:${port}`);
                 console.log(`📱 WhatsApp Web será iniciado via frontend quando necessário`);
             });
+
+            // Inicializar serviços em background após o servidor estar rodando
+            setTimeout(() => {
+                logger.info('Inicializando serviços em background...');
+            }, 2000);
 
         } catch (error) {
             logger.error('Erro ao iniciar servidor', error);
