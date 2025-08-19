@@ -837,9 +837,9 @@ class SacsMaxServer {
                 console.log(`📱 WhatsApp Web será iniciado via frontend quando necessário`);
             });
 
-            // Inicializar serviços em background após o servidor estar rodando
+            // Serviços serão inicializados apenas via interface (botões)
             setTimeout(() => {
-                logger.info('Inicializando serviços em background...');
+                logger.info('Sistema pronto - WhatsApp pode ser iniciado via interface');
             }, 2000);
 
         } catch (error) {
