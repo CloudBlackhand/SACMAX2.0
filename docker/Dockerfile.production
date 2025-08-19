@@ -47,8 +47,8 @@ COPY . .
 # Stage final de produção
 FROM node:18-alpine AS production
 
-# Instalar runtime necessário
-RUN apk add --no-cache python3 py3-pip
+# Instalar runtime necessário e dependências Python
+RUN apk add --no-cache python3 py3-pip py3-openpyxl py3-pandas py3-dateutil py3-xlrd
 
 # Criar usuário não-root
 RUN addgroup -g 1001 -S nodejs && \
@@ -56,9 +56,8 @@ RUN addgroup -g 1001 -S nodejs && \
 
 WORKDIR /app
 
-# Copiar requirements.txt e instalar dependências Python
+# Copiar requirements.txt apenas para referência
 COPY --from=build /app/python_modules/requirements.txt ./python_modules/
-RUN pip3 install --no-cache-dir -r python_modules/requirements.txt
 
 # Copiar dependências e código
 COPY --from=dependencies /app/node_modules ./node_modules
