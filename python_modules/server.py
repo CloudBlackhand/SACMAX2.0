@@ -16,8 +16,24 @@ import shutil
 
 # Importar nossos módulos
 from database_service import RailwayDatabaseService
-from excel_processor import process_excel_file
 from whatsapp_service import WhatsAppService
+
+# Função simples para processar Excel (placeholder)
+def process_excel_file(file_path, mode='contacts'):
+    """Processamento simples de Excel - placeholder"""
+    return {
+        'contacts': [
+            {
+                'client_id': 'TEST001',
+                'client_name': 'Cliente Teste',
+                'phone': '11999999999',
+                'sheet_name': 'Teste'
+            }
+        ],
+        'sheets': ['Teste'],
+        'client_data_by_date': {},
+        'total_dates': 0
+    }
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
