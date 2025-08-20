@@ -1,5 +1,5 @@
 /**
- * SACSMAX - Interface Web Completa
+ * SACDesk - Interface Web Completa
  * Frontend JavaScript/CSS sem HTML separado
  * Integração direta com backend Node.js/Python
  */
@@ -342,6 +342,66 @@
             border: 1px solid #ddd;
             border-radius: 5px;
             font-size: 16px;
+        }
+
+        /* Toggle Switch Styles */
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .toggle-input {
+            display: none;
+        }
+
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            gap: 8px;
+        }
+
+        .toggle-slider {
+            position: relative;
+            width: 48px;
+            height: 24px;
+            background: #d1d5db;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .toggle-input:checked + .toggle-label .toggle-slider {
+            background: #059669;
+        }
+
+        .toggle-knob {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-input:checked + .toggle-label .toggle-knob {
+            transform: translateX(24px);
+        }
+
+        .toggle-text {
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            transition: color 0.3s ease;
+        }
+
+        .toggle-input:checked + .toggle-label .toggle-text {
+            color: #059669;
         }
 
         .loading {
@@ -744,23 +804,23 @@
     const html = `
         <div class="app-container">
             <div class="header">
-                <h1>SACSMAX</h1>
-                <p>Sistema de Automação WhatsApp + Excel</p>
-            </div>
+                    <h1>SACDesk</h1>
+                </div>
             
             <div class="tabs">
-            <button class="tab active" data-tab="upload">📊 Upload Planilha</button>
-            <button class="tab" data-tab="bot">🤖 Controle Bot</button>
-            <button class="tab" data-tab="whatsapp">💬 WhatsApp</button>
-            <button class="tab" data-tab="qr">📱 QR Code</button>
-            <button class="tab" data-tab="config">⚙️ Configurações</button>
-            <button class="tab" data-tab="feedback">💬 Gestão de Feedback</button>
+            <button class="tab active" data-tab="upload">Upload Planilha</button>
+            <button class="tab" data-tab="clientes">Clientes</button>
+            <button class="tab" data-tab="bot">Controle Bot</button>
+            <button class="tab" data-tab="whatsapp">WhatsApp</button>
+            <button class="tab" data-tab="qr">QR Code</button>
+            <button class="tab" data-tab="config">Configurações</button>
+            <button class="tab" data-tab="feedback">Gestão de Feedback</button>
         </div>
             
             <div class="content">
                 <!-- Aba Upload de Planilha -->
                 <div class="section active" id="upload">
-                    <h2>📊 Upload de Planilha Excel</h2>
+                    <h2>Upload de Planilha Excel</h2>
                     <div class="upload-area" id="uploadArea">
                         <h3>Arraste o arquivo Excel aqui ou clique para selecionar</h3>
                         <p>Formatos suportados: .xlsx, .xls</p>
@@ -780,21 +840,21 @@
                         <h3>Status do Sistema</h3>
                         <div class="status-item">
                             <span>WhatsApp Inicializado:</span>
-                            <span id="statusInitialized">❌ Não</span>
+                            <span id="statusInitialized">Não</span>
                         </div>
                         <div class="status-item">
                             <span>Conectado ao WhatsApp:</span>
-                            <span id="statusConnected">❌ Não</span>
+                            <span id="statusConnected">Não</span>
                         </div>
                         <div class="status-item">
                             <span>Bot Pronto:</span>
-                            <span id="statusReady">❌ Não</span>
+                            <span id="statusReady">Não</span>
                         </div>
                     </div>
                     
                     <!-- Filtros para Envio em Massa -->
                     <div class="status-card" style="margin-top: 20px;">
-                        <h3>📅 Filtros de Envio em Massa</h3>
+                        <h3>Filtros de Envio em Massa</h3>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                             <div class="form-group">
                                 <label>Data Inicial:</label>
@@ -816,8 +876,8 @@
                             <textarea id="massSendMessage" class="form-control" rows="3" placeholder="Digite a mensagem ou selecione um template..."></textarea>
                         </div>
                         <div style="margin-top: 15px;">
-                            <button class="btn btn-primary" id="previewMassSend" onclick="previewMassSend()">👁️ Pré-visualizar</button>
-                            <button class="btn btn-success" id="startMassSend" onclick="startMassSend()">📤 Iniciar Envio em Massa</button>
+                            <button class="btn btn-primary" id="previewMassSend" onclick="previewMassSend()">Pré-visualizar</button>
+                            <button class="btn btn-success" id="startMassSend" onclick="startMassSend()">Iniciar Envio em Massa</button>
                         </div>
                         <div id="massSendPreview" style="margin-top: 15px; display: none;">
                             <h4>Pré-visualização:</h4>
@@ -826,15 +886,15 @@
                     </div>
                     
                     <div style="margin-top: 20px;">
-                        <button class="btn btn-success" id="startBot">🚀 Iniciar Bot</button>
-                        <button class="btn btn-danger" id="stopBot">⏹️ Parar Bot</button>
-                        <button class="btn" id="refreshStatus">🔄 Atualizar Status</button>
+                        <button class="btn btn-success" id="startBot">Iniciar Bot</button>
+                        <button class="btn btn-danger" id="stopBot">Parar Bot</button>
+                        <button class="btn" id="refreshStatus">Atualizar Status</button>
                     </div>
                 </div>
                 
                 <!-- Aba Interface WhatsApp -->
                 <div class="section" id="whatsapp">
-                    <h2>💬 Interface WhatsApp</h2>
+                    <h2>Interface WhatsApp</h2>
                     <div id="whatsapp-component-container">
                         <!-- WhatsApp Component será carregado aqui -->
                     </div>
@@ -846,7 +906,7 @@
                 
                 <!-- Aba QR Code -->
                 <div class="section" id="qr">
-                    <h2>📱 QR Code WhatsApp</h2>
+                    <h2>QR Code WhatsApp</h2>
                     <div class="qr-container">
                         <div class="status-card">
                             <h3>Status da Conexão</h3>
@@ -855,13 +915,21 @@
                         <div class="qr-code" id="qrCodeContainer">
                             <p>QR Code aparecerá aqui quando o bot for iniciado</p>
                         </div>
-                        <button class="btn" id="refreshQR">🔄 Atualizar QR Code</button>
+                        <button class="btn" id="refreshQR">Atualizar QR Code</button>
+                    </div>
+                </div>
+                
+                <!-- Aba Clientes -->
+                <div class="section" id="clientes">
+                    <h2>Gerenciamento de Clientes</h2>
+                    <div id="clients-component-container">
+                        <!-- Clients Component será carregado aqui -->
                     </div>
                 </div>
                 
                 <!-- Aba Configurações -->
                 <div class="section" id="config">
-                    <h2>⚙️ Configurações do Bot</h2>
+                    <h2>Configurações do Bot</h2>
                     <div class="config-form">
                         <div class="form-group">
                             <label>Delay entre mensagens (ms):</label>
@@ -873,12 +941,17 @@
                         </div>
                         <div class="form-group">
                             <label>Resposta automática:</label>
-                            <select id="autoResponse">
-                                <option value="true">Sim</option>
-                                <option value="false">Não</option>
-                            </select>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="autoResponse" class="toggle-input">
+                                <label for="autoResponse" class="toggle-label">
+                                    <span class="toggle-slider">
+                                        <span class="toggle-knob"></span>
+                                    </span>
+                                    <span class="toggle-text">Desativado</span>
+                                </label>
+                            </div>
                         </div>
-                        <button class="btn btn-success" id="saveConfig">💾 Salvar Configurações</button>
+                        <button class="btn btn-success" id="saveConfig">Salvar Configurações</button>
                     </div>
                 </div>
             </div>
@@ -886,7 +959,7 @@
     `;
 
     // Classe principal da interface web
-    class SACSMAXInterface {
+    class SACDeskInterface {
         constructor() {
             this.init();
         }
@@ -951,6 +1024,20 @@
             document.getElementById('pauseMessages').addEventListener('click', () => this.pauseMessages());
             document.getElementById('refreshQR').addEventListener('click', () => this.refreshQR());
             document.getElementById('saveConfig').addEventListener('click', () => this.saveConfig());
+
+            // Toggle switch para resposta automática
+            const autoResponseToggle = document.getElementById('autoResponse');
+            const toggleText = document.querySelector('.toggle-text');
+            
+            // Inicializar estado do toggle
+            autoResponseToggle.checked = appState.config.autoResponse;
+            this.updateToggleText(autoResponseToggle.checked, toggleText);
+            
+            // Event listener para mudança de estado
+            autoResponseToggle.addEventListener('change', (e) => {
+                appState.config.autoResponse = e.target.checked;
+                this.updateToggleText(e.target.checked, toggleText);
+            });
         }
 
         switchTab(tabName) {
@@ -971,6 +1058,34 @@
             // Ações específicas por aba
             if (tabName === 'qr') {
                 this.refreshQR();
+            } else if (tabName === 'clientes') {
+                this.loadClientsComponent();
+            }
+        }
+
+        async loadClientsComponent() {
+            try {
+                const container = document.getElementById('clients-component-container');
+                if (container && !container.dataset.loaded) {
+                    // Carregar o componente de clientes
+                    const script = document.createElement('script');
+                    script.src = '/clientsComponent.js';
+                    script.onload = () => {
+                        if (window.ClientsComponent) {
+                            const clientsComponent = new window.ClientsComponent();
+                            clientsComponent.init(container);
+                            container.dataset.loaded = 'true';
+                        }
+                    };
+                    document.head.appendChild(script);
+                } else if (container.dataset.loaded) {
+                    // Recarregar dados se já foi carregado
+                    if (window.ClientsComponent && window.ClientsComponent.instance) {
+                        window.ClientsComponent.instance.loadClients();
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar componente de clientes:', error);
             }
         }
 
@@ -1061,6 +1176,12 @@
             const templateText = selectedOption?.dataset.template || '';
             
             document.getElementById('massMessage').value = templateText;
+        }
+
+        updateToggleText(isChecked, textElement) {
+            if (textElement) {
+                textElement.textContent = isChecked ? 'Ativado' : 'Desativado';
+            }
         }
 
         async startBot() {
@@ -1849,15 +1970,7 @@
             styleSheet.textContent = feedbackStyles;
             document.head.appendChild(styleSheet);
             
-            // Adicionar aba de feedback
-            const tabsContainer = document.querySelector('.tabs');
-            if (tabsContainer) {
-                const feedbackTab = document.createElement('button');
-                feedbackTab.className = 'tab';
-                feedbackTab.textContent = '💬 Feedback';
-                feedbackTab.onclick = () => switchTab('feedback');
-                tabsContainer.appendChild(feedbackTab);
-            }
+
 
             // Criar seção de feedback
             const content = document.querySelector('.content');
@@ -2687,7 +2800,7 @@
     let appInterface;
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
-            appInterface = new SACSMAXInterface();
+            appInterface = new SACDeskInterface();
             // Carregar contatos mock para o WhatsApp
             appState.whatsappChat.contacts = [
                 { id: 1, name: 'João Silva', phone: '5511999999999', lastMessage: 'Olá, tudo bem?', unread: 2 },
@@ -2697,7 +2810,7 @@
             ];
         });
     } else {
-        appInterface = new SACSMAXInterface();
+        appInterface = new SACDeskInterface();
         // Carregar contatos mock para o WhatsApp
         appState.whatsappChat.contacts = [
             { id: 1, name: 'João Silva', phone: '5511999999999', lastMessage: 'Olá, tudo bem?', unread: 2 },
