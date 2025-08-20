@@ -350,12 +350,15 @@ if __name__ == '__main__':
             
             if upload_response.status_code == 200:
                 upload_result = upload_response.json()
-                print(f"✅ Dados salvos no Supabase: {upload_result.get('message', 'Sucesso')}")
+                # Não imprimir mensagens de debug, apenas JSON
+                pass
             else:
-                print(f"⚠️ Erro ao salvar no Supabase: {upload_response.text}")
-                
+                # Não imprimir mensagens de debug, apenas JSON
+                pass
+
         except Exception as e:
-            print(f"⚠️ Não foi possível salvar no Supabase: {e}")
+            # Não imprimir mensagens de debug, apenas JSON
+            pass
             
         print(json.dumps(result, ensure_ascii=False))
         

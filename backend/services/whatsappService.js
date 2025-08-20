@@ -16,8 +16,15 @@ class WhatsAppService extends EventEmitter {
     async initialize() {
         try {
             // Configurar caminho do Chrome baseado no ambiente
-            const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || 
-                                 (process.platform === 'linux' ? '/usr/bin/chromium-browser' : undefined);
+            let executablePath;
+            if (process.env.RAILWAY_ENVIRONMENT) {
+                // Railway usa Google Chrome
+                executablePath = '/usr/bin/google-chrome';
+            } else if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+                executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+            } else if (process.platform === 'linux') {
+                executablePath = '/usr/bin/chromium-browser';
+            }
 
             this.client = new Client({
                 authStrategy: new LocalAuth({
