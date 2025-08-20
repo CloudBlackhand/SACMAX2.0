@@ -73,7 +73,7 @@ async function testRailwayConnection() {
             // Testar query simples
             const result = await client.query('SELECT NOW() as current_time');
             await client.end();
-            
+
             results.database.connected = true;
             results.database.currentTime = result.rows[0].current_time;
             console.log(`   ✅ Banco conectado: ${result.rows[0].current_time}`);

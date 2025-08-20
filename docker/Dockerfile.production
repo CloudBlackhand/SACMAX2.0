@@ -1,40 +1,19 @@
-# Dockerfile otimizado para Railway com Chrome
-FROM node:20-slim
+# Multi-stage build otimizado para produção
+FROM node:20
 
-# Instalar dependências do sistema e Google Chrome
+# Instalar Google Chrome para WhatsApp e Python
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
-    ca-certificates \
-    procps \
-    libxss1 \
-    libnss3 \
-    libatk-bridge2.0-0 \
-    libgtk-3-0 \
-    libxkbcommon0 \
-    libxcomposite1 \
-    libasound2 \
-    libxrandr2 \
-    libxdamage1 \
-    libxfixes3 \
-    libx11-xcb1 \
-    libdrm2 \
-    libgbm1 \
-    libasound2 \
-    libatspi2.0-0 \
-    libxshmfence1 \
+    python3 \
+    python3-pip \
+    python3-dev \
+    build-essential \
+    libpq-dev \
     && wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - \
     && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
     && apt-get update \
     && apt-get install -y google-chrome-stable \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
-
-# Instalar Python e dependências
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -43,8 +22,9 @@ WORKDIR /app
 COPY package*.json ./
 COPY python_modules/requirements.txt ./python_modules/
 
-# Instalar dependências Python
-RUN pip3 install --no-cache-dir -r python_modules/requirements.txt
+# Atualizar pip e instalar dependências Python
+RUN pip3 install --upgrade pip setuptools wheel && \
+    pip3 install --no-cache-dir -r python_modules/requirements.txt
 
 # Instalar dependências Node.js
 RUN npm install --omit=dev --no-audit --no-fund
@@ -53,21 +33,19 @@ RUN npm install --omit=dev --no-audit --no-fund
 COPY . .
 
 # Criar diretórios necessários
-RUN mkdir -p uploads logs config wwebjs_auth
+RUN mkdir -p uploads logs config temp_data
 
-# Verificar se o Chrome foi instalado corretamente
-RUN google-chrome --version
+# Criar usuário não-root
+RUN groupadd -r nodejs && useradd -r -g nodejs nodejs && \
+    chown -R nodejs:nodejs /app
 
-# Expor porta
+USER nodejs
+
 EXPOSE 3000
 
-# Variáveis de ambiente
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV WHATSAPP_HEADLESS=true
+ENV PYTHON_PATH=python3
 
-# Comando de inicialização
 CMD ["npm", "start"]

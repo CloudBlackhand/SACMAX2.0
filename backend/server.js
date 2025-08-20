@@ -13,19 +13,20 @@ const RailwayClientService = require('./services/railwayClientService');
 const logger = require('./utils/logger');
 const cacheService = require('./services/cacheService');
 
-// Importar RailwayDatabaseService
-let RailwayDatabaseService;
+// Importar PythonDatabaseService (substitui Supabase)
+let PythonDatabaseService;
 try {
-    RailwayDatabaseService = require('./services/railwayDatabaseService');
+    PythonDatabaseService = require('./services/pythonDatabaseService');
 } catch (error) {
-    logger.warn('RailwayDatabaseService não disponível, usando fallback');
-    // Criar um mock service para quando Railway não estiver configurado
-    RailwayDatabaseService = {
+    logger.warn('PythonDatabaseService não disponível, usando fallback');
+    // Criar um mock service para quando Python não estiver configurado
+    PythonDatabaseService = {
         getAllClients: async () => [],
         getClientData: async () => [],
-        saveSpreadsheetData: async () => ({ total_records: 0, message: 'Railway PostgreSQL não configurado' }),
+        saveSpreadsheetData: async () => ({ total_records: 0, message: 'Python Database não configurado' }),
         getUploadHistory: async () => [],
-        deleteClient: async () => ({ success: true })
+        deleteClient: async () => ({ success: true }),
+        classifyFeedback: async () => ({ sentiment: 'neutral', confidence: 0.0 })
     };
 }
 
@@ -45,7 +46,7 @@ class SacsMaxServer {
         this.excelProcessor = new ExcelProcessor();
         this.feedbackClassifier = new FeedbackClassifier();
         this.railwayClientService = new RailwayClientService();
-        this.railwayDatabaseService = new RailwayDatabaseService();
+        this.pythonDatabaseService = new PythonDatabaseService();
         
         this.setupMiddleware();
         this.setupRoutes();
@@ -157,20 +158,20 @@ class SacsMaxServer {
 
                 const result = await this.excelProcessor.processFile(req.file.path);
                 
-                // SALVAR DADOS NO BANCO DE DADOS
+                // SALVAR DADOS NO BANCO DE DADOS VIA PYTHON
                 if (result.contacts && result.contacts.length > 0) {
                     try {
-                        const saveResult = await this.railwayDatabaseService.saveSpreadsheetData(
+                        const saveResult = await this.pythonDatabaseService.saveSpreadsheetData(
                             result, 
                             req.file.originalname, 
                             'contacts'
                         );
-                        logger.info('Dados salvos no banco', { 
+                        logger.info('Dados salvos no banco via Python', { 
                             fileName: req.file.originalname, 
                             totalRecords: saveResult.total_records 
                         });
                     } catch (dbError) {
-                        logger.error('Erro ao salvar no banco:', dbError);
+                        logger.error('Erro ao salvar no banco via Python:', dbError);
                         // Continuar mesmo com erro no banco
                     }
                 }
@@ -200,21 +201,21 @@ class SacsMaxServer {
 
                 const result = await this.excelProcessor.processFile(req.file.path, 'client_data');
                 
-                // SALVAR DADOS NO BANCO DE DADOS
+                // SALVAR DADOS NO BANCO DE DADOS VIA PYTHON
                 if (result.client_data_by_date && Object.keys(result.client_data_by_date).length > 0) {
                     try {
-                        const saveResult = await this.railwayDatabaseService.saveSpreadsheetData(
+                        const saveResult = await this.pythonDatabaseService.saveSpreadsheetData(
                             result, 
                             req.file.originalname, 
                             'client_data'
                         );
-                        logger.info('Dados de cliente salvos no banco', { 
+                        logger.info('Dados de cliente salvos no banco via Python', { 
                             fileName: req.file.originalname, 
                             totalRecords: saveResult.total_records,
                             totalDates: result.total_dates
                         });
                     } catch (dbError) {
-                        logger.error('Erro ao salvar dados de cliente no banco:', dbError);
+                        logger.error('Erro ao salvar dados de cliente no banco via Python:', dbError);
                         // Continuar mesmo com erro no banco
                     }
                 }
@@ -245,21 +246,45 @@ class SacsMaxServer {
             }
         });
 
-        // Listar clientes do banco de dados
+        // Listar clientes do banco de dados via Python
         this.app.get('/api/clients', async (req, res) => {
             try {
-                const clients = await this.railwayDatabaseService.getAllClients();
+                const clients = await this.pythonDatabaseService.getAllClients();
                 res.json({
                     success: true,
                     clients: clients || [],
                     total: clients?.length || 0
                 });
             } catch (error) {
-                logger.error('Erro ao listar clientes:', error);
+                logger.error('Erro ao listar clientes via Python:', error);
                 res.status(500).json({
                     success: false,
                     error: error.message,
                     clients: []
+                });
+            }
+        });
+
+        // Classificar feedback via Python
+        this.app.post('/api/feedback/classify', async (req, res) => {
+            try {
+                const { text } = req.body;
+                if (!text) {
+                    return res.status(400).json({ success: false, error: 'Texto não fornecido' });
+                }
+
+                const result = await this.pythonDatabaseService.classifyFeedback(text);
+                res.json({
+                    success: true,
+                    sentiment: result.sentiment,
+                    confidence: result.confidence,
+                    score: result.score
+                });
+            } catch (error) {
+                logger.error('Erro ao classificar feedback via Python:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
                 });
             }
         });
