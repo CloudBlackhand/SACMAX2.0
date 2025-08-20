@@ -2,21 +2,17 @@
 Configurações do SACSMAX Backend
 """
 
-from pydantic_settings import BaseSettings
-from typing import Optional
 import os
+from typing import Optional
 
-class Settings(BaseSettings):
+class Settings:
     # Configurações básicas
     app_name: str = "SACSMAX"
     version: str = "2.1.0"
-    environment: str = "development"
+    environment: str = os.getenv("ENVIRONMENT", "development")
     
     # Configurações do banco de dados
     database_url: str = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/sacsmax")
-    
-    # Configurações do Redis (para Celery)
-    redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379")
     
     # Configurações de segurança
     secret_key: str = os.getenv("SECRET_KEY", "sacsmax-secret-key-change-in-production")
@@ -34,15 +30,11 @@ class Settings(BaseSettings):
     allowed_extensions: list = [".xlsx", ".xls", ".csv"]
     
     # Configurações de logging
-    log_level: str = "INFO"
+    log_level: str = os.getenv("LOG_LEVEL", "INFO")
     log_file: str = "./logs/sacsmax.log"
     
     # Configurações do Railway
     port: int = int(os.getenv("PORT", 8000))
-    
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
 
 # Instância global das configurações
 settings = Settings()

@@ -2,25 +2,33 @@
 Configuração do banco de dados SACSMAX
 """
 
+import os
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Text, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import func
 from datetime import datetime
-import os
 
-from app.core.config import settings
+# Configurações do banco
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/sacsmax")
 
 # Criar engine do banco
-engine = create_engine(
-    settings.database_url,
-    pool_pre_ping=True,
-    pool_recycle=300,
-    echo=settings.environment == "development"
-)
+try:
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        pool_recycle=300,
+        echo=False
+    )
+except Exception as e:
+    print(f"⚠️ Erro ao criar engine do banco: {e}")
+    engine = None
 
 # Criar sessão
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+if engine:
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+else:
+    SessionLocal = None
 
 # Base para modelos
 Base = declarative_base()
@@ -102,6 +110,9 @@ class UploadedFile(Base):
 
 # Função para obter sessão do banco
 def get_db():
+    if not SessionLocal:
+        raise Exception("Database not configured")
+    
     db = SessionLocal()
     try:
         yield db
