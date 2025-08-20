@@ -9,8 +9,25 @@ const { Server } = require('socket.io');
 const WhatsAppService = require('./services/whatsappService');
 const ExcelProcessor = require('./services/excelProcessor');
 const FeedbackClassifier = require('./services/feedbackClassifier');
+const RailwayClientService = require('./services/railwayClientService');
 const logger = require('./utils/logger');
 const cacheService = require('./services/cacheService');
+
+// Importar SupabaseService com fallback
+let SupabaseService;
+try {
+    SupabaseService = require('./services/supabaseService');
+} catch (error) {
+    logger.warn('SupabaseService não disponível, usando fallback');
+    // Criar um mock service para quando Supabase não estiver configurado
+    SupabaseService = {
+        getAllClients: async () => [],
+        getClientData: async () => [],
+        saveSpreadsheetData: async () => ({ total_records: 0, message: 'Supabase não configurado' }),
+        getUploadHistory: async () => [],
+        deleteClient: async () => ({ success: true })
+    };
+}
 
 require('dotenv').config();
 
@@ -27,6 +44,7 @@ class SacsMaxServer {
         this.whatsappService = new WhatsAppService();
         this.excelProcessor = new ExcelProcessor();
         this.feedbackClassifier = new FeedbackClassifier();
+        this.railwayClientService = new RailwayClientService();
         
         this.setupMiddleware();
         this.setupRoutes();
@@ -710,16 +728,16 @@ class SacsMaxServer {
                     });
                 }
 
-                const result = await SupabaseService.saveSpreadsheetData(
-                    spreadsheetData, 
-                    fileName, 
-                    mode || 'client_data'
+                const result = await this.railwayClientService.saveExcelData(
+                    fileName,
+                    'Sheet1', // Nome padrão da planilha
+                    spreadsheetData
                 );
 
                 res.json({
-                    success: true,
-                    ...result,
-                    message: `Dados salvos com sucesso: ${result.total_records} registros processados`
+                    success: result.success,
+                    data: result.data,
+                    message: result.message || `Dados salvos com sucesso`
                 });
             } catch (error) {
                 logger.error('Erro ao salvar dados no Supabase:', error);
@@ -733,11 +751,11 @@ class SacsMaxServer {
         // Buscar todos os clientes
         this.app.get('/api/supabase/clients', async (req, res) => {
             try {
-                const clients = await SupabaseService.getAllClients();
+                const result = await this.railwayClientService.getClients();
                 res.json({
-                    success: true,
-                    clients,
-                    total: clients.length
+                    success: result.success,
+                    clients: result.data,
+                    total: result.count || result.data.length
                 });
             } catch (error) {
                 logger.error('Erro ao buscar clientes:', error);
@@ -752,12 +770,12 @@ class SacsMaxServer {
         this.app.get('/api/supabase/clients/:id/data', async (req, res) => {
             try {
                 const { id } = req.params;
-                const clientData = await SupabaseService.getClientData(id);
+                const result = await this.railwayClientService.getClientById(id);
                 
                 res.json({
-                    success: true,
-                    clientData,
-                    total: clientData.length
+                    success: result.success,
+                    clientData: result.data,
+                    total: result.data ? 1 : 0
                 });
             } catch (error) {
                 logger.error('Erro ao buscar dados do cliente:', error);
@@ -771,11 +789,11 @@ class SacsMaxServer {
         // Buscar histórico de uploads
         this.app.get('/api/supabase/upload-history', async (req, res) => {
             try {
-                const history = await SupabaseService.getUploadHistory();
+                const result = await this.railwayClientService.getUploadHistory();
                 res.json({
-                    success: true,
-                    history,
-                    total: history.length
+                    success: result.success,
+                    history: result.data,
+                    total: result.count || result.data.length
                 });
             } catch (error) {
                 logger.error('Erro ao buscar histórico:', error);
@@ -790,11 +808,11 @@ class SacsMaxServer {
         this.app.delete('/api/supabase/clients/:id', async (req, res) => {
             try {
                 const { id } = req.params;
-                await SupabaseService.deleteClient(id);
+                const result = await this.railwayClientService.deleteClient(id);
                 
                 res.json({
-                    success: true,
-                    message: 'Cliente deletado com sucesso'
+                    success: result.success,
+                    message: result.message || 'Cliente deletado com sucesso'
                 });
             } catch (error) {
                 logger.error('Erro ao deletar cliente:', error);
