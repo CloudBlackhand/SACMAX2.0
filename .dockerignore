@@ -1,148 +1,65 @@
-# Logs
-logs/
-*.log
+# Dependências
+node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-lerna-debug.log*
 
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
+# Ambiente Python
+python_env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
 
-# Coverage directory used by tools like istanbul
-coverage/
-*.lcov
+# Logs
+logs
+*.log
 
-# nyc test coverage
-.nyc_output
+# Arquivos temporários
+temp_*
+*.tmp
+*.temp
 
-# Grunt intermediate storage
-.grunt
+# Uploads
+uploads/*
+!uploads/.gitkeep
 
-# Bower dependency directory
-bower_components
+# Git
+.git
+.gitignore
 
-# node_modules
-node_modules/
-npm-debug.log
+# Documentação
+*.md
+docs/
 
-# Dependency directories
-node_modules/
-jspm_packages/
-
-# Optional npm cache directory
-.npm
-.npmignore
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-.yarn
-
-# dotenv environment variables file
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.env.example
+# Testes
+test/
+tests/
+*.test.js
+*.spec.js
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
-*.bak
 
-# OS
+# Sistema
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
-desktop.ini
-
-# Git
-.git/
-.gitignore
-.gitattributes
-
-# CI/CD
-.github/
-.gitlab-ci.yml
-.travis.yml
-.circleci/
-
-# Docker
-Dockerfile
-docker-compose.yml
-docker-compose*.yml
-docker-compose*.yaml
-Dockerfile*
-.dockerignore
-docker/
 
 # Railway
-railway.toml
-.nixpacks.toml
-.railway/
+.railwayignore
 
-# Uploads temporários
-uploads/temp/
-uploads/temp-*
-uploads/*.tmp
+# Cache
+.cache/
+.npm/
+.yarn/
 
-# WhatsApp session (será recriado / will be mounted as volume)
-wwebjs_auth/
-wwebjs_cache/
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-.pytest_cache/
-.coverage
-
-# Test files
-test/
-tests/
-__tests__/
-*.test.js
-*.spec.js
-*.test.ts
-*.spec.ts
-
-# Documentation
-docs/
-README.md
-*.md
-
-# Build outputs
+# Build
 dist/
 build/
-out/
-
-# Debug
-.debug/
-
-# Backup files
-*.backup
-*.old
