@@ -24,6 +24,9 @@ class WhatsAppService extends EventEmitter {
                 executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
             } else if (process.platform === 'linux') {
                 executablePath = '/usr/bin/chromium-browser';
+            } else if (process.platform === 'win32') {
+                // Windows - deixar Puppeteer encontrar o Chrome automaticamente
+                executablePath = undefined;
             }
 
             this.client = new Client({

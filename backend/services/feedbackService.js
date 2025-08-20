@@ -183,9 +183,13 @@ class FeedbackService {
     // Gerar resposta baseada em template
     async generateResponse(clientId, templateId, feedbackMessage, customData = {}) {
         try {
+            if (!this.supabase) {
+                throw new Error('Supabase não configurado - não é possível gerar resposta');
+            }
+
             const [template, client] = await Promise.all([
-                supabase.from(this.templatesTable).select('*').eq('id', templateId).single(),
-                supabase.from('clients').select('*').eq('id', clientId).single()
+                this.supabase.from(this.templatesTable).select('*').eq('id', templateId).single(),
+                this.supabase.from('clients').select('*').eq('id', clientId).single()
             ]);
 
             if (template.error) throw template.error;
@@ -294,7 +298,11 @@ class FeedbackService {
 
     async getCampaignTargets(campaignId) {
         try {
-            const campaign = await supabase
+            if (!this.supabase) {
+                throw new Error('Supabase não configurado - não é possível buscar alvos da campanha');
+            }
+
+            const campaign = await this.supabase
                 .from(this.campaignsTable)
                 .select('*')
                 .eq('id', campaignId)
@@ -303,7 +311,7 @@ class FeedbackService {
             if (campaign.error) throw campaign.error;
 
             const filter = campaign.data.target_filter;
-            let query = supabase.from('clients').select('*');
+            let query = this.supabase.from('clients').select('*');
 
             // Aplicar filtros
             if (filter.region) {
@@ -393,10 +401,19 @@ class FeedbackService {
     // Estatísticas de feedback
     async getFeedbackStats() {
         try {
+            // Retornar estatísticas padrão quando Supabase não estiver configurado
+            if (!this.supabase) {
+                return {
+                    total: 0,
+                    byCategory: {},
+                    recent: []
+                };
+            }
+
             const [total, allFeedback, recent] = await Promise.all([
-                supabase.from(this.table).select('count', { count: 'exact' }),
-                supabase.from(this.table).select('category'),
-                supabase.from(this.table).select('*').limit(10).order('created_at', { ascending: false })
+                this.supabase.from(this.table).select('count', { count: 'exact' }),
+                this.supabase.from(this.table).select('category'),
+                this.supabase.from(this.table).select('*').limit(10).order('created_at', { ascending: false })
             ]);
 
             // Agrupar manualmente por categoria
