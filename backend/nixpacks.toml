@@ -1,0 +1,16 @@
+[phases.setup]
+nixPkgs = ["python311", "postgresql", "gcc", "gcc-unwrapped", "libpq-dev"]
+
+[phases.install]
+cmds = [
+    "pip install --no-cache-dir -r requirements.txt"
+]
+
+[phases.build]
+cmds = [
+    "mkdir -p uploads logs whatsapp_sessions"
+]
+
+[start]
+cmd = "bash start.sh"
+

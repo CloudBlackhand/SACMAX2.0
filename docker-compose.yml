@@ -1,52 +1,70 @@
 version: '3.8'
 
 services:
-  # Backend API
+  # Backend Python
   backend:
-    build:
-      context: .
-      dockerfile: Dockerfile.production
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://sacsmax:sacsmax@postgres:5432/sacsmax
+      - REDIS_URL=redis://redis:6379
+      - ENVIRONMENT=development
+      - SECRET_KEY=dev-secret-key-change-in-production
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/app
+      - uploads:/app/uploads
+      - logs:/app/logs
+      - whatsapp_sessions:/app/whatsapp_sessions
+
+  # WhatsApp Web.js
+  whatsapp:
+    build: ./backend/whatsapp-web.js
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - HOST=0.0.0.0
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-      - WHATSAPP_SESSION_NAME=${WHATSAPP_SESSION_NAME:-sacsmax}
-      - JWT_SECRET=${JWT_SECRET}
-      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      - NODE_ENV=development
     volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      - ./backend/whatsapp-web.js:/app
+      - whatsapp_sessions:/app/sessions
 
-  # Frontend
-  frontend:
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
-    ports:
-      - "8080:80"
+  # PostgreSQL
+  postgres:
+    image: postgres:15
     environment:
-      - REACT_APP_API_URL=http://localhost:3000
-      - REACT_APP_SOCKET_URL=http://localhost:3000
+      - POSTGRES_DB=sacsmax
+      - POSTGRES_USER=sacsmax
+      - POSTGRES_PASSWORD=sacsmax
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # Frontend (opcional - pode rodar localmente)
+  frontend:
+    build: ./frontend
+    ports:
+      - "3001:3000"
+    environment:
+      - API_URL=http://localhost:8000
     depends_on:
       - backend
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
 volumes:
+  postgres_data:
+  redis_data:
+  uploads:
+  logs:
+  whatsapp_sessions:
+
