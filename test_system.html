@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste SacsMax</title>
+</head>
+<body>
+    <h1>Teste do Sistema SacsMax</h1>
+    <div id="test-results"></div>
+    
+    <script>
+        // Teste básico do sistema
+        function testSystem() {
+            const results = document.getElementById('test-results');
+            const tests = [];
+            
+            // Teste 1: Verificar se o arquivo main.js existe
+            try {
+                const script = document.createElement('script');
+                script.src = './frontend/main.js';
+                script.onload = () => {
+                    tests.push('✅ main.js carregado com sucesso');
+                    runTests();
+                };
+                script.onerror = () => {
+                    tests.push('❌ Erro ao carregar main.js');
+                    runTests();
+                };
+                document.head.appendChild(script);
+            } catch (error) {
+                tests.push('❌ Erro ao carregar main.js: ' + error.message);
+                runTests();
+            }
+            
+            function runTests() {
+                // Teste 2: Verificar se a aplicação foi inicializada
+                setTimeout(() => {
+                    if (window.SacsMaxApp) {
+                        tests.push('✅ SacsMaxApp inicializada');
+                        
+                        // Teste 3: Verificar se os módulos foram carregados
+                        const modules = ['dashboard', 'excel', 'whatsapp', 'bot', 'contacts', 'messages', 'settings'];
+                        let modulesLoaded = 0;
+                        
+                        modules.forEach(moduleName => {
+                            if (window.SacsMaxApp.modules[moduleName]) {
+                                modulesLoaded++;
+                            }
+                        });
+                        
+                        if (modulesLoaded === modules.length) {
+                            tests.push(`✅ Todos os ${modules.length} módulos carregados`);
+                        } else {
+                            tests.push(`❌ Apenas ${modulesLoaded}/${modules.length} módulos carregados`);
+                        }
+                        
+                        // Teste 4: Verificar se os módulos têm método render
+                        let renderMethods = 0;
+                        modules.forEach(moduleName => {
+                            const module = window.SacsMaxApp.modules[moduleName];
+                            if (module && typeof module.render === 'function') {
+                                renderMethods++;
+                            }
+                        });
+                        
+                        if (renderMethods === modules.length) {
+                            tests.push(`✅ Todos os ${modules.length} módulos têm método render`);
+                        } else {
+                            tests.push(`❌ Apenas ${renderMethods}/${modules.length} módulos têm método render`);
+                        }
+                        
+                    } else {
+                        tests.push('❌ SacsMaxApp não foi inicializada');
+                    }
+                    
+                    // Exibir resultados
+                    results.innerHTML = tests.map(test => `<p>${test}</p>`).join('');
+                }, 1000);
+            }
+        }
+        
+        // Executar teste
+        testSystem();
+    </script>
+</body>
+</html>

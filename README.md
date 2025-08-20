@@ -1,304 +1,251 @@
-# SACSMAX - Sistema de Automação de Contatos e Feedback
+# SacsMax - Sistema de Gestão de SAC 🚀
 
-Sistema completo para automação de envio de mensagens WhatsApp com integração de arquivos Excel, desenvolvido em Python (FastAPI) com frontend JavaScript.
+Sistema completo de gestão de SAC com interface WhatsApp, bot automático e gerenciamento de contatos.
 
-## 🚀 Funcionalidades
+## 🎯 Características
 
-- **Upload e processamento de arquivos Excel/CSV**
-- **Integração com WhatsApp Web.js**
-- **Envio de mensagens individuais e em lote**
-- **Templates de mensagens personalizáveis**
-- **Gerenciamento de contatos**
-- **Sistema de autenticação**
-- **Banco de dados PostgreSQL**
-- **Deploy automatizado no Railway**
+- **Frontend Puro JavaScript**: Interface moderna sem arquivos HTML estáticos
+- **Backend Python**: API REST com Flask
+- **WhatsApp Clone**: Interface familiar para comunicação
+- **Bot Automático**: Configuração de respostas automáticas
+- **Upload de Excel**: Processamento de planilhas
+- **Gestão de Contatos**: CRUD completo de contatos
+- **Dashboard**: Estatísticas e métricas em tempo real
+- **Configurações**: Sistema completo de configurações
 
-## 📁 Estrutura do Projeto
+## 🏗️ Arquitetura
 
 ```
 SacsMax/
-├── frontend/                 # Interface web existente
-│   ├── webInterface.js      # Interface principal
-│   ├── services/           # Serviços de API
-│   └── ...
-├── backend/                 # Backend Python
-│   ├── main.py             # Aplicação principal
-│   ├── app/
-│   │   ├── core/           # Configurações e banco
-│   │   ├── api/routes/     # Rotas da API
-│   │   └── services/       # Serviços (Excel, WhatsApp)
-│   ├── whatsapp-web.js/    # Servidor WhatsApp Web.js
-│   └── requirements.txt    # Dependências Python
-├── excel test/             # Arquivos de teste
-└── README.md
+├── railway_startup.py      # Arquivo principal para Railway
+├── requirements.txt        # Dependências Python
+├── railway.json           # Configuração Railway
+├── Procfile              # Configuração Heroku/Railway
+├── runtime.txt           # Versão Python
+├── frontend/             # Frontend JavaScript
+│   ├── index.html        # Página inicial
+│   ├── main.js           # Aplicação principal
+│   ├── package.json      # Dependências Node.js
+│   └── modules/          # Módulos da aplicação
+│       ├── dashboard.js
+│       ├── excel.js
+│       ├── whatsapp.js
+│       ├── bot.js
+│       ├── contacts.js
+│       └── settings.js
+└── backend/              # Backend Python (criado automaticamente)
+    ├── app.py            # API Flask
+    └── requirements.txt  # Dependências backend
 ```
-
-## 🛠️ Tecnologias Utilizadas
-
-### Backend
-- **FastAPI** - Framework web Python
-- **SQLAlchemy** - ORM para banco de dados
-- **PostgreSQL** - Banco de dados principal
-- **Pandas** - Processamento de Excel
-- **JWT** - Autenticação
-- **Gunicorn** - Servidor WSGI
-
-### WhatsApp Integration
-- **Baileys** - Biblioteca WhatsApp Web.js
-- **Express.js** - Servidor Node.js
-- **Socket.io** - Comunicação em tempo real
-
-### Deploy
-- **Railway** - Plataforma de deploy
-- **Docker** - Containerização
 
 ## 🚀 Deploy no Railway
 
-### 1. Preparação do Projeto
+### 1. Preparação
 
-1. **Clone o repositório:**
 ```bash
+# Clone o repositório
 git clone <seu-repositorio>
 cd SacsMax
+
+# Teste local (opcional)
+python test_startup.py
 ```
 
-2. **Configure as variáveis de ambiente:**
+### 2. Deploy Automático
+
+1. Conecte seu repositório ao Railway
+2. O Railway detectará automaticamente:
+   - `railway.json` para configuração
+   - `requirements.txt` para dependências Python
+   - `frontend/package.json` para dependências Node.js
+
+### 3. Comando de Inicialização
+
+O Railway executará automaticamente:
 ```bash
-cp backend/env.example backend/.env
+python railway_startup.py
 ```
 
-### 2. Deploy no Railway
+Este comando irá:
+- ✅ Verificar dependências Python
+- ✅ Instalar dependências Node.js
+- ✅ Criar backend se não existir
+- ✅ Iniciar servidor backend (porta +1)
+- ✅ Iniciar servidor frontend (porta principal)
+- ✅ Configurar CORS e roteamento
 
-#### Opção A: Deploy via Railway CLI
-
-1. **Instale o Railway CLI:**
-```bash
-npm install -g @railway/cli
-```
-
-2. **Faça login no Railway:**
-```bash
-railway login
-```
-
-3. **Inicialize o projeto:**
-```bash
-cd backend
-railway init
-```
-
-4. **Configure as variáveis de ambiente:**
-```bash
-railway variables set ENVIRONMENT=production
-railway variables set SECRET_KEY=sua-chave-secreta-aqui
-railway variables set DATABASE_URL=postgresql://...
-```
-
-5. **Deploy:**
-```bash
-railway up
-```
-
-#### Opção B: Deploy via GitHub
-
-1. **Conecte seu repositório ao Railway**
-2. **Configure as variáveis de ambiente no painel do Railway**
-3. **Deploy automático será realizado**
-
-### 3. Configuração do Banco de Dados
-
-1. **Crie um banco PostgreSQL no Railway**
-2. **Configure a variável `DATABASE_URL`**
-3. **Execute as migrações:**
-```bash
-railway run python -c "from app.core.database import Base, engine; Base.metadata.create_all(bind=engine)"
-```
-
-### 4. Configuração do WhatsApp Web.js
-
-1. **Deploy do servidor WhatsApp Web.js:**
-```bash
-cd backend/whatsapp-web.js
-railway up
-```
-
-2. **Configure a URL do WhatsApp Web.js no backend**
-
-## 🔧 Configuração Local
+## 🛠️ Desenvolvimento Local
 
 ### Pré-requisitos
+
 - Python 3.11+
 - Node.js 18+
-- PostgreSQL
-- Redis (opcional)
+- npm 8+
 
 ### Instalação
 
-1. **Backend Python:**
 ```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# ou
-venv\Scripts\activate     # Windows
+# 1. Clone o repositório
+git clone <seu-repositorio>
+cd SacsMax
 
+# 2. Instale dependências Python
 pip install -r requirements.txt
-```
 
-2. **WhatsApp Web.js:**
-```bash
-cd backend/whatsapp-web.js
-npm install
-```
-
-3. **Configure as variáveis de ambiente:**
-```bash
-cp env.example .env
-# Edite o arquivo .env com suas configurações
-```
-
-### Execução Local
-
-1. **Backend:**
-```bash
-cd backend
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
-2. **WhatsApp Web.js:**
-```bash
-cd backend/whatsapp-web.js
-npm start
-```
-
-3. **Frontend:**
-```bash
+# 3. Instale dependências Node.js
 cd frontend
-npm start
+npm install
+cd ..
+
+# 4. Execute o teste
+python test_startup.py
+
+# 5. Inicie o sistema
+python railway_startup.py
 ```
 
-## 📱 Uso da API
+### Acesso
 
-### Endpoints Principais
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:3001
+- **Health Check**: http://localhost:3001/api/health
 
-#### Autenticação
-- `POST /api/auth/register` - Registrar usuário
-- `POST /api/auth/login` - Login
-- `GET /api/auth/me` - Informações do usuário
+## 📱 Módulos Disponíveis
 
-#### Excel
-- `POST /api/excel/upload` - Upload de arquivo Excel
-- `GET /api/excel/files` - Listar arquivos
-- `GET /api/excel/files/{id}/contacts` - Contatos do arquivo
+### 🏠 Dashboard
+- Estatísticas em tempo real
+- Gráficos de atividade
+- Métricas de performance
 
-#### WhatsApp
-- `POST /api/whatsapp/start` - Iniciar sessão
-- `POST /api/whatsapp/stop` - Parar sessão
-- `GET /api/whatsapp/status` - Status da conexão
-- `GET /api/whatsapp/qr` - QR Code
-- `POST /api/whatsapp/send` - Enviar mensagem
-- `POST /api/whatsapp/send-messages` - Envio em lote
+### 📊 Excel Upload
+- Upload drag & drop
+- Validação de arquivos
+- Mapeamento de colunas
+- Preview de dados
+- Histórico de uploads
 
-#### Contatos
+### 💬 WhatsApp Clone
+- Interface familiar
+- Lista de contatos
+- Chat em tempo real
+- Status de conexão
+- Configurações de auto-resposta
+
+### 🤖 Bot Configuration
+- Configuração de nome
+- Mensagens de boas-vindas
+- Horário de funcionamento
+- Respostas automáticas por palavra-chave
+- Teste em tempo real
+
+### 👥 Gestão de Contatos
+- CRUD completo
+- Busca e filtros
+- Ações em lote
+- Exportação CSV
+- Histórico de atividades
+
+### ⚙️ Configurações
+- Configurações gerais
+- Notificações
+- Segurança
+- Integrações
+- Backup e restauração
+
+## 🔧 Configuração
+
+### Variáveis de Ambiente
+
+```bash
+PORT=3000                    # Porta principal (frontend)
+BACKEND_PORT=3001           # Porta do backend
+NODE_ENV=production         # Ambiente Node.js
+FLASK_ENV=production        # Ambiente Flask
+```
+
+### Personalização
+
+1. **Tema**: Edite `frontend/modules/settings.js`
+2. **API**: Modifique `backend/app.py`
+3. **Módulos**: Adicione novos em `frontend/modules/`
+
+## 📊 API Endpoints
+
+### Backend (Porta +1)
+
+- `GET /api/health` - Status do sistema
+- `GET /api/stats` - Estatísticas
 - `GET /api/contacts` - Listar contatos
-- `PUT /api/contacts/{id}` - Atualizar contato
-- `DELETE /api/contacts/{id}` - Deletar contato
+- `POST /api/contacts` - Criar contato
+- `GET /api/messages` - Listar mensagens
+- `POST /api/messages` - Enviar mensagem
+- `GET /api/bot/config` - Configuração do bot
+- `PUT /api/bot/config` - Atualizar bot
+- `POST /api/excel/upload` - Upload Excel
 
-#### Templates
-- `GET /api/feedback/templates` - Listar templates
-- `POST /api/feedback/templates` - Criar template
-- `PUT /api/feedback/templates/{id}` - Atualizar template
+## 🔒 Segurança
 
-### Exemplo de Uso
+- CORS configurado
+- Validação de entrada
+- Sanitização de dados
+- Rate limiting (em produção)
 
-1. **Upload de Excel:**
-```bash
-curl -X POST "https://seu-app.railway.app/api/excel/upload" \
-  -H "Content-Type: multipart/form-data" \
-  -F "file=@contatos.xlsx"
-```
+## 📈 Performance
 
-2. **Iniciar WhatsApp:**
-```bash
-curl -X POST "https://seu-app.railway.app/api/whatsapp/start"
-```
+- Frontend otimizado
+- Lazy loading de módulos
+- Cache local (localStorage)
+- Compressão de assets
 
-3. **Enviar mensagem:**
-```bash
-curl -X POST "https://seu-app.railway.app/api/whatsapp/send" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "phone": "5511999999999",
-    "message": "Olá! Como vai?",
-    "message_type": "text"
-  }'
-```
-
-## 🔒 Variáveis de Ambiente
-
-### Obrigatórias
-- `DATABASE_URL` - URL do banco PostgreSQL
-- `SECRET_KEY` - Chave secreta para JWT
-- `ENVIRONMENT` - Ambiente (development/production)
-
-### Opcionais
-- `REDIS_URL` - URL do Redis (para Celery)
-- `WHATSAPP_SESSION_PATH` - Caminho das sessões WhatsApp
-- `UPLOAD_FOLDER` - Pasta de uploads
-- `LOG_LEVEL` - Nível de log
-
-## 📊 Monitoramento
-
-### Health Check
-- `GET /health` - Status da aplicação
-- `GET /api/whatsapp/status` - Status do WhatsApp
-- `GET /api/auth/health` - Status da autenticação
-
-### Logs
-```bash
-railway logs
-```
-
-## 🚨 Troubleshooting
+## 🐛 Troubleshooting
 
 ### Problemas Comuns
 
-1. **Erro de conexão com banco:**
-   - Verifique a `DATABASE_URL`
-   - Certifique-se de que o banco está ativo
+1. **Porta em uso**
+   ```bash
+   # Verifique portas
+   lsof -i :3000
+   lsof -i :3001
+   ```
 
-2. **WhatsApp não conecta:**
-   - Verifique se o WhatsApp Web.js está rodando
-   - Confirme se o QR Code foi escaneado
+2. **Dependências faltando**
+   ```bash
+   # Reinstale dependências
+   pip install -r requirements.txt
+   cd frontend && npm install
+   ```
 
-3. **Erro de upload de Excel:**
-   - Verifique o formato do arquivo
-   - Confirme se as colunas estão corretas
+3. **Backend não inicia**
+   ```bash
+   # Verifique logs
+   python railway_startup.py
+   ```
 
-4. **Problemas de CORS:**
-   - Configure as origens permitidas no CORS
-   - Verifique se o frontend está acessando a URL correta
+### Logs
+
+- **Frontend**: Console do navegador
+- **Backend**: Terminal/Logs Railway
+- **Sistema**: `python railway_startup.py`
 
 ## 🤝 Contribuição
 
 1. Fork o projeto
-2. Crie uma branch para sua feature
-3. Commit suas mudanças
-4. Push para a branch
+2. Crie uma branch (`git checkout -b feature/nova-funcionalidade`)
+3. Commit suas mudanças (`git commit -am 'Adiciona nova funcionalidade'`)
+4. Push para a branch (`git push origin feature/nova-funcionalidade`)
 5. Abra um Pull Request
 
 ## 📄 Licença
 
 Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
 
-## 📞 Suporte
+## 🆘 Suporte
 
-Para suporte, entre em contato:
-- Email: suporte@sacsmax.com
-- Discord: [Link do servidor]
-- Documentação: [Link da documentação]
+- **Issues**: GitHub Issues
+- **Documentação**: Este README
+- **Email**: suporte@sacsmax.com
 
 ---
 
-**SACSMAX** - Automatizando comunicação, conectando pessoas! 🚀
+**SacsMax** - Transformando a gestão de SAC! 🚀
 
