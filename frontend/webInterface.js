@@ -8,7 +8,9 @@
     'use strict';
 
     // Configuração da API
-    const API_URL = window.location.origin + '/api';
+    const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+        ? 'http://localhost:8000/api' 
+        : window.location.origin + '/api';
     
     // Estado global da aplicação
     let appState = {

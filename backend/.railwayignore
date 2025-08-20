@@ -19,12 +19,11 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
 # Virtual environments
-.env
-.venv
-env/
 venv/
+env/
 ENV/
 env.bak/
 venv.bak/
@@ -34,10 +33,7 @@ venv.bak/
 .idea/
 *.swp
 *.swo
-
-# OS
-.DS_Store
-Thumbs.db
+*~
 
 # Logs
 *.log
@@ -45,15 +41,44 @@ logs/
 
 # Uploads
 uploads/
-whatsapp_sessions/
+*.xlsx
+*.xls
+*.csv
 
 # Git
 .git/
 .gitignore
 
-# Documentation
-README.md
-*.md
+# Railway
+.railway/
+railway.json
+railway.toml
 
-# Frontend
+# Frontend (não deve estar no backend)
 ../frontend/
+
+# Node.js (não deve estar no backend)
+node_modules/
+package.json
+package-lock.json
+yarn.lock
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Cache
+.cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -9,7 +9,7 @@ from typing import Optional
 from pydantic import BaseModel
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
-import jwt
+from jose import jwt
 
 from app.core.config import settings
 from app.core.database import get_db, User
@@ -68,7 +68,7 @@ def get_current_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token inválido"
             )
-    except jwt.PyJWTError:
+    except jwt.JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token inválido"
