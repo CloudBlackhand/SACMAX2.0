@@ -156,6 +156,24 @@ class SacsMaxServer {
 
                 const result = await this.excelProcessor.processFile(req.file.path);
                 
+                // SALVAR DADOS NO BANCO DE DADOS
+                if (result.contacts && result.contacts.length > 0) {
+                    try {
+                        const saveResult = await this.supabaseService.saveSpreadsheetData(
+                            result, 
+                            req.file.originalname, 
+                            'contacts'
+                        );
+                        logger.info('Dados salvos no banco', { 
+                            fileName: req.file.originalname, 
+                            totalRecords: saveResult.total_records 
+                        });
+                    } catch (dbError) {
+                        logger.error('Erro ao salvar no banco:', dbError);
+                        // Continuar mesmo com erro no banco
+                    }
+                }
+                
                 // Limpar arquivo temporário
                 fs.unlink(req.file.path, () => {});
                 
@@ -163,7 +181,8 @@ class SacsMaxServer {
                     success: true,
                     contacts: result.contacts || [],
                     sheets: result.sheets || [],
-                    message: `Processado ${result.contacts?.length || 0} contatos`
+                    message: `Processado ${result.contacts?.length || 0} contatos`,
+                    savedToDatabase: true
                 });
             } catch (error) {
                 logger.error('Erro no upload:', error);
@@ -180,6 +199,25 @@ class SacsMaxServer {
 
                 const result = await this.excelProcessor.processFile(req.file.path, 'client_data');
                 
+                // SALVAR DADOS NO BANCO DE DADOS
+                if (result.client_data_by_date && Object.keys(result.client_data_by_date).length > 0) {
+                    try {
+                        const saveResult = await this.supabaseService.saveSpreadsheetData(
+                            result, 
+                            req.file.originalname, 
+                            'client_data'
+                        );
+                        logger.info('Dados de cliente salvos no banco', { 
+                            fileName: req.file.originalname, 
+                            totalRecords: saveResult.total_records,
+                            totalDates: result.total_dates
+                        });
+                    } catch (dbError) {
+                        logger.error('Erro ao salvar dados de cliente no banco:', dbError);
+                        // Continuar mesmo com erro no banco
+                    }
+                }
+                
                 // Limpar arquivo temporário
                 fs.unlink(req.file.path, () => {});
                 
@@ -188,7 +226,8 @@ class SacsMaxServer {
                     client_data_by_date: result.client_data_by_date || {},
                     sheets: result.sheets || [],
                     total_dates: result.total_dates || 0,
-                    message: `Processado ${result.total_dates || 0} datas com dados de clientes`
+                    message: `Processado ${result.total_dates || 0} datas com dados de clientes`,
+                    savedToDatabase: true
                 });
             } catch (error) {
                 logger.error('Erro no upload de Excel - client_data', error);
@@ -201,6 +240,25 @@ class SacsMaxServer {
                 res.status(500).json({
                     success: false,
                     error: error.message
+                });
+            }
+        });
+
+        // Listar clientes do banco de dados
+        this.app.get('/api/clients', async (req, res) => {
+            try {
+                const clients = await this.supabaseService.getAllClients();
+                res.json({
+                    success: true,
+                    clients: clients || [],
+                    total: clients?.length || 0
+                });
+            } catch (error) {
+                logger.error('Erro ao listar clientes:', error);
+                res.status(500).json({
+                    success: false,
+                    error: error.message,
+                    clients: []
                 });
             }
         });

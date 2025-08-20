@@ -1,6 +1,7 @@
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const { EventEmitter } = require('events');
+const fs = require('fs');
 const logger = require('../utils/logger');
 
 class WhatsAppService extends EventEmitter {
@@ -21,13 +22,33 @@ class WhatsAppService extends EventEmitter {
             // Detectar se está realmente no Railway (não apenas com variáveis definidas)
             const isRailway = process.env.RAILWAY_ENVIRONMENT_ID && process.platform === 'linux';
             
-            if (isRailway) {
-                // Railway usa Google Chrome
-                executablePath = '/usr/bin/google-chrome';
-            } else if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-                executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+            if (isRailway || process.env.PUPPETEER_EXECUTABLE_PATH) {
+                // Railway usa Google Chrome ou caminho customizado
+                executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome';
             } else if (process.platform === 'linux') {
-                executablePath = '/usr/bin/chromium-browser';
+                // Tentar diferentes caminhos do Chrome no Linux
+                const chromePaths = [
+                    '/usr/bin/google-chrome',
+                    '/usr/bin/google-chrome-stable',
+                    '/usr/bin/chromium-browser',
+                    '/usr/bin/chromium'
+                ];
+                
+                for (const path of chromePaths) {
+                    try {
+                        if (fs.existsSync(path)) {
+                            executablePath = path;
+                            break;
+                        }
+                    } catch (error) {
+                        // Continuar para o próximo caminho
+                    }
+                }
+                
+                if (!executablePath) {
+                    // Se não encontrar, deixar Puppeteer tentar automaticamente
+                    executablePath = undefined;
+                }
             } else if (process.platform === 'win32') {
                 // Windows - deixar Puppeteer encontrar o Chrome automaticamente
                 executablePath = undefined;

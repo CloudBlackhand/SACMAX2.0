@@ -1,114 +1,60 @@
 {
-  "timestamp": "2025-08-20T01:24:21.949Z",
-  "components": {
-    "environment": {
-      "status": "disconnected",
-      "message": "Faltando: DATABASE_URL",
-      "details": {
-        "envFileExists": true,
-        "databaseUrl": false,
-        "databasePublicUrl": true
-      }
+  "environment": {
+    "DATABASE_URL": {
+      "present": false,
+      "value": "NÃO CONFIGURADO"
     },
-    "railwayDB": {
-      "status": "disconnected",
-      "message": "Erro ao conectar ao Railway PostgreSQL",
-      "details": {
-        "error": ""
-      }
+    "DATABASE_PUBLIC_URL": {
+      "present": false,
+      "value": "NÃO CONFIGURADO"
     },
-    "whatsapp": {
-      "status": "connected",
-      "message": "Serviço WhatsApp disponível",
-      "details": {
-        "serviceFile": true
-      }
+    "RAILWAY_ENVIRONMENT_ID": {
+      "present": false,
+      "value": "NÃO CONFIGURADO"
     },
-    "network": {
-      "status": "connected",
-      "message": "2/3 endpoints acessíveis",
-      "details": {
-        "results": [
-          {
-            "endpoint": "https://www.google.com",
-            "status": 200
-          },
-          {
-            "endpoint": "https://railway.app",
-            "status": 301
-          },
-          {
-            "endpoint": "https://8.8.8.8",
-            "status": 302
-          }
-        ]
-      }
+    "RAILWAY_PROJECT_ID": {
+      "present": false,
+      "value": "NÃO CONFIGURADO"
     },
-    "services": {
-      "status": "connected",
-      "message": "5/5 serviços disponíveis",
-      "details": {
-        "services": [
-          {
-            "name": "cache",
-            "exists": true,
-            "path": "C:\\Users\\Claudio\\Desktop\\sacs2.1\\SacsMax\\SacsMax\\backend\\services\\cacheService.js"
-          },
-          {
-            "name": "feedback",
-            "exists": true,
-            "path": "C:\\Users\\Claudio\\Desktop\\sacs2.1\\SacsMax\\SacsMax\\backend\\services\\feedbackService.js"
-          },
-          {
-            "name": "excel",
-            "exists": true,
-            "path": "C:\\Users\\Claudio\\Desktop\\sacs2.1\\SacsMax\\SacsMax\\backend\\services\\excelService.js"
-          },
-          {
-            "name": "network",
-            "exists": true,
-            "path": "C:\\Users\\Claudio\\Desktop\\sacs2.1\\SacsMax\\SacsMax\\backend\\services\\networkService.js"
-          },
-          {
-            "name": "whatsapp",
-            "exists": true,
-            "path": "C:\\Users\\Claudio\\Desktop\\sacs2.1\\SacsMax\\SacsMax\\backend\\services\\whatsappService.js"
-          }
-        ]
-      }
+    "PUPPETEER_EXECUTABLE_PATH": {
+      "present": false,
+      "value": "NÃO CONFIGURADO"
     },
-    "frontend": {
-      "status": "connected",
-      "message": "5/5 arquivos presentes",
-      "details": {
-        "files": [
-          {
-            "file": "frontend/whatsappComponent.js",
-            "exists": true,
-            "path": "C:\\Users\\Claudio\\Desktop\\sacs2.1\\SacsMax\\SacsMax\\frontend\\whatsappComponent.js"
-          },
-          {
-            "file": "frontend/feedback.js",
-            "exists": true,
-            "path": "C:\\Users\\Claudio\\Desktop\\sacs2.1\\SacsMax\\SacsMax\\frontend\\feedback.js"
-          },
-          {
-            "file": "frontend/webInterface.js",
-            "exists": true,
-            "path": "C:\\Users\\Claudio\\Desktop\\sacs2.1\\SacsMax\\SacsMax\\frontend\\webInterface.js"
-          },
-          {
-            "file": "frontend/services/apiService.js",
-            "exists": true,
-            "path": "C:\\Users\\Claudio\\Desktop\\sacs2.1\\SacsMax\\SacsMax\\frontend\\services\\apiService.js"
-          },
-          {
-            "file": "frontend/services/networkService.js",
-            "exists": true,
-            "path": "C:\\Users\\Claudio\\Desktop\\sacs2.1\\SacsMax\\SacsMax\\frontend\\services\\networkService.js"
-          }
-        ]
-      }
+    "WHATSAPP_HEADLESS": {
+      "present": false,
+      "value": "NÃO CONFIGURADO"
+    }
+  },
+  "database": {
+    "connected": false
+  },
+  "whatsapp": {
+    "chromeFound": false
+  },
+  "api": {
+    "local": {
+      "connected": false,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    "railway": {
+      "connected": false
+    }
+  },
+  "files": {
+    "railway.toml": {
+      "exists": true
+    },
+    "docker/Dockerfile.production": {
+      "exists": true
+    },
+    "backend/server.js": {
+      "exists": true
+    },
+    "backend/services/supabaseService.js": {
+      "exists": true
+    },
+    "backend/services/whatsappService.js": {
+      "exists": true
     }
   }
 }

@@ -8,9 +8,9 @@
   },
   "whatsapp": {
     "status": "disconnected",
-    "message": "WhatsApp não inicializado ou desconectado",
+    "message": "Serviço WhatsApp não disponível",
     "details": [
-      "Serviço não inicializado"
+      "Cannot find module 'whatsapp-web.js'\nRequire stack:\n- /home/cloud/Área de trabalho/sacmax2/SacsMax/backend/services/whatsappService.js\n- /home/cloud/Área de trabalho/sacmax2/SacsMax/complete-diagnostic.js"
     ]
   },
   "network": {
@@ -36,11 +36,11 @@
   },
   "services": {
     "status": "partial",
-    "message": "4/4 serviços disponíveis",
+    "message": "2/4 serviços disponíveis",
     "details": [
       "Cache: OK",
-      "Feedback: OK",
-      "Excel: OK",
+      "Feedback: Erro - Cannot find module 'pg'\nRequire stack:\n- /home/cloud/Área de trabalho/sacmax2/SacsMax/backend/config/supabase.js\n- /home/cloud/Área de trabalho/sacmax2/SacsMax/backend/services/feedbackService.js\n- /home/cloud/Área de trabalho/sacmax2/SacsMax/complete-diagnostic.js",
+      "Excel: Erro - Cannot find module 'winston'\nRequire stack:\n- /home/cloud/Área de trabalho/sacmax2/SacsMax/backend/utils/logger.js\n- /home/cloud/Área de trabalho/sacmax2/SacsMax/backend/services/excelProcessor.js\n- /home/cloud/Área de trabalho/sacmax2/SacsMax/complete-diagnostic.js",
       "Network: OK"
     ]
   },

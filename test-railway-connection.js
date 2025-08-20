@@ -1,294 +1,192 @@
 #!/usr/bin/env node
 
-/**
- * Teste de Conexão Railway PostgreSQL - SacsMax
- * Verifica todos os componentes com Railway PostgreSQL
- */
-
+const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const { Client } = require('pg');
 
-// Forçar carregamento do dotenv
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+console.log('🔍 Testando conexão com Railway...\n');
 
-class RailwayConnectionTester {
-    constructor() {
-        this.results = {
-            timestamp: new Date().toISOString(),
-            components: {}
+async function testRailwayConnection() {
+    const results = {
+        environment: {},
+        database: {},
+        whatsapp: {},
+        api: {},
+        files: {}
+    };
+
+    // 1. Verificar variáveis de ambiente
+    console.log('📊 1. Verificando variáveis de ambiente...');
+    const requiredEnvVars = [
+        'DATABASE_URL',
+        'DATABASE_PUBLIC_URL',
+        'RAILWAY_ENVIRONMENT_ID',
+        'RAILWAY_PROJECT_ID',
+        'PUPPETEER_EXECUTABLE_PATH',
+        'WHATSAPP_HEADLESS'
+    ];
+
+    for (const envVar of requiredEnvVars) {
+        const value = process.env[envVar];
+        results.environment[envVar] = {
+            present: !!value,
+            value: value ? (envVar.includes('URL') ? '***CONFIGURADO***' : value) : 'NÃO CONFIGURADO'
         };
+        
+        if (value) {
+            console.log(`   ✅ ${envVar}: ${results.environment[envVar].value}`);
+        } else {
+            console.log(`   ❌ ${envVar}: NÃO CONFIGURADO`);
+        }
     }
 
-    async testAll() {
-        console.log('🔍 Testando conexões Railway PostgreSQL...\n');
+    // 2. Verificar arquivos essenciais
+    console.log('\n📁 2. Verificando arquivos essenciais...');
+    const essentialFiles = [
+        'railway.toml',
+        'docker/Dockerfile.production',
+        'backend/server.js',
+        'backend/services/supabaseService.js',
+        'backend/services/whatsappService.js'
+    ];
 
-        await this.testEnvironment();
-        await this.testRailwayDB();
-        await this.testWhatsApp();
-        await this.testNetwork();
-        await this.testServices();
-        await this.testFrontend();
-
-        this.generateReport();
-        return this.results;
+    for (const file of essentialFiles) {
+        const exists = fs.existsSync(path.join(__dirname, file));
+        results.files[file] = { exists };
+        
+        if (exists) {
+            console.log(`   ✅ ${file}: Presente`);
+        } else {
+            console.log(`   ❌ ${file}: Ausente`);
+        }
     }
 
-    async testEnvironment() {
-        console.log('📋 1. Testando variáveis de ambiente Railway...');
-        
-        const envFile = path.join(__dirname, '.env');
-        const envExists = fs.existsSync(envFile);
-        
-        const requiredVars = [
-            'NODE_ENV',
-            'PORT',
-            'DATABASE_URL',
-            'WHATSAPP_HEADLESS',
-            'MAX_FILE_SIZE'
-        ];
-
-        const missingVars = requiredVars.filter(varName => !process.env[varName]);
-        
-        this.results.components.environment = {
-            status: missingVars.length === 0 ? 'connected' : 'disconnected',
-            message: missingVars.length === 0 ? 'Variáveis Railway configuradas' : `Faltando: ${missingVars.join(', ')}`,
-            details: {
-                envFileExists: envExists,
-                databaseUrl: !!process.env.DATABASE_URL,
-                databasePublicUrl: !!process.env.DATABASE_PUBLIC_URL
-            }
-        };
-
-        console.log(`   ${missingVars.length === 0 ? '✅' : '❌'} ${this.results.components.environment.message}`);
-    }
-
-    async testRailwayDB() {
-        console.log('🚂 2. Testando conexão Railway PostgreSQL...');
-        
+    // 3. Testar conexão com banco de dados (se configurado)
+    console.log('\n🗄️ 3. Testando conexão com banco de dados...');
+    if (process.env.DATABASE_URL) {
         try {
-            const connectionString = process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL;
-            
-            if (!connectionString) {
-                this.results.components.railwayDB = {
-                    status: 'disconnected',
-                    message: 'DATABASE_URL não configurado',
-                    details: { connectionString: false }
-                };
-                console.log('   ❌ DATABASE_URL não configurado');
-                return;
-            }
-
-            const client = new Client({ connectionString });
+            // Teste básico de conexão PostgreSQL
+            const { Client } = require('pg');
+            const client = new Client({ connectionString: process.env.DATABASE_URL });
             await client.connect();
             
-            const result = await client.query('SELECT NOW() as current_time, version()');
+            // Testar query simples
+            const result = await client.query('SELECT NOW() as current_time');
             await client.end();
-
-            this.results.components.railwayDB = {
-                status: 'connected',
-                message: 'Railway PostgreSQL conectado',
-                details: {
-                    timestamp: result.rows[0].current_time,
-                    version: result.rows[0].version
-                }
-            };
-            console.log('   ✅ Railway PostgreSQL conectado');
-
+            
+            results.database.connected = true;
+            results.database.currentTime = result.rows[0].current_time;
+            console.log(`   ✅ Banco conectado: ${result.rows[0].current_time}`);
         } catch (error) {
-            this.results.components.railwayDB = {
-                status: 'disconnected',
-                message: 'Erro ao conectar ao Railway PostgreSQL',
-                details: { error: error.message }
-            };
-            console.log(`   ❌ Erro: ${error.message}`);
+            results.database.connected = false;
+            results.database.error = error.message;
+            console.log(`   ❌ Erro no banco: ${error.message}`);
+        }
+    } else {
+        console.log('   ⚠️  DATABASE_URL não configurada');
+        results.database.connected = false;
+    }
+
+    // 4. Testar WhatsApp (se Chrome estiver disponível)
+    console.log('\n📱 4. Testando configuração do WhatsApp...');
+    const chromePaths = [
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium'
+    ];
+
+    let chromeFound = false;
+    for (const chromePath of chromePaths) {
+        if (fs.existsSync(chromePath)) {
+            results.whatsapp.chromePath = chromePath;
+            results.whatsapp.chromeFound = true;
+            chromeFound = true;
+            console.log(`   ✅ Chrome encontrado: ${chromePath}`);
+            break;
         }
     }
 
-    async testWhatsApp() {
-        console.log('💬 3. Testando WhatsApp...');
-        
-        const whatsappServicePath = path.join(__dirname, 'backend', 'services', 'whatsappService.js');
-        const serviceExists = fs.existsSync(whatsappServicePath);
-        
-        this.results.components.whatsapp = {
-            status: serviceExists ? 'connected' : 'disconnected',
-            message: serviceExists ? 'Serviço WhatsApp disponível' : 'Serviço WhatsApp não encontrado',
-            details: { serviceFile: serviceExists }
-        };
-        
-        console.log(`   ${serviceExists ? '✅' : '❌'} ${this.results.components.whatsapp.message}`);
+    if (!chromeFound) {
+        console.log('   ❌ Chrome não encontrado');
+        results.whatsapp.chromeFound = false;
     }
 
-    async testNetwork() {
-        console.log('🌐 4. Testando conectividade...');
-        
-        const endpoints = [
-            'https://www.google.com',
-            'https://railway.app',
-            'https://8.8.8.8'
-        ];
+    // 5. Testar API local (se estiver rodando)
+    console.log('\n🌐 5. Testando API local...');
+    try {
+        const response = await axios.get('http://localhost:3000/health', { timeout: 5000 });
+        results.api.local = {
+            connected: true,
+            status: response.status,
+            data: response.data
+        };
+        console.log(`   ✅ API local: ${response.status} - ${JSON.stringify(response.data)}`);
+    } catch (error) {
+        results.api.local = {
+            connected: false,
+            error: error.message
+        };
+        console.log(`   ❌ API local: ${error.message}`);
+    }
 
+    // 6. Testar API Railway (se URL estiver disponível)
+    console.log('\n🚄 6. Testando API Railway...');
+    const railwayUrl = process.env.RAILWAY_STATIC_URL;
+    if (railwayUrl) {
         try {
-            const https = require('https');
-            const results = [];
-
-            for (const endpoint of endpoints) {
-                try {
-                    const url = new URL(endpoint);
-                    await new Promise((resolve, reject) => {
-                        const req = https.request({
-                            hostname: url.hostname,
-                            path: '/',
-                            method: 'GET',
-                            timeout: 3000
-                        }, (res) => {
-                            results.push({ endpoint, status: res.statusCode });
-                            resolve();
-                        });
-                        
-                        req.on('error', () => {
-                            results.push({ endpoint, status: 'error' });
-                            resolve();
-                        });
-                        req.on('timeout', () => {
-                            results.push({ endpoint, status: 'timeout' });
-                            resolve();
-                        });
-                        req.end();
-                    });
-                } catch (error) {
-                    results.push({ endpoint, status: 'error' });
-                }
-            }
-
-            const connected = results.filter(r => r.status === 200 || r.status === 302).length;
-            
-            this.results.components.network = {
-                status: connected > 0 ? 'connected' : 'disconnected',
-                message: `${connected}/${endpoints.length} endpoints acessíveis`,
-                details: { results }
+            const response = await axios.get(`${railwayUrl}/health`, { timeout: 10000 });
+            results.api.railway = {
+                connected: true,
+                status: response.status,
+                data: response.data
             };
-            
-            console.log(`   ${connected > 0 ? '✅' : '❌'} ${this.results.components.network.message}`);
-
+            console.log(`   ✅ API Railway: ${response.status} - ${JSON.stringify(response.data)}`);
         } catch (error) {
-            this.results.components.network = {
-                status: 'disconnected',
-                message: 'Erro ao testar rede',
-                details: { error: error.message }
+            results.api.railway = {
+                connected: false,
+                error: error.message
             };
-            console.log(`   ❌ Erro de rede: ${error.message}`);
+            console.log(`   ❌ API Railway: ${error.message}`);
         }
+    } else {
+        console.log('   ⚠️  RAILWAY_STATIC_URL não configurada');
+        results.api.railway = { connected: false };
     }
 
-    async testServices() {
-        console.log('⚙️  5. Testando serviços...');
-        
-        const services = ['cache', 'feedback', 'excel', 'network', 'whatsapp'];
-        const serviceResults = [];
+    // Salvar relatório
+    const reportPath = path.join(__dirname, 'railway-connection-report.json');
+    fs.writeFileSync(reportPath, JSON.stringify(results, null, 2));
 
-        for (const serviceName of services) {
-            const servicePath = path.join(__dirname, 'backend', 'services', `${serviceName}Service.js`);
-            const serviceExists = fs.existsSync(servicePath);
-            
-            serviceResults.push({
-                name: serviceName,
-                exists: serviceExists,
-                path: servicePath
-            });
-        }
-
-        const availableServices = serviceResults.filter(s => s.exists).length;
-        
-        this.results.components.services = {
-            status: availableServices === services.length ? 'connected' : 'partial',
-            message: `${availableServices}/${services.length} serviços disponíveis`,
-            details: { services: serviceResults }
-        };
-        
-        console.log(`   ${availableServices === services.length ? '✅' : '⚠️'} ${this.results.components.services.message}`);
+    console.log('\n📊 RESUMO DO DIAGNÓSTICO:');
+    console.log('='.repeat(50));
+    
+    const envConfigured = Object.values(results.environment).filter(v => v.present).length;
+    const filesPresent = Object.values(results.files).filter(v => v.exists).length;
+    
+    console.log(`📊 Variáveis de ambiente: ${envConfigured}/${requiredEnvVars.length} configuradas`);
+    console.log(`📁 Arquivos essenciais: ${filesPresent}/${essentialFiles.length} presentes`);
+    console.log(`🗄️  Banco de dados: ${results.database.connected ? '✅ Conectado' : '❌ Desconectado'}`);
+    console.log(`📱 WhatsApp: ${results.whatsapp.chromeFound ? '✅ Chrome encontrado' : '❌ Chrome não encontrado'}`);
+    console.log(`🌐 API Local: ${results.api.local.connected ? '✅ Funcionando' : '❌ Não funcionando'}`);
+    console.log(`🚄 API Railway: ${results.api.railway.connected ? '✅ Funcionando' : '❌ Não funcionando'}`);
+    
+    console.log(`\n📄 Relatório completo salvo em: ${reportPath}`);
+    
+    // Recomendações
+    console.log('\n💡 RECOMENDAÇÕES:');
+    if (!results.database.connected) {
+        console.log('   • Configure DATABASE_URL no Railway');
     }
-
-    async testFrontend() {
-        console.log('🎨 6. Testando frontend...');
-        
-        const frontendFiles = [
-            'frontend/whatsappComponent.js',
-            'frontend/feedback.js',
-            'frontend/webInterface.js',
-            'frontend/services/apiService.js',
-            'frontend/services/networkService.js'
-        ];
-
-        const fileResults = [];
-        for (const filePath of frontendFiles) {
-            const fullPath = path.join(__dirname, filePath);
-            const exists = fs.existsSync(fullPath);
-            fileResults.push({ file: filePath, exists, path: fullPath });
-        }
-
-        const availableFiles = fileResults.filter(f => f.exists).length;
-        
-        this.results.components.frontend = {
-            status: availableFiles === frontendFiles.length ? 'connected' : 'partial',
-            message: `${availableFiles}/${frontendFiles.length} arquivos presentes`,
-            details: { files: fileResults }
-        };
-        
-        console.log(`   ${availableFiles === frontendFiles.length ? '✅' : '⚠️'} ${this.results.components.frontend.message}`);
+    if (!results.whatsapp.chromeFound) {
+        console.log('   • Instale Google Chrome no container Railway');
     }
-
-    generateReport() {
-        console.log('\n📊 RESUMO DOS COMPONENTES RAILWAY:\n');
-        
-        const components = Object.keys(this.results.components);
-        const statusCounts = {
-            connected: 0,
-            disconnected: 0,
-            partial: 0
-        };
-
-        components.forEach(component => {
-            const status = this.results.components[component].status;
-            const emoji = {
-                connected: '🟢',
-                disconnected: '🔴',
-                partial: '🟡'
-            }[status];
-            
-            statusCounts[status]++;
-            console.log(`${emoji} ${component.toUpperCase()}: ${this.results.components[component].message}`);
-        });
-
-        console.log(`\n📈 ESTATÍSTICAS RAILWAY:`);
-        console.log(`   Total: ${components.length} componentes`);
-        console.log(`   Conectados: ${statusCounts.connected}`);
-        console.log(`   Desconectados: ${statusCounts.disconnected}`);
-        console.log(`   Parciais: ${statusCounts.partial}`);
-
-        // Salvar relatório
-        const reportPath = path.join(__dirname, 'railway-connection-report.json');
-        fs.writeFileSync(reportPath, JSON.stringify(this.results, null, 2));
-        console.log(`\n📄 Relatório salvo em: ${reportPath}`);
-
-        // Identificar próximos passos
-        const issues = components.filter(c => this.results.components[c].status !== 'connected');
-        if (issues.length > 0) {
-            console.log(`\n📝 PRÓXIMOS PASSOS:`);
-            if (!process.env.DATABASE_URL && !process.env.DATABASE_PUBLIC_URL) {
-                console.log(`   1. Configure DATABASE_URL no Railway: railway variables set DATABASE_URL "postgresql://..."`);
-            }
-            console.log(`   2. Execute: node scripts/setup-railway-db.js`);
-            console.log(`   3. Deploy para Railway: railway up`);
-        }
+    if (!results.api.local.connected) {
+        console.log('   • Inicie o servidor local: npm start');
+    }
+    if (!results.api.railway.connected) {
+        console.log('   • Faça deploy no Railway: railway up');
     }
 }
 
-// Executar testes
-if (require.main === module) {
-    const tester = new RailwayConnectionTester();
-    tester.testAll().catch(console.error);
-}
-
-module.exports = RailwayConnectionTester;
+testRailwayConnection().catch(console.error);
