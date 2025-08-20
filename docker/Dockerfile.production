@@ -1,12 +1,10 @@
-# Dockerfile simplificado para produção
-FROM node:20-slim
+# Dockerfile Python para backend completo
+FROM python:3.11-slim
 
 # Instalar dependências do sistema
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
-    python3 \
-    python3-pip \
     build-essential \
     libpq-dev \
     && wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - \
@@ -18,15 +16,11 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copiar arquivos de dependências
-COPY package*.json ./
+# Copiar requirements primeiro para cache
 COPY python_modules/requirements.txt ./python_modules/
 
-# Instalar dependências Node.js
-RUN npm ci --only=production --no-audit --no-fund
-
-# Instalar dependências Python com --break-system-packages
-RUN pip3 install --break-system-packages --no-cache-dir -r python_modules/requirements.txt
+# Instalar dependências Python
+RUN pip install --no-cache-dir -r python_modules/requirements.txt
 
 # Copiar código fonte
 COPY . .
@@ -35,16 +29,15 @@ COPY . .
 RUN mkdir -p uploads logs config temp_data
 
 # Criar usuário não-root
-RUN groupadd -r nodejs && useradd -r -g nodejs nodejs && \
-    chown -R nodejs:nodejs /app
+RUN groupadd -r appuser && useradd -r -g appuser appuser && \
+    chown -R appuser:appuser /app
 
-USER nodejs
+USER appuser
 
 EXPOSE 3000
 
-ENV NODE_ENV=production
-ENV HOST=0.0.0.0
-ENV PORT=3000
-ENV PYTHON_PATH=python3
+ENV PYTHONPATH=/app/python_modules
+ENV FLASK_APP=server.py
+ENV FLASK_ENV=production
 
-CMD ["npm", "start"]
+CMD ["python", "python_modules/server.py"]
