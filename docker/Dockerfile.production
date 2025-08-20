@@ -1,13 +1,12 @@
-# Multi-stage build otimizado para produção
+# Build otimizado para Railway
 FROM node:20-slim
 
-# Instalar dependências do sistema
+# Instalar dependências essenciais
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
     python3 \
     python3-pip \
-    python3-venv \
     build-essential \
     libpq-dev \
     && wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - \
@@ -19,25 +18,23 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copiar apenas arquivos necessários primeiro
+# Copiar dependências primeiro
 COPY package*.json ./
 COPY python_modules/requirements.txt ./python_modules/
 
-# Instalar dependências Node.js
+# Instalar Node.js dependencies
 RUN npm ci --only=production --no-audit --no-fund
 
-# Criar ambiente virtual Python e instalar dependências
-RUN python3 -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --no-cache-dir -r python_modules/requirements.txt
+# Instalar Python dependencies
+RUN pip3 install --no-cache-dir -r python_modules/requirements.txt
 
-# Copiar código fonte
+# Copiar código
 COPY . .
 
-# Criar diretórios necessários
-RUN mkdir -p uploads logs config temp_data
+# Criar diretórios
+RUN mkdir -p uploads logs config
 
-# Criar usuário não-root
+# Configurar usuário
 RUN groupadd -r nodejs && useradd -r -g nodejs nodejs && \
     chown -R nodejs:nodejs /app
 
@@ -48,6 +45,6 @@ EXPOSE 3000
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
-ENV PYTHON_PATH=/opt/venv/bin/python
+ENV PYTHON_PATH=python3
 
 CMD ["npm", "start"]
