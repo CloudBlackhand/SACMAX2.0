@@ -17,7 +17,11 @@ class WhatsAppService extends EventEmitter {
         try {
             // Configurar caminho do Chrome baseado no ambiente
             let executablePath;
-            if (process.env.RAILWAY_ENVIRONMENT) {
+            
+            // Detectar se está realmente no Railway (não apenas com variáveis definidas)
+            const isRailway = process.env.RAILWAY_ENVIRONMENT_ID && process.platform === 'linux';
+            
+            if (isRailway) {
                 // Railway usa Google Chrome
                 executablePath = '/usr/bin/google-chrome';
             } else if (process.env.PUPPETEER_EXECUTABLE_PATH) {
@@ -28,6 +32,8 @@ class WhatsAppService extends EventEmitter {
                 // Windows - deixar Puppeteer encontrar o Chrome automaticamente
                 executablePath = undefined;
             }
+            
+            logger.info(`Plataforma: ${process.platform}, Railway: ${isRailway}, Chrome path: ${executablePath || 'auto'}`);
 
             this.client = new Client({
                 authStrategy: new LocalAuth({
