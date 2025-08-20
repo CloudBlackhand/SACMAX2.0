@@ -1,0 +1,58 @@
+{
+  "supabase": {
+    "status": "disconnected",
+    "message": "Variáveis de ambiente não configuradas",
+    "details": [
+      "SUPABASE_URL ou SUPABASE_ANON_KEY não definidas"
+    ]
+  },
+  "whatsapp": {
+    "status": "disconnected",
+    "message": "WhatsApp não inicializado ou desconectado",
+    "details": [
+      "Serviço não inicializado"
+    ]
+  },
+  "network": {
+    "status": "partial",
+    "message": "Verificados 3 endpoints",
+    "details": [
+      "https://www.google.com: 200",
+      "https://www.cloudflare.com: 200",
+      "https://8.8.8.8: 302"
+    ]
+  },
+  "environment": {
+    "status": "disconnected",
+    "message": "Variáveis faltando: NODE_ENV, PORT, SUPABASE_URL, SUPABASE_ANON_KEY, WHATSAPP_HEADLESS, MAX_FILE_SIZE",
+    "details": [
+      "NODE_ENV",
+      "PORT",
+      "SUPABASE_URL",
+      "SUPABASE_ANON_KEY",
+      "WHATSAPP_HEADLESS",
+      "MAX_FILE_SIZE"
+    ]
+  },
+  "services": {
+    "status": "partial",
+    "message": "4/4 serviços disponíveis",
+    "details": [
+      "Cache: OK",
+      "Feedback: OK",
+      "Excel: OK",
+      "Network: OK"
+    ]
+  },
+  "frontend": {
+    "status": "partial",
+    "message": "5/5 arquivos presentes",
+    "details": [
+      "frontend/whatsappComponent.js: Presente",
+      "frontend/feedback.js: Presente",
+      "frontend/webInterface.js: Presente",
+      "frontend/services/apiService.js: Presente",
+      "frontend/services/networkService.js: Presente"
+    ]
+  }
+}

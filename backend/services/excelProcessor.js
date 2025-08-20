@@ -96,11 +96,11 @@ class ExcelProcessor {
                 reject(error);
             });
 
-            // Timeout de 30 segundos
+            // Timeout de 120 segundos para arquivos grandes
             setTimeout(() => {
                 pythonProcess.kill('SIGTERM');
                 reject(new Error('Python script timeout'));
-            }, 30000);
+            }, 120000);
         });
     }
 

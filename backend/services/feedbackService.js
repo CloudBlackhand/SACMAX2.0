@@ -1,4 +1,4 @@
-const { supabase, supabaseAdmin } = require('../config/supabase');
+const { createRailwayClient } = require('../config/supabase');
 const logger = require('../utils/logger');
 
 class FeedbackService {
@@ -128,41 +128,11 @@ class FeedbackService {
     // Templates de mensagens
     async getMessageTemplates(category = null) {
         try {
-            if (!supabase) {
-                console.warn('Supabase não configurado, retornando templates padrão');
-                return this.getDefaultTemplates();
-            }
-
-            let query = supabase
-                .from(this.templatesTable)
-                .select('*')
-                .eq('is_active', true);
-
-            if (category) {
-                query = query.eq('category', category);
-            }
-
-            const { data, error } = await query.order('name');
-            
-            if (error) {
-                console.warn('Erro ao buscar templates do Supabase, usando padrões:', error.message);
-                return this.getDefaultTemplates();
-            }
-            
-            return data || this.getDefaultTemplates();
+            // Sempre usar templates padrão pois Supabase foi removido
+            console.log('Usando templates padrão (Supabase não configurado)');
+            return this.getDefaultTemplates();
         } catch (error) {
             logger.error('Erro ao buscar templates:', error.message);
-            // Adicionar retry com backoff exponencial para erros de rede
-            if (error.message && error.message.includes('fetch failed')) {
-                console.warn('Tentando novamente após erro de fetch...');
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                try {
-                    const retry = await supabase.from(this.templatesTable).select('*').eq('is_active', true);
-                    return retry.data || this.getDefaultTemplates();
-                } catch (retryError) {
-                    console.warn('Retry falhou, usando templates padrão');
-                }
-            }
             return this.getDefaultTemplates();
         }
     }
@@ -451,6 +421,66 @@ class FeedbackService {
         } catch (error) {
             logger.error('Erro ao buscar estatísticas:', error);
             throw error;
+        }
+    }
+
+    // Salvar apenas respostas aos feedbacks (não salva mensagens de chat)
+    async saveFeedbackResponse({ contactId, contactName, response, timestamp, type }) {
+        try {
+            const { data, error } = await supabase
+                .from('feedback_responses')
+                .insert({
+                    contact_id: contactId,
+                    contact_name: contactName,
+                    response: response,
+                    response_type: type || 'whatsapp_response',
+                    created_at: timestamp || new Date().toISOString()
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            
+            logger.info('Resposta ao feedback salva:', { contactId, contactName });
+            return data;
+        } catch (error) {
+            logger.error('Erro ao salvar resposta ao feedback:', error);
+            
+            // Fallback: salvar em arquivo local se Supabase não estiver disponível
+            const fs = require('fs');
+            const path = require('path');
+            const responsesFile = path.join(__dirname, '..', 'data', 'feedback_responses.json');
+            
+            // Criar diretório se não existir
+            const dataDir = path.dirname(responsesFile);
+            if (!fs.existsSync(dataDir)) {
+                fs.mkdirSync(dataDir, { recursive: true });
+            }
+            
+            // Ler arquivo existente ou criar novo
+            let responses = [];
+            if (fs.existsSync(responsesFile)) {
+                try {
+                    responses = JSON.parse(fs.readFileSync(responsesFile, 'utf8'));
+                } catch (e) {
+                    responses = [];
+                }
+            }
+            
+            // Adicionar nova resposta
+            const newResponse = {
+                id: Date.now(),
+                contact_id: contactId,
+                contact_name: contactName,
+                response: response,
+                response_type: type || 'whatsapp_response',
+                created_at: timestamp || new Date().toISOString()
+            };
+            
+            responses.push(newResponse);
+            fs.writeFileSync(responsesFile, JSON.stringify(responses, null, 2));
+            
+            return newResponse;
         }
     }
 }

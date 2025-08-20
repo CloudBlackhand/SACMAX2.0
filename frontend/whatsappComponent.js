@@ -657,34 +657,19 @@ class WhatsAppComponent {
     }
 
     async loadMessages(contactId) {
-        try {
-            const response = await fetch(`/api/whatsapp/messages/${contactId}`);
-            const data = await response.json();
-            this.messages = data.messages || [];
-            this.renderMessages();
-        } catch (error) {
-            console.error('Erro ao carregar mensagens:', error);
-            this.messages = this.getMockMessages(contactId);
-            this.renderMessages();
-        }
+        // Não carrega mensagens antigas do banco - apenas inicia conversa limpa
+        this.messages = this.getWelcomeMessages(contactId);
+        this.renderMessages();
     }
 
-    getMockMessages(contactId) {
+    getWelcomeMessages(contactId) {
         return [
             {
                 id: 1,
-                content: 'Olá! Como posso ajudar você?',
+                content: 'Olá! Bem-vindo ao atendimento. Como posso ajudar você hoje?',
                 sender: 'me',
-                timestamp: new Date(Date.now() - 3600000),
+                timestamp: new Date(),
                 status: 'read',
-                type: 'text'
-            },
-            {
-                id: 2,
-                content: 'Preciso de suporte técnico para minha internet',
-                sender: 'contact',
-                timestamp: new Date(Date.now() - 1800000),
-                status: 'delivered',
                 type: 'text'
             }
         ];
@@ -800,6 +785,11 @@ class WhatsAppComponent {
                 message.id = data.messageId;
                 message.status = 'delivered';
                 this.renderMessages();
+                
+                // Salva apenas respostas aos feedbacks
+                if (this.isFeedbackResponse(message.content)) {
+                    this.saveFeedbackResponse(message);
+                }
             }
         } catch (error) {
             console.error('Erro ao enviar mensagem:', error);
@@ -900,6 +890,41 @@ class WhatsAppComponent {
             const show = name.includes(searchTerm.toLowerCase()) || preview.includes(searchTerm.toLowerCase());
             contact.style.display = show ? 'flex' : 'none';
         });
+    }
+
+    isFeedbackResponse(content) {
+        // Identifica se a mensagem é uma resposta a feedback
+        const keywords = ['feedback', 'resposta', 'sugestão', 'avaliação', 'classificação', 'rating', 'review'];
+        return keywords.some(keyword => 
+            content.toLowerCase().includes(keyword.toLowerCase()) ||
+            this.messages.some(msg => 
+                msg.sender === 'contact' && 
+                msg.content.toLowerCase().includes('feedback')
+            )
+        );
+    }
+
+    async saveFeedbackResponse(message) {
+        try {
+            const response = await fetch('/api/feedback/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contactId: this.currentContact.id,
+                    contactName: this.currentContact.name,
+                    response: message.content,
+                    timestamp: message.timestamp,
+                    type: 'whatsapp_response'
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                console.log('Resposta ao feedback salva com sucesso');
+            }
+        } catch (error) {
+            console.error('Erro ao salvar resposta ao feedback:', error);
+        }
     }
 
     startStatusPolling() {

@@ -40,6 +40,7 @@ class SacsMaxServer {
         this.app.use(express.json({ limit: '10mb' }));
         this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
         this.app.use('/uploads', express.static('uploads'));
+        this.app.use(express.static(path.join(__dirname, '../frontend')));
 
         // Configuração de upload
         const storage = multer.diskStorage({

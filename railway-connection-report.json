@@ -1,0 +1,114 @@
+{
+  "timestamp": "2025-08-20T01:24:21.949Z",
+  "components": {
+    "environment": {
+      "status": "disconnected",
+      "message": "Faltando: DATABASE_URL",
+      "details": {
+        "envFileExists": true,
+        "databaseUrl": false,
+        "databasePublicUrl": true
+      }
+    },
+    "railwayDB": {
+      "status": "disconnected",
+      "message": "Erro ao conectar ao Railway PostgreSQL",
+      "details": {
+        "error": ""
+      }
+    },
+    "whatsapp": {
+      "status": "connected",
+      "message": "Serviço WhatsApp disponível",
+      "details": {
+        "serviceFile": true
+      }
+    },
+    "network": {
+      "status": "connected",
+      "message": "2/3 endpoints acessíveis",
+      "details": {
+        "results": [
+          {
+            "endpoint": "https://www.google.com",
+            "status": 200
+          },
+          {
+            "endpoint": "https://railway.app",
+            "status": 301
+          },
+          {
+            "endpoint": "https://8.8.8.8",
+            "status": 302
+          }
+        ]
+      }
+    },
+    "services": {
+      "status": "connected",
+      "message": "5/5 serviços disponíveis",
+      "details": {
+        "services": [
+          {
+            "name": "cache",
+            "exists": true,
+            "path": "C:\\Users\\Claudio\\Desktop\\sacs2.1\\SacsMax\\SacsMax\\backend\\services\\cacheService.js"
+          },
+          {
+            "name": "feedback",
+            "exists": true,
+            "path": "C:\\Users\\Claudio\\Desktop\\sacs2.1\\SacsMax\\SacsMax\\backend\\services\\feedbackService.js"
+          },
+          {
+            "name": "excel",
+            "exists": true,
+            "path": "C:\\Users\\Claudio\\Desktop\\sacs2.1\\SacsMax\\SacsMax\\backend\\services\\excelService.js"
+          },
+          {
+            "name": "network",
+            "exists": true,
+            "path": "C:\\Users\\Claudio\\Desktop\\sacs2.1\\SacsMax\\SacsMax\\backend\\services\\networkService.js"
+          },
+          {
+            "name": "whatsapp",
+            "exists": true,
+            "path": "C:\\Users\\Claudio\\Desktop\\sacs2.1\\SacsMax\\SacsMax\\backend\\services\\whatsappService.js"
+          }
+        ]
+      }
+    },
+    "frontend": {
+      "status": "connected",
+      "message": "5/5 arquivos presentes",
+      "details": {
+        "files": [
+          {
+            "file": "frontend/whatsappComponent.js",
+            "exists": true,
+            "path": "C:\\Users\\Claudio\\Desktop\\sacs2.1\\SacsMax\\SacsMax\\frontend\\whatsappComponent.js"
+          },
+          {
+            "file": "frontend/feedback.js",
+            "exists": true,
+            "path": "C:\\Users\\Claudio\\Desktop\\sacs2.1\\SacsMax\\SacsMax\\frontend\\feedback.js"
+          },
+          {
+            "file": "frontend/webInterface.js",
+            "exists": true,
+            "path": "C:\\Users\\Claudio\\Desktop\\sacs2.1\\SacsMax\\SacsMax\\frontend\\webInterface.js"
+          },
+          {
+            "file": "frontend/services/apiService.js",
+            "exists": true,
+            "path": "C:\\Users\\Claudio\\Desktop\\sacs2.1\\SacsMax\\SacsMax\\frontend\\services\\apiService.js"
+          },
+          {
+            "file": "frontend/services/networkService.js",
+            "exists": true,
+            "path": "C:\\Users\\Claudio\\Desktop\\sacs2.1\\SacsMax\\SacsMax\\frontend\\services\\networkService.js"
+          }
+        ]
+      }
+    }
+  }
+}

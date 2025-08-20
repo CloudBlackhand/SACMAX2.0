@@ -201,6 +201,36 @@ router.get('/stats', async (req, res) => {
     }
 });
 
+// Salvar resposta ao feedback (não salva mensagens de chat, apenas respostas)
+router.post('/save', async (req, res) => {
+    try {
+        const { contactId, contactName, response, timestamp, type } = req.body;
+        
+        if (!contactId || !response) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'ContactId e response são obrigatórios' 
+            });
+        }
+
+        const feedbackResponse = await feedbackService.saveFeedbackResponse({
+            contactId,
+            contactName,
+            response,
+            timestamp: timestamp || new Date(),
+            type: type || 'whatsapp_response'
+        });
+        
+        res.json({ 
+            success: true, 
+            message: 'Resposta ao feedback salva com sucesso',
+            data: feedbackResponse 
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Importar contatos via Excel
 router.post('/contacts/import', upload.single('file'), async (req, res) => {
     try {
