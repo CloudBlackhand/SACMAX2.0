@@ -1,15 +1,8 @@
 [phases.setup]
-nixPkgs = ["python311", "postgresql", "gcc", "gcc-unwrapped", "libpq-dev"]
+nixPkgs = ["python311", "postgresql", "gcc", "libpq-dev"]
 
 [phases.install]
-cmds = [
-    "pip install --no-cache-dir -r requirements.txt"
-]
-
-[phases.build]
-cmds = [
-    "mkdir -p uploads logs whatsapp_sessions"
-]
+cmds = ["pip install --no-cache-dir -r requirements.txt"]
 
 [start]
 cmd = "gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT"

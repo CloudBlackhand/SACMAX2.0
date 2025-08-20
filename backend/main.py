@@ -11,27 +11,6 @@ import uvicorn
 import os
 from pathlib import Path
 
-# Importações condicionais para evitar erros
-try:
-    from app.core.config import settings
-    from app.api.routes import excel, whatsapp, feedback, contacts, auth
-    from app.core.database import engine, Base
-    from app.services.whatsapp_service import WhatsAppService
-    from app.services.excel_service import ExcelService
-except ImportError as e:
-    print(f"⚠️ Erro de importação: {e}")
-    # Criar versões simplificadas para evitar erros
-    settings = None
-    excel = None
-    whatsapp = None
-    feedback = None
-    contacts = None
-    auth = None
-    engine = None
-    Base = None
-    WhatsAppService = None
-    ExcelService = None
-
 app = FastAPI(
     title="SACSMAX API",
     description="Sistema de Automação de Contatos e Feedback",
@@ -43,7 +22,7 @@ app = FastAPI(
 # Configurar CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Em produção, especificar domínios
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -54,28 +33,9 @@ frontend_path = Path("../frontend")
 if frontend_path.exists():
     app.mount("/static", StaticFiles(directory=str(frontend_path)), name="static")
 
-# Incluir rotas da API apenas se os módulos existirem
-if auth:
-    app.include_router(auth.router, prefix="/api/auth", tags=["Autenticação"])
-if excel:
-    app.include_router(excel.router, prefix="/api/excel", tags=["Excel"])
-if whatsapp:
-    app.include_router(whatsapp.router, prefix="/api/whatsapp", tags=["WhatsApp"])
-if feedback:
-    app.include_router(feedback.router, prefix="/api/feedback", tags=["Feedback"])
-if contacts:
-    app.include_router(contacts.router, prefix="/api/contacts", tags=["Contatos"])
-
-# Instâncias globais dos serviços
-whatsapp_service = WhatsAppService() if WhatsAppService else None
-excel_service = ExcelService() if ExcelService else None
-
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    """Página inicial - redireciona para o frontend"""
-    frontend_file = frontend_path / "webInterface.js"
-    if frontend_file.exists():
-        return FileResponse(str(frontend_file), media_type="text/html")
+    """Página inicial"""
     return """
     <html>
         <head><title>SACSMAX</title></head>
@@ -93,42 +53,37 @@ async def health_check():
         "status": "healthy",
         "version": "2.1.0",
         "services": {
-            "database": "connected" if engine else "not_configured",
-            "whatsapp": whatsapp_service.get_status() if whatsapp_service else "not_configured",
-            "excel": "ready" if excel_service else "not_configured"
+            "database": "not_configured",
+            "whatsapp": "not_configured",
+            "excel": "not_configured"
         }
     }
 
-@app.on_event("startup")
-async def startup_event():
-    """Evento de inicialização da aplicação"""
-    print("🚀 SACSMAX Backend iniciando...")
-    
-    # Inicializar serviços apenas se existirem
-    if whatsapp_service:
-        try:
-            await whatsapp_service.initialize()
-        except Exception as e:
-            print(f"⚠️ Erro ao inicializar WhatsApp: {e}")
-    
-    if excel_service:
-        try:
-            await excel_service.initialize()
-        except Exception as e:
-            print(f"⚠️ Erro ao inicializar Excel: {e}")
-    
-    print("✅ SACSMAX Backend iniciado com sucesso!")
+@app.get("/api/test")
+async def test_endpoint():
+    """Endpoint de teste"""
+    return {
+        "message": "SACSMAX API funcionando!",
+        "status": "success"
+    }
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Evento de encerramento da aplicação"""
-    print("🛑 Encerrando SACSMAX Backend...")
-    if whatsapp_service:
-        try:
-            await whatsapp_service.cleanup()
-        except Exception as e:
-            print(f"⚠️ Erro ao limpar WhatsApp: {e}")
-    print("✅ SACSMAX Backend encerrado!")
+@app.post("/api/excel/upload")
+async def upload_excel_file(file: UploadFile = File(...)):
+    """Upload de arquivo Excel (simulado)"""
+    return {
+        "message": "Arquivo recebido (modo simulação)",
+        "filename": file.filename,
+        "size": file.size
+    }
+
+@app.get("/api/whatsapp/status")
+async def whatsapp_status():
+    """Status do WhatsApp (simulado)"""
+    return {
+        "connected": False,
+        "session_active": False,
+        "message": "WhatsApp em modo simulação"
+    }
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
