@@ -13,17 +13,17 @@ const RailwayClientService = require('./services/railwayClientService');
 const logger = require('./utils/logger');
 const cacheService = require('./services/cacheService');
 
-// Importar SupabaseService com fallback
-let SupabaseService;
+// Importar RailwayDatabaseService
+let RailwayDatabaseService;
 try {
-    SupabaseService = require('./services/supabaseService');
+    RailwayDatabaseService = require('./services/railwayDatabaseService');
 } catch (error) {
-    logger.warn('SupabaseService não disponível, usando fallback');
-    // Criar um mock service para quando Supabase não estiver configurado
-    SupabaseService = {
+    logger.warn('RailwayDatabaseService não disponível, usando fallback');
+    // Criar um mock service para quando Railway não estiver configurado
+    RailwayDatabaseService = {
         getAllClients: async () => [],
         getClientData: async () => [],
-        saveSpreadsheetData: async () => ({ total_records: 0, message: 'Supabase não configurado' }),
+        saveSpreadsheetData: async () => ({ total_records: 0, message: 'Railway PostgreSQL não configurado' }),
         getUploadHistory: async () => [],
         deleteClient: async () => ({ success: true })
     };
@@ -45,6 +45,7 @@ class SacsMaxServer {
         this.excelProcessor = new ExcelProcessor();
         this.feedbackClassifier = new FeedbackClassifier();
         this.railwayClientService = new RailwayClientService();
+        this.railwayDatabaseService = new RailwayDatabaseService();
         
         this.setupMiddleware();
         this.setupRoutes();
@@ -159,7 +160,7 @@ class SacsMaxServer {
                 // SALVAR DADOS NO BANCO DE DADOS
                 if (result.contacts && result.contacts.length > 0) {
                     try {
-                        const saveResult = await this.supabaseService.saveSpreadsheetData(
+                        const saveResult = await this.railwayDatabaseService.saveSpreadsheetData(
                             result, 
                             req.file.originalname, 
                             'contacts'
@@ -202,7 +203,7 @@ class SacsMaxServer {
                 // SALVAR DADOS NO BANCO DE DADOS
                 if (result.client_data_by_date && Object.keys(result.client_data_by_date).length > 0) {
                     try {
-                        const saveResult = await this.supabaseService.saveSpreadsheetData(
+                        const saveResult = await this.railwayDatabaseService.saveSpreadsheetData(
                             result, 
                             req.file.originalname, 
                             'client_data'
@@ -247,7 +248,7 @@ class SacsMaxServer {
         // Listar clientes do banco de dados
         this.app.get('/api/clients', async (req, res) => {
             try {
-                const clients = await this.supabaseService.getAllClients();
+                const clients = await this.railwayDatabaseService.getAllClients();
                 res.json({
                     success: true,
                     clients: clients || [],

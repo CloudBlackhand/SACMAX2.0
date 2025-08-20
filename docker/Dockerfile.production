@@ -1,33 +1,41 @@
-# Multi-stage build otimizado para produção
-FROM node:20
+# Dockerfile otimizado para Railway com Chrome
+FROM node:20-slim
 
-# Instalar Google Chrome para WhatsApp
+# Instalar dependências do sistema e Google Chrome
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
+    ca-certificates \
+    procps \
+    libxss1 \
+    libnss3 \
+    libatk-bridge2.0-0 \
+    libgtk-3-0 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libasound2 \
+    libxrandr2 \
+    libxdamage1 \
+    libxfixes3 \
+    libx11-xcb1 \
+    libdrm2 \
+    libgbm1 \
+    libasound2 \
+    libatspi2.0-0 \
+    libxshmfence1 \
     && wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - \
     && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
     && apt-get update \
     && apt-get install -y google-chrome-stable \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
--alpine AS dependencies
-
-# Instalar dependências de compilação
-RUN apk add --no-cache \
+# Instalar Python e dependências
+RUN apt-get update && apt-get install -y \
     python3 \
-    py3-pip \
+    python3-pip \
     python3-dev \
-    py3-wheel \
-    py3-setuptools \
-    make \
-    g++ \
-    gcc \
-    musl-dev \
-    linux-headers \
-    libc6-compat \
-    libffi-dev \
-    openssl-dev
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -35,57 +43,31 @@ WORKDIR /app
 COPY package*.json ./
 COPY python_modules/requirements.txt ./python_modules/
 
-# Remove EXTERNALLY-MANAGED file to allow pip installs in Docker
-RUN rm -f /usr/lib/python*/EXTERNALLY-MANAGED
-
-# Atualizar pip e instalar dependências Python
-RUN pip3 install --upgrade pip setuptools wheel && \
-    pip3 install --no-cache-dir -r python_modules/requirements.txt
+# Instalar dependências Python
+RUN pip3 install --no-cache-dir -r python_modules/requirements.txt
 
 # Instalar dependências Node.js
 RUN npm install --omit=dev --no-audit --no-fund
 
-# Stage de build
-FROM node:20-alpine AS build
-
-WORKDIR /app
-
-# Copiar dependências do stage anterior
-COPY --from=dependencies /app/node_modules ./node_modules
-
 # Copiar código fonte
 COPY . .
 
-# Stage final de produção
-FROM node:20-alpine AS production
+# Criar diretórios necessários
+RUN mkdir -p uploads logs config wwebjs_auth
 
-# Instalar runtime necessário e dependências Python
-RUN apk add --no-cache python3 py3-pip && \
-    pip3 install --break-system-packages --no-cache-dir openpyxl pandas python-dateutil xlrd
+# Verificar se o Chrome foi instalado corretamente
+RUN google-chrome --version
 
-# Criar usuário não-root
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-
-WORKDIR /app
-
-# Copiar requirements.txt apenas para referência
-COPY --from=build /app/python_modules/requirements.txt ./python_modules/
-
-# Copiar dependências e código
-COPY --from=dependencies /app/node_modules ./node_modules
-COPY --from=build /app ./
-
-# Criar diretórios com permissões
-RUN mkdir -p uploads logs config && \
-    chown -R nodejs:nodejs /app
-
-USER nodejs
-
+# Expor porta
 EXPOSE 3000
 
+# Variáveis de ambiente
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV WHATSAPP_HEADLESS=true
 
+# Comando de inicialização
 CMD ["npm", "start"]
