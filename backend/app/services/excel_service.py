@@ -8,6 +8,16 @@ from typing import List, Dict, Any, Optional
 from fastapi import UploadFile, HTTPException
 import logging
 from datetime import datetime
+import sys
+
+# Adicionar o diretório backend ao path para importar excel_reader
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+try:
+    from excel_reader import ExcelReader
+except ImportError:
+    ExcelReader = None
+    logger.warning("ExcelReader não disponível - usando modo simulação")
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -64,39 +74,106 @@ class ExcelService:
             logger.error(f"Erro ao salvar arquivo: {e}")
             raise HTTPException(status_code=500, detail="Erro ao salvar arquivo")
     
-    def read_excel_file(self, file_path: str) -> List[Dict[str, Any]]:
-        """Ler arquivo Excel e retornar dados simulados"""
+    def read_excel_file(self, file_path: str) -> Dict[str, Any]:
+        """Ler arquivo Excel usando ExcelReader"""
         try:
-            # Simular leitura de arquivo Excel
-            # Em produção, usaria pandas para ler o arquivo real
-            contacts = [
-                {
-                    "name": "João Silva",
-                    "phone": "5511999999999",
-                    "email": "joao@exemplo.com",
-                    "company": "Empresa A",
-                    "position": "Gerente"
-                },
-                {
-                    "name": "Maria Santos",
-                    "phone": "5511888888888",
-                    "email": "maria@exemplo.com",
-                    "company": "Empresa B",
-                    "position": "Diretora"
-                },
-                {
-                    "name": "Pedro Costa",
-                    "phone": "5511777777777",
-                    "email": "pedro@exemplo.com",
-                    "company": "Empresa C",
-                    "position": "Analista"
-                }
-            ]
+            if ExcelReader is None:
+                # Modo simulação se ExcelReader não estiver disponível
+                logger.warning("Usando dados simulados - ExcelReader não disponível")
+                return self._get_simulated_data()
             
-            return contacts
+            # Usar ExcelReader real
+            reader = ExcelReader()
+            
+            # Analisar estrutura do arquivo
+            analysis = reader.analyze_excel_structure(file_path)
+            
+            # Extrair contatos prioritariamente da planilha PRODUTIVIDADE
+            all_contacts = []
+            sheets_info = []
+            
+            # Verificar se existe a planilha PRODUTIVIDADE
+            if 'PRODUTIVIDADE' in analysis['sheets'] and analysis['sheets']['PRODUTIVIDADE']['has_data']:
+                # Focar apenas na planilha PRODUTIVIDADE
+                contacts = reader.extract_contacts(file_path, 'PRODUTIVIDADE')
+                all_contacts.extend(contacts)
+                
+                sheets_info.append({
+                    'name': 'PRODUTIVIDADE',
+                    'rows': analysis['sheets']['PRODUTIVIDADE']['total_rows'],
+                    'columns': analysis['sheets']['PRODUTIVIDADE']['total_columns'],
+                    'contacts_found': len(contacts),
+                    'is_primary': True
+                })
+            else:
+                # Fallback: extrair de todas as planilhas se PRODUTIVIDADE não existir
+                for sheet_name in analysis['sheets'].keys():
+                    if analysis['sheets'][sheet_name]['has_data']:
+                        contacts = reader.extract_contacts(file_path, sheet_name)
+                        all_contacts.extend(contacts)
+                        
+                        sheets_info.append({
+                            'name': sheet_name,
+                            'rows': analysis['sheets'][sheet_name]['total_rows'],
+                            'columns': analysis['sheets'][sheet_name]['total_columns'],
+                            'contacts_found': len(contacts),
+                            'is_primary': False
+                        })
+            
+            return {
+                'contacts': all_contacts,
+                'analysis': analysis,
+                'sheets': analysis['sheets'],  # Usar o dicionário de sheets da análise
+                'sheets_info': sheets_info,     # Manter info adicional das sheets
+                'total_contacts': len(all_contacts),
+                'file_info': {
+                    'size': analysis['file_size'],
+                    'sheets_count': analysis['total_sheets']
+                }
+            }
+            
         except Exception as e:
             logger.error(f"Erro ao ler arquivo Excel: {e}")
-            raise HTTPException(status_code=500, detail="Erro ao ler arquivo Excel")
+            # Fallback para dados simulados em caso de erro
+            logger.warning("Usando dados simulados devido ao erro")
+            return self._get_simulated_data()
+    
+    def _get_simulated_data(self) -> Dict[str, Any]:
+        """Retorna dados simulados para fallback"""
+        contacts = [
+            {
+                "id": 1,
+                "name": "João Silva",
+                "phone": "5511999999999",
+                "email": "joao@exemplo.com",
+                "company": "Empresa A",
+                "sheet_name": "Simulação"
+            },
+            {
+                "id": 2,
+                "name": "Maria Santos",
+                "phone": "5511888888888",
+                "email": "maria@exemplo.com",
+                "company": "Empresa B",
+                "sheet_name": "Simulação"
+            },
+            {
+                "id": 3,
+                "name": "Pedro Costa",
+                "phone": "5511777777777",
+                "email": "pedro@exemplo.com",
+                "company": "Empresa C",
+                "sheet_name": "Simulação"
+            }
+        ]
+        
+        return {
+            'contacts': contacts,
+            'analysis': {'simulated': True},
+            'sheets': [{'name': 'Simulação', 'contacts_found': len(contacts)}],
+            'total_contacts': len(contacts),
+            'file_info': {'simulated': True}
+        }
     
     async def process_excel_file(self, file: UploadFile) -> Dict[str, Any]:
         """Processar arquivo Excel completo"""
@@ -106,16 +183,32 @@ class ExcelService:
         # Salvar arquivo
         file_path = await self.save_uploaded_file(file)
         
-        # Ler arquivo (simulado)
-        contacts = self.read_excel_file(file_path)
+        # Ler arquivo usando ExcelReader
+        result = self.read_excel_file(file_path)
         
-        return {
-            "message": "Arquivo processado com sucesso (modo simulação)",
+        # Preparar resposta
+        response = {
+            "message": "Arquivo processado com sucesso",
             "filename": file.filename,
-            "contacts_count": len(contacts),
-            "contacts": contacts,
+            "contacts_count": result['total_contacts'],
+            "contacts": result['contacts'],
+            "sheets": result['sheets'],
+            "file_info": result['file_info'],
             "file_id": 1
         }
+        
+        # Adicionar informações de análise se disponível
+        if 'analysis' in result and not result['analysis'].get('simulated'):
+            response['analysis'] = {
+                'total_sheets': result['analysis']['total_sheets'],
+                'file_size': result['analysis']['file_size'],
+                'analysis_date': result['analysis']['analysis_date']
+            }
+            response['message'] = "Arquivo Excel processado com sucesso"
+        else:
+            response['message'] = "Arquivo processado com sucesso (modo simulação)"
+        
+        return response
     
     async def get_uploaded_files(self) -> List[Dict[str, Any]]:
         """Listar arquivos enviados"""

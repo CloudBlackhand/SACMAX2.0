@@ -13,6 +13,7 @@ import time
 from werkzeug.utils import secure_filename
 from excel_to_database import ExcelToDatabaseConverter
 from database_config import db_manager, init_database, close_database
+from feedback_analyzer import feedback_analyzer
 import logging
 
 app = Flask(__name__)
@@ -260,6 +261,391 @@ def upload_excel():
             "status": "error",
             "message": f"Erro interno: {str(e)}"
         }), 500
+
+@app.route('/api/feedback/analyze', methods=['POST'])
+def analyze_feedback():
+    """Analisa sentimento de uma mensagem"""
+    try:
+        data = request.json
+        message_data = {
+            'text': data.get('text', ''),
+            'contact_id': data.get('contact_id'),
+            'contact_name': data.get('contact_name', 'Cliente'),
+            'contact_phone': data.get('contact_phone', ''),
+            'timestamp': data.get('timestamp', datetime.now().isoformat())
+        }
+        
+        feedback = feedback_analyzer.process_message(message_data)
+        return jsonify(feedback)
+    except Exception as e:
+        logger.error(f"Erro ao analisar feedback: {e}")
+        return jsonify({"error": "Erro ao analisar feedback"}), 500
+
+@app.route('/api/feedback/list', methods=['GET'])
+def list_feedbacks():
+    """Lista todos os feedbacks"""
+    try:
+        # Em produção, buscar do banco de dados
+        # Por enquanto, retorna dados mock
+        feedbacks = [
+            {
+                'id': '1',
+                'contact_id': '1',
+                'contact_name': 'João Silva',
+                'contact_phone': '(11) 99999-9999',
+                'text': 'Excelente atendimento! O técnico foi muito profissional.',
+                'sentiment': 'positive',
+                'score': 0.8,
+                'keywords': ['atendimento', 'profissional'],
+                'date': '2024-01-15 14:30'
+            },
+            {
+                'id': '2',
+                'contact_id': '2',
+                'contact_name': 'Maria Santos',
+                'contact_phone': '(11) 88888-8888',
+                'text': 'Demorou muito para resolver meu problema.',
+                'sentiment': 'negative',
+                'score': 0.6,
+                'keywords': ['demora', 'problema'],
+                'date': '2024-01-14 16:45'
+            }
+        ]
+        return jsonify(feedbacks)
+    except Exception as e:
+        logger.error(f"Erro ao listar feedbacks: {e}")
+        return jsonify({"error": "Erro ao listar feedbacks"}), 500
+
+@app.route('/api/feedback/stats', methods=['GET'])
+def feedback_stats():
+    """Estatísticas dos feedbacks"""
+    try:
+        # Em produção, calcular do banco de dados
+        stats = {
+            'total': 25,
+            'positive': 15,
+            'negative': 5,
+            'neutral': 5,
+            'positive_percent': 60.0,
+            'negative_percent': 20.0,
+            'neutral_percent': 20.0
+        }
+        return jsonify(stats)
+    except Exception as e:
+        logger.error(f"Erro ao obter estatísticas: {e}")
+        return jsonify({"error": "Erro ao obter estatísticas"}), 500
+
+@app.route('/api/contacts/produtividade', methods=['GET'])
+def get_produtividade_contacts():
+    """Busca todos os contatos da tabela produtividade"""
+    try:
+        if not db_manager.connection:
+            return jsonify({"error": "Banco de dados não conectado"}), 500
+        
+        query = """
+            SELECT 
+                id,
+                data,
+                tecnico,
+                servico,
+                sa,
+                documento,
+                nome_cliente,
+                endereco,
+                telefone1,
+                telefone2,
+                plano,
+                status,
+                obs,
+                created_at
+            FROM produtividade 
+            ORDER BY data DESC, nome_cliente
+        """
+        
+        cursor = db_manager.connection.cursor()
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        cursor.close()
+        
+        contacts = []
+        for row in rows:
+            contact = {
+                'id': row[0],
+                'data': row[1].isoformat() if row[1] else None,
+                'tecnico': row[2],
+                'servico': row[3],
+                'sa': row[4],
+                'documento': row[5],
+                'nome_cliente': row[6],
+                'endereco': row[7],
+                'telefone1': row[8],
+                'telefone2': row[9],
+                'plano': row[10],
+                'status': row[11],
+                'obs': row[12],
+                'created_at': row[13].isoformat() if row[13] else None
+            }
+            contacts.append(contact)
+        
+        return jsonify({
+            'success': True,
+            'contacts': contacts,
+            'total': len(contacts)
+        })
+        
+    except Exception as e:
+        logger.error(f"Erro ao buscar contatos da produtividade: {e}")
+        return jsonify({"error": f"Erro ao buscar contatos: {str(e)}"}), 500
+
+@app.route('/api/contacts/search', methods=['GET'])
+def search_contacts():
+    """Busca contatos por termo"""
+    try:
+        search_term = request.args.get('q', '').strip()
+        if not search_term:
+            return jsonify({"error": "Termo de busca não fornecido"}), 400
+        
+        if not db_manager.connection:
+            return jsonify({"error": "Banco de dados não conectado"}), 500
+        
+        query = """
+            SELECT 
+                id,
+                data,
+                tecnico,
+                servico,
+                sa,
+                documento,
+                nome_cliente,
+                endereco,
+                telefone1,
+                telefone2,
+                plano,
+                status,
+                obs
+            FROM produtividade 
+            WHERE 
+                nome_cliente ILIKE %s OR
+                telefone1 ILIKE %s OR
+                telefone2 ILIKE %s OR
+                sa ILIKE %s OR
+                documento ILIKE %s OR
+                endereco ILIKE %s
+            ORDER BY nome_cliente
+        """
+        
+        search_pattern = f'%{search_term}%'
+        cursor = db_manager.connection.cursor()
+        cursor.execute(query, (search_pattern, search_pattern, search_pattern, search_pattern, search_pattern, search_pattern))
+        rows = cursor.fetchall()
+        cursor.close()
+        
+        contacts = []
+        for row in rows:
+            contact = {
+                'id': row[0],
+                'data': row[1].isoformat() if row[1] else None,
+                'tecnico': row[2],
+                'servico': row[3],
+                'sa': row[4],
+                'documento': row[5],
+                'nome_cliente': row[6],
+                'endereco': row[7],
+                'telefone1': row[8],
+                'telefone2': row[9],
+                'plano': row[10],
+                'status': row[11],
+                'obs': row[12]
+            }
+            contacts.append(contact)
+        
+        return jsonify({
+            'success': True,
+            'contacts': contacts,
+            'total': len(contacts),
+            'search_term': search_term
+        })
+        
+    except Exception as e:
+        logger.error(f"Erro ao buscar contatos: {e}")
+        return jsonify({"error": f"Erro ao buscar contatos: {str(e)}"}), 500
+
+@app.route('/api/contacts/<int:contact_id>', methods=['GET'])
+def get_contact_details(contact_id):
+    """Busca detalhes de um contato específico"""
+    try:
+        if not db_manager.connection:
+            return jsonify({"error": "Banco de dados não conectado"}), 500
+        
+        query = """
+            SELECT 
+                id,
+                data,
+                tecnico,
+                servico,
+                sa,
+                documento,
+                nome_cliente,
+                endereco,
+                telefone1,
+                telefone2,
+                plano,
+                status,
+                obs,
+                created_at
+            FROM produtividade 
+            WHERE id = %s
+        """
+        
+        cursor = db_manager.connection.cursor()
+        cursor.execute(query, (contact_id,))
+        row = cursor.fetchone()
+        cursor.close()
+        
+        if not row:
+            return jsonify({"error": "Contato não encontrado"}), 404
+        
+        contact = {
+            'id': row[0],
+            'data': row[1].isoformat() if row[1] else None,
+            'tecnico': row[2],
+            'servico': row[3],
+            'sa': row[4],
+            'documento': row[5],
+            'nome_cliente': row[6],
+            'endereco': row[7],
+            'telefone1': row[8],
+            'telefone2': row[9],
+            'plano': row[10],
+            'status': row[11],
+            'obs': row[12],
+            'created_at': row[13].isoformat() if row[13] else None
+        }
+        
+        return jsonify({
+            'success': True,
+            'contact': contact
+        })
+        
+    except Exception as e:
+        logger.error(f"Erro ao buscar detalhes do contato: {e}")
+        return jsonify({"error": f"Erro ao buscar detalhes do contato: {str(e)}"}), 500
+
+@app.route('/api/messages/save', methods=['POST'])
+def save_message():
+    """Salva uma mensagem no banco de dados"""
+    try:
+        data = request.json
+        contact_id = data.get('contact_id')
+        message_text = data.get('text')
+        is_outgoing = data.get('is_outgoing', False)
+        message_type = data.get('type', 'text')
+        
+        if not contact_id or not message_text:
+            return jsonify({"error": "Dados obrigatórios não fornecidos"}), 400
+        
+        if not db_manager.connection:
+            return jsonify({"error": "Banco de dados não conectado"}), 500
+        
+        # Criar tabela de mensagens se não existir
+        create_messages_table_query = """
+            CREATE TABLE IF NOT EXISTS messages (
+                id SERIAL PRIMARY KEY,
+                contact_id INTEGER NOT NULL,
+                text TEXT NOT NULL,
+                is_outgoing BOOLEAN DEFAULT FALSE,
+                message_type VARCHAR(50) DEFAULT 'text',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (contact_id) REFERENCES produtividade(id)
+            )
+        """
+        
+        cursor = db_manager.connection.cursor()
+        cursor.execute(create_messages_table_query)
+        
+        # Inserir mensagem
+        insert_query = """
+            INSERT INTO messages (contact_id, text, is_outgoing, message_type)
+            VALUES (%s, %s, %s, %s)
+            RETURNING id, created_at
+        """
+        
+        cursor.execute(insert_query, (contact_id, message_text, is_outgoing, message_type))
+        result = cursor.fetchone()
+        db_manager.connection.commit()
+        cursor.close()
+        
+        return jsonify({
+            'success': True,
+            'message_id': result[0],
+            'created_at': result[1].isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Erro ao salvar mensagem: {e}")
+        return jsonify({"error": f"Erro ao salvar mensagem: {str(e)}"}), 500
+
+@app.route('/api/messages/<int:contact_id>', methods=['GET'])
+def get_messages(contact_id):
+    """Busca mensagens de um contato específico"""
+    try:
+        if not db_manager.connection:
+            return jsonify({"error": "Banco de dados não conectado"}), 500
+        
+        # Criar tabela de mensagens se não existir
+        create_messages_table_query = """
+            CREATE TABLE IF NOT EXISTS messages (
+                id SERIAL PRIMARY KEY,
+                contact_id INTEGER NOT NULL,
+                text TEXT NOT NULL,
+                is_outgoing BOOLEAN DEFAULT FALSE,
+                message_type VARCHAR(50) DEFAULT 'text',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (contact_id) REFERENCES produtividade(id)
+            )
+        """
+        
+        cursor = db_manager.connection.cursor()
+        cursor.execute(create_messages_table_query)
+        
+        # Buscar mensagens
+        query = """
+            SELECT 
+                id,
+                text,
+                is_outgoing,
+                message_type,
+                created_at
+            FROM messages 
+            WHERE contact_id = %s
+            ORDER BY created_at ASC
+        """
+        
+        cursor.execute(query, (contact_id,))
+        rows = cursor.fetchall()
+        cursor.close()
+        
+        messages = []
+        for row in rows:
+            message = {
+                'id': row[0],
+                'text': row[1],
+                'is_outgoing': row[2],
+                'type': row[3],
+                'time': row[4].strftime('%H:%M') if row[4] else None,
+                'created_at': row[4].isoformat() if row[4] else None
+            }
+            messages.append(message)
+        
+        return jsonify({
+            'success': True,
+            'messages': messages,
+            'total': len(messages)
+        })
+        
+    except Exception as e:
+        logger.error(f"Erro ao buscar mensagens: {e}")
+        return jsonify({"error": f"Erro ao buscar mensagens: {str(e)}"}), 500
 
 def start_heartbeat():
     """Thread para manter o servidor ativo"""

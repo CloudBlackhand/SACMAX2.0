@@ -110,3 +110,4 @@ def get_database_info():
             'total_tables': 0,
             'error': str(e)
         }
+

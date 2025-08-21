@@ -67,9 +67,17 @@ class SacsMaxApp {
                     <span class="icon">📤</span>
                     Disparo de Mensagens
                 </button>
+                <button class="nav-btn" data-module="feedback">
+                    <span class="icon">📊</span>
+                    Feedbacks
+                </button>
                 <button class="nav-btn" data-module="settings">
                     <span class="icon">⚙️</span>
                     Configurações
+                </button>
+                <button class="nav-btn" data-module="feedback">
+                    <span class="icon">📊</span>
+                    Feedback
                 </button>
             </nav>
             <div class="user-info">
@@ -1415,7 +1423,7 @@ class SacsMaxApp {
 
     loadModules() {
         // Carrega todos os módulos diretamente (sem import dinâmico)
-        const moduleNames = ['dashboard', 'excel', 'whatsapp', 'bot', 'contacts', 'messages', 'settings'];
+        const moduleNames = ['dashboard', 'excel', 'whatsapp', 'bot', 'contacts', 'messages', 'feedback', 'settings'];
         
         for (const moduleName of moduleNames) {
             try {
@@ -1441,6 +1449,7 @@ class SacsMaxApp {
                 return new ContactsModule();
             },
             messages: () => new MessagesModule(),
+            feedback: () => new FeedbackModule(),
             settings: () => new SettingsModule()
         };
 

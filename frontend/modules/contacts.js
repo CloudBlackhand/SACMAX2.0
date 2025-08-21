@@ -26,23 +26,26 @@ class ContactsModule {
         console.log('📊 Carregando dados do PostgreSQL...');
         this.loading = true;
         try {
-            const response = await fetch('/api/database/table/produtividade');
+            const response = await fetch('/api/contacts/produtividade');
             console.log('📡 Resposta da API:', response.status);
             const data = await response.json();
             console.log('📋 Dados recebidos:', data);
             
-            if (data.data && data.data.length > 0) {
-                this.contacts = data.data.map(contact => ({
-                    id: contact.sa,
+            if (data.success && data.contacts && data.contacts.length > 0) {
+                this.contacts = data.contacts.map(contact => ({
+                    id: contact.id.toString(),
                     sa: contact.sa,
                     nome_cliente: contact.nome_cliente,
-                    telefone: contact.telefone || contact.telefone1 || 'N/A',
+                    telefone: contact.telefone1 || contact.telefone2 || 'N/A',
                     tecnico: contact.tecnico,
-                    servico: contact.servico || contact.serviço,
+                    servico: contact.servico,
                     status: contact.status,
                     data: contact.data,
-                    endereco: contact.endereco || contact.endereço,
-                    email: contact.email || 'N/A'
+                    endereco: contact.endereco,
+                    documento: contact.documento,
+                    plano: contact.plano,
+                    obs: contact.obs,
+                    created_at: contact.created_at
                 }));
                 this.filteredContacts = [...this.contacts];
                 console.log(`✅ Carregados ${this.contacts.length} contatos do PostgreSQL:`, this.contacts);

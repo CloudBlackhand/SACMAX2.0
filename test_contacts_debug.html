@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Dados PostgreSQL</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-container { max-width: 1200px; margin: 0 auto; }
+        .debug-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        .info { background: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        #output { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 20px; max-height: 400px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <div class="debug-container">
+        <h1>🐛 Debug - Dados PostgreSQL</h1>
+        
+        <div class="debug-section info">
+            <h3>🔧 Testes Disponíveis</h3>
+            <button onclick="testBackend()">🔧 Testar Backend</button>
+            <button onclick="testProdutividadeData()">📊 Testar Dados Produtividade</button>
+            <button onclick="testContactsModule()">👥 Testar Módulo Contatos</button>
+            <button onclick="clearOutput()">🗑️ Limpar</button>
+        </div>
+        
+        <div id="output">
+            <p>Clique nos botões acima para executar os testes...</p>
+        </div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            output.innerHTML += `<div class="debug-section ${type}">[${timestamp}] ${message}</div>`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function clearOutput() {
+            document.getElementById('output').innerHTML = '<p>Output limpo...</p>';
+        }
+
+        async function testBackend() {
+            log('🔧 Testando conexão com backend...', 'info');
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/health');
+                const data = await response.json();
+                log(`✅ Backend OK: ${data.service} - ${data.status} - DB: ${data.database}`, 'success');
+            } catch (error) {
+                log(`❌ Erro no backend: ${error.message}`, 'error');
+            }
+        }
+
+        async function testProdutividadeData() {
+            log('📊 Testando dados da tabela produtividade...', 'info');
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/database/table/produtividade');
+                const data = await response.json();
+                
+                if (data.data && data.data.length > 0) {
+                    log(`✅ ${data.data.length} registros encontrados na tabela produtividade`, 'success');
+                    
+                    // Mostrar os primeiros 3 registros
+                    data.data.slice(0, 3).forEach((record, index) => {
+                        log(`📋 Registro ${index + 1}: SA=${record.sa}, Nome=${record.nome_cliente}, Técnico=${record.tecnico}`, 'info');
+                    });
+                    
+                    // Mostrar estrutura da tabela
+                    const firstRecord = data.data[0];
+                    const columns = Object.keys(firstRecord);
+                    log(`📋 Colunas da tabela: ${columns.join(', ')}`, 'info');
+                    
+                } else {
+                    log('⚠️ Nenhum dado encontrado na tabela produtividade', 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Erro ao carregar dados: ${error.message}`, 'error');
+            }
+        }
+
+        async function testContactsModule() {
+            log('👥 Testando módulo de contatos...', 'info');
+            
+            try {
+                // Simular o carregamento do módulo
+                const response = await fetch('http://localhost:3001/api/database/table/produtividade');
+                const data = await response.json();
+                
+                if (data.data && data.data.length > 0) {
+                    log(`✅ Módulo carregou ${data.data.length} contatos do PostgreSQL`, 'success');
+                    
+                    // Mapear dados como o módulo faz
+                    const contacts = data.data.map(contact => ({
+                        id: contact.sa,
+                        sa: contact.sa,
+                        nome_cliente: contact.nome_cliente,
+                        telefone: contact.telefone || contact.telefone1 || 'N/A',
+                        tecnico: contact.tecnico,
+                        servico: contact.servico || contact.serviço,
+                        status: contact.status,
+                        data: contact.data,
+                        endereco: contact.endereco || contact.endereço,
+                        email: contact.email || 'N/A'
+                    }));
+                    
+                    log(`✅ ${contacts.length} contatos mapeados corretamente`, 'success');
+                    
+                    // Mostrar alguns contatos mapeados
+                    contacts.slice(0, 2).forEach((contact, index) => {
+                        log(`👤 Contato ${index + 1}: SA=${contact.sa}, Nome=${contact.nome_cliente}, Técnico=${contact.tecnico}`, 'info');
+                    });
+                    
+                } else {
+                    log('⚠️ Nenhum dado encontrado para mapear', 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Erro no módulo: ${error.message}`, 'error');
+            }
+        }
+
+        // Teste automático ao carregar
+        window.onload = function() {
+            log('🚀 Iniciando testes automáticos...', 'info');
+            setTimeout(testBackend, 1000);
+            setTimeout(testProdutividadeData, 2000);
+        };
+    </script>
+</body>
+</html>
+
