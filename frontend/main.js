@@ -1337,6 +1337,78 @@ class SacsMaxApp {
                 color: #6c757d;
                 font-size: 0.875rem;
             }
+
+            /* Estilos específicos para o módulo de contatos */
+            .module-stats {
+                display: flex;
+                gap: 1rem;
+                margin-left: auto;
+            }
+
+            .stat-badge {
+                background: rgba(255,255,255,0.2);
+                padding: 0.5rem 1rem;
+                border-radius: 20px;
+                font-size: 0.9rem;
+                font-weight: 500;
+            }
+
+            .loading-container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 3rem;
+                color: #6c757d;
+            }
+
+            .loading-container .spinner {
+                width: 40px;
+                height: 40px;
+                border: 4px solid #f3f3f3;
+                border-top: 4px solid #667eea;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                margin-bottom: 1rem;
+            }
+
+            .contacts-toolbar {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 2rem;
+                gap: 1rem;
+            }
+
+            .search-section {
+                flex: 1;
+                max-width: 400px;
+            }
+
+            .actions-section {
+                display: flex;
+                gap: 0.5rem;
+            }
+
+            .empty-state {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 3rem;
+                color: #6c757d;
+                text-align: center;
+            }
+
+            .empty-state .icon {
+                font-size: 4rem;
+                margin-bottom: 1rem;
+            }
+
+            .empty-state h3 {
+                margin-bottom: 0.5rem;
+                color: #495057;
+            }
         `;
         document.head.appendChild(style);
     }
@@ -1364,16 +1436,21 @@ class SacsMaxApp {
             excel: () => new ExcelModule(),
             whatsapp: () => new WhatsAppModule(),
             bot: () => new BotModule(),
-            contacts: () => new ContactsModule(),
+            contacts: () => {
+                console.log('🔧 Carregando módulo Contacts v2.1...');
+                return new ContactsModule();
+            },
             messages: () => new MessagesModule(),
             settings: () => new SettingsModule()
         };
 
         if (moduleMap[moduleName]) {
             try {
-                return moduleMap[moduleName]();
+                const module = moduleMap[moduleName]();
+                console.log(`✅ Módulo ${moduleName} carregado com sucesso`);
+                return module;
             } catch (error) {
-                console.error(`Erro ao carregar módulo ${moduleName}:`, error);
+                console.error(`❌ Erro ao carregar módulo ${moduleName}:`, error);
                 return this.createFallbackModule(moduleName);
             }
         }

@@ -31,13 +31,19 @@ def check_dependencies():
 def install_node_dependencies():
     """Instala dependências do Node.js se necessário"""
     if (FRONTEND_DIR / 'package.json').exists():
+        # Verifica se node_modules já existe
+        if (FRONTEND_DIR / 'node_modules').exists():
+            print("✅ Dependências do frontend já instaladas")
+            return True
+            
         print("📦 Instalando dependências do frontend...")
         try:
-            subprocess.run(['npm', 'install'], cwd=FRONTEND_DIR, check=True)
+            subprocess.run(['npm', 'install'], cwd=FRONTEND_DIR, check=True, shell=True)
             print("✅ Dependências do frontend instaladas")
-        except subprocess.CalledProcessError as e:
-            print(f"❌ Erro ao instalar dependências do frontend: {e}")
-            return False
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            print(f"⚠️ Aviso: Erro ao instalar dependências do frontend: {e}")
+            print("⚠️ Continuando sem instalar dependências...")
+            return True  # Continua mesmo com erro
     return True
 
 def start_backend():
@@ -69,10 +75,10 @@ def start_frontend():
     if (FRONTEND_DIR / 'package.json').exists():
         print("🌐 Iniciando servidor frontend...")
         try:
-            # Usa npx serve para servir os arquivos estáticos
+            # Usa serve para servir os arquivos estáticos
             frontend_process = subprocess.Popen([
-                'npx', 'serve', '-s', str(FRONTEND_DIR), '-l', str(PORT)
-            ])
+                'serve', '-s', str(FRONTEND_DIR), '-l', str(PORT)
+            ], shell=True)
             
             print(f"✅ Frontend iniciado na porta {PORT}")
             return frontend_process
