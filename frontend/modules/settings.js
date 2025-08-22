@@ -280,6 +280,9 @@ class SettingsModule {
                             <button class="btn btn-danger" onclick="window.SacsMaxApp.currentModule.disconnectWhatsApp()">
                                 ❌ Desconectar
                             </button>
+                            <button class="btn btn-info" onclick="window.SacsMaxApp.currentModule.viewWhatsAppChat()">
+                                💬 Ver Chat
+                            </button>
                             <button class="btn btn-secondary" onclick="window.SacsMaxApp.currentModule.exportWhatsAppLog()">
                                 📋 Log de Conexão
                             </button>
@@ -1216,57 +1219,96 @@ if (!document.getElementById('settings-styles')) {
 }
 
 // Métodos para WhatsApp
-SettingsModule.prototype.generateQRCode = function() {
+SettingsModule.prototype.generateQRCode = async function() {
     const qrDisplay = document.getElementById('qr-code-display');
     const statusDot = document.getElementById('whatsapp-status-dot');
     const statusText = document.getElementById('whatsapp-status-text');
     
-    // Simula geração do QR Code
-    statusDot.className = 'status-dot connecting';
-    statusText.textContent = 'Gerando QR Code...';
-    
-    qrDisplay.innerHTML = `
-        <div class="qr-code">
-            <div class="qr-placeholder">
-                <span class="qr-icon">📱</span>
-                <p>QR Code sendo gerado...</p>
-                <div class="qr-loading"></div>
-            </div>
-        </div>
-    `;
-    
-    // Simula delay de geração
-    setTimeout(() => {
+    try {
+        statusDot.className = 'status-dot connecting';
+        statusText.textContent = 'Conectando ao WhatsApp...';
+        
         qrDisplay.innerHTML = `
             <div class="qr-code">
-                <div class="qr-image">
-                    <div style="width: 200px; height: 200px; background: #f0f0f0; border: 2px solid #ddd; display: flex; align-items: center; justify-content: center; font-size: 3rem;">
-                        📱
-                    </div>
+                <div class="qr-placeholder">
+                    <span class="qr-icon">📱</span>
+                    <p>Conectando ao WhatsApp...</p>
+                    <div class="qr-loading"></div>
                 </div>
-                <p>Escaneie o QR Code com seu WhatsApp</p>
-                <small>Este código expira em 2 minutos</small>
             </div>
         `;
         
-        statusDot.className = 'status-dot connecting';
-        statusText.textContent = 'Aguardando conexão...';
-    }, 2000);
+        // 1. Criar sessão WhatsApp
+        const createResponse = await fetch('http://localhost:3001/api/sessions/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionName: 'sacmax' })
+        });
+        
+        if (!createResponse.ok) {
+            throw new Error('Falha ao criar sessão WhatsApp');
+        }
+        
+        // 2. Obter QR Code
+        const qrResponse = await fetch('http://localhost:3001/api/sessions/sacmax/qr');
+        if (!qrResponse.ok) {
+            throw new Error('Falha ao obter QR Code');
+        }
+        
+        const qrData = await qrResponse.json();
+        
+        if (qrData.success && qrData.qrCode) {
+            qrDisplay.innerHTML = `
+                <div class="qr-code">
+                    <div class="qr-image">
+                        <img src="data:image/png;base64,${qrData.qrCode}" alt="QR Code WhatsApp" style="width: 200px; height: 200px;">
+                    </div>
+                    <p>Escaneie o QR Code com seu WhatsApp</p>
+                    <small>Este código expira em 2 minutos</small>
+                </div>
+            `;
+            
+            statusDot.className = 'status-dot connecting';
+            statusText.textContent = 'Aguardando conexão...';
+            
+            // Verificar conexão periodicamente
+            this.checkWhatsAppConnection();
+            
+        } else {
+            throw new Error('QR Code não disponível');
+        }
+        
+    } catch (error) {
+        console.error('Erro ao gerar QR Code:', error);
+        qrDisplay.innerHTML = `
+            <div class="qr-code">
+                <div class="qr-error">
+                    <span class="qr-icon">❌</span>
+                    <p>Erro ao conectar: ${error.message}</p>
+                    <button class="btn btn-primary" onclick="window.SacsMaxApp.currentModule.generateQRCode()">
+                        🔄 Tentar Novamente
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        statusDot.className = 'status-dot';
+        statusText.textContent = 'Erro de conexão';
+    }
 };
 
-SettingsModule.prototype.checkConnection = function() {
+SettingsModule.prototype.checkConnection = async function() {
     const statusDot = document.getElementById('whatsapp-status-dot');
     const statusText = document.getElementById('whatsapp-status-text');
     
-    // Simula verificação de conexão
-    statusDot.className = 'status-dot connecting';
-    statusText.textContent = 'Verificando conexão...';
-    
-    setTimeout(() => {
-        // Simula resultado aleatório
-        const isConnected = Math.random() > 0.5;
+    try {
+        statusDot.className = 'status-dot connecting';
+        statusText.textContent = 'Verificando conexão...';
         
-        if (isConnected) {
+        const response = await fetch('http://localhost:3001/api/sessions/sacmax/status');
+        const data = await response.json();
+        
+        if (data.success && data.status === 'connected') {
             statusDot.className = 'status-dot connected';
             statusText.textContent = 'Conectado';
             this.showNotification('WhatsApp conectado com sucesso!', 'success');
@@ -1275,7 +1317,34 @@ SettingsModule.prototype.checkConnection = function() {
             statusText.textContent = 'Desconectado';
             this.showNotification('WhatsApp não está conectado', 'error');
         }
-    }, 1500);
+    } catch (error) {
+        console.error('Erro ao verificar conexão:', error);
+        statusDot.className = 'status-dot';
+        statusText.textContent = 'Erro de conexão';
+        this.showNotification('Erro ao verificar status do WhatsApp', 'error');
+    }
+};
+
+SettingsModule.prototype.checkWhatsAppConnection = function() {
+    // Verificar conexão a cada 5 segundos
+    this.connectionInterval = setInterval(async () => {
+        try {
+            const response = await fetch('http://localhost:3001/api/sessions/sacmax/status');
+            const data = await response.json();
+            
+            const statusDot = document.getElementById('whatsapp-status-dot');
+            const statusText = document.getElementById('whatsapp-status-text');
+            
+            if (data.success && data.status === 'connected') {
+                statusDot.className = 'status-dot connected';
+                statusText.textContent = 'Conectado';
+                this.showNotification('WhatsApp conectado com sucesso!', 'success');
+                clearInterval(this.connectionInterval);
+            }
+        } catch (error) {
+            console.error('Erro na verificação periódica:', error);
+        }
+    }, 5000);
 };
 
 SettingsModule.prototype.connectWhatsApp = function() {
@@ -1283,20 +1352,85 @@ SettingsModule.prototype.connectWhatsApp = function() {
     this.showNotification('Iniciando conexão com WhatsApp...', 'info');
 };
 
-SettingsModule.prototype.disconnectWhatsApp = function() {
+SettingsModule.prototype.disconnectWhatsApp = async function() {
     const statusDot = document.getElementById('whatsapp-status-dot');
     const statusText = document.getElementById('whatsapp-status-text');
     const qrDisplay = document.getElementById('qr-code-display');
     
-    statusDot.className = 'status-dot';
-    statusText.textContent = 'Desconectado';
-    
-    qrDisplay.innerHTML = `
-        <span class="qr-icon">📱</span>
-        <p>Clique em "Gerar QR Code" para conectar</p>
-    `;
-    
-    this.showNotification('WhatsApp desconectado', 'info');
+    try {
+        // Parar verificação periódica
+        if (this.connectionInterval) {
+            clearInterval(this.connectionInterval);
+        }
+        
+        // Remover sessão WhatsApp
+        const response = await fetch('http://localhost:3001/api/sessions/sacmax/remove', {
+            method: 'DELETE'
+        });
+        
+        statusDot.className = 'status-dot';
+        statusText.textContent = 'Desconectado';
+        
+        qrDisplay.innerHTML = `
+            <div class="qr-code">
+                <span class="qr-icon">📱</span>
+                <p>Clique em "Gerar QR Code" para conectar</p>
+            </div>
+        `;
+        
+        this.showNotification('WhatsApp desconectado com sucesso', 'success');
+        
+    } catch (error) {
+        console.error('Erro ao desconectar WhatsApp:', error);
+        this.showNotification('Erro ao desconectar WhatsApp', 'error');
+    }
+};
+
+SettingsModule.prototype.viewWhatsAppChat = async function() {
+    try {
+        const response = await fetch('http://localhost:3001/api/sessions/sacmax/chat-history');
+        const data = await response.json();
+        
+        if (data.success && data.messages) {
+            const chatWindow = window.open('', '_blank', 'width=800,height=600');
+            chatWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>WhatsApp Chat - SacsMax</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        .chat-container { max-width: 600px; margin: 0 auto; }
+                        .message { margin: 10px 0; padding: 10px; border-radius: 10px; }
+                        .received { background: #f0f0f0; }
+                        .sent { background: #dcf8c6; text-align: right; }
+                        .timestamp { font-size: 12px; color: #666; }
+                        .contact { font-weight: bold; color: #075e54; }
+                    </style>
+                </head>
+                <body>
+                    <div class="chat-container">
+                        <h2>💬 Histórico do WhatsApp</h2>
+                        <div id="messages">
+                            ${data.messages.map(msg => `
+                                <div class="message ${msg.fromMe ? 'sent' : 'received'}">
+                                    <div class="contact">${msg.fromMe ? 'Você' : msg.from}</div>
+                                    <div class="content">${msg.body}</div>
+                                    <div class="timestamp">${new Date(msg.timestamp).toLocaleString()}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `);
+        } else {
+            this.showNotification('Nenhuma mensagem encontrada', 'info');
+        }
+    } catch (error) {
+        console.error('Erro ao carregar chat:', error);
+        this.showNotification('Erro ao carregar histórico do chat', 'error');
+    }
 };
 
 SettingsModule.prototype.exportWhatsAppLog = function() {

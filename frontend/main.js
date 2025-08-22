@@ -51,17 +51,14 @@ class SacsMaxApp {
                     <span class="icon">📁</span>
                     Upload Excel
                 </button>
-                <button class="nav-btn" data-module="whatsapp">
-                    <span class="icon">💬</span>
-                    WhatsApp
-                </button>
+
                 <button class="nav-btn" data-module="bot">
                     <span class="icon">🤖</span>
                     Configurar Bot
                 </button>
-                <button class="nav-btn" data-module="contacts">
-                    <span class="icon">👥</span>
-                    Contatos
+                <button class="nav-btn" data-module="produtividade">
+                    <span class="icon">📊</span>
+                    Produtividade
                 </button>
                 <button class="nav-btn" data-module="messages">
                     <span class="icon">📤</span>
@@ -1423,7 +1420,7 @@ class SacsMaxApp {
 
     loadModules() {
         // Carrega todos os módulos diretamente (sem import dinâmico)
-        const moduleNames = ['dashboard', 'excel', 'whatsapp', 'bot', 'contacts', 'messages', 'feedback', 'settings'];
+        const moduleNames = ['dashboard', 'excel', 'bot', 'produtividade', 'messages', 'feedback', 'settings'];
         
         for (const moduleName of moduleNames) {
             try {
@@ -1442,11 +1439,10 @@ class SacsMaxApp {
         const moduleMap = {
             dashboard: () => new DashboardModule(),
             excel: () => new ExcelModule(),
-            whatsapp: () => new WhatsAppModule(),
             bot: () => new BotModule(),
-            contacts: () => {
-                console.log('🔧 Carregando módulo Contacts v2.1...');
-                return new ContactsModule();
+            produtividade: () => {
+                console.log('🔧 Carregando módulo Produtividade v2.1...');
+                return new ProdutividadeModule();
             },
             messages: () => new MessagesModule(),
             feedback: () => new FeedbackModule(),

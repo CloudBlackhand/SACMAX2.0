@@ -1,4 +1,4 @@
-// Módulo WhatsApp - Interface idêntica ao WhatsApp Web
+// Módulo WhatsApp - Interface idêntica ao WhatsApp Web com API REAL
 
 class WhatsAppModule {
     constructor() {
@@ -12,6 +12,162 @@ class WhatsAppModule {
         this.filteredContacts = [];
         this.showEmojiPicker = false;
         this.showAttachmentMenu = false;
+        this.sessionName = 'sacmax';
+        this.qrCode = null;
+        this.sessionStatus = 'disconnected';
+        
+        // Inicializar WhatsApp
+        this.initWhatsApp();
+    }
+
+    async initWhatsApp() {
+        try {
+            // Verificar status do WhatsApp
+            await this.checkWhatsAppStatus();
+            
+            // Se não estiver conectado, iniciar sessão
+            if (!this.isConnected) {
+                await this.startWhatsAppSession();
+            }
+        } catch (error) {
+            console.error('Erro ao inicializar WhatsApp:', error);
+        }
+    }
+
+    async checkWhatsAppStatus() {
+        try {
+            const response = await fetch('/api/whatsapp/status');
+            const status = await response.json();
+            
+            this.isConnected = status.connected;
+            this.sessionStatus = status.session_active ? 'connected' : 'disconnected';
+            
+            console.log('Status WhatsApp:', status);
+        } catch (error) {
+            console.error('Erro ao verificar status:', error);
+        }
+    }
+
+    async startWhatsAppSession() {
+        try {
+            console.log('Iniciando sessão WhatsApp...');
+            
+            const response = await fetch('/api/whatsapp/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ session_name: this.sessionName })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                console.log('Sessão iniciada:', result);
+                this.sessionStatus = 'qr_ready';
+                
+                // Obter QR Code
+                await this.getQRCode();
+            } else {
+                console.error('Erro ao iniciar sessão:', result);
+            }
+        } catch (error) {
+            console.error('Erro ao iniciar sessão WhatsApp:', error);
+        }
+    }
+
+    async getQRCode() {
+        try {
+            const response = await fetch('/api/whatsapp/qr');
+            const result = await response.json();
+            
+            if (result.qr_code) {
+                this.qrCode = result.qr_code;
+                this.showQRCodeModal();
+            }
+        } catch (error) {
+            console.error('Erro ao obter QR Code:', error);
+        }
+    }
+
+    showQRCodeModal() {
+        const modal = document.createElement('div');
+        modal.className = 'qr-modal';
+        modal.innerHTML = `
+            <div class="qr-modal-content">
+                <h3>Conecte seu WhatsApp</h3>
+                <p>Escaneie o QR Code com seu WhatsApp</p>
+                <img src="${this.qrCode}" alt="QR Code" />
+                <button onclick="this.closeQRModal()">Fechar</button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Verificar status periodicamente
+        this.checkConnectionInterval = setInterval(() => {
+            this.checkWhatsAppStatus();
+            if (this.isConnected) {
+                this.closeQRModal();
+                clearInterval(this.checkConnectionInterval);
+            }
+        }, 3000);
+    }
+
+    closeQRModal() {
+        const modal = document.querySelector('.qr-modal');
+        if (modal) {
+            modal.remove();
+        }
+        if (this.checkConnectionInterval) {
+            clearInterval(this.checkConnectionInterval);
+        }
+    }
+
+    async sendMessage(phone, message) {
+        try {
+            const response = await fetch('/api/whatsapp/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    phone: phone,
+                    message: message,
+                    type: 'text'
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                console.log('Mensagem enviada:', result);
+                return result;
+            } else {
+                console.error('Erro ao enviar mensagem:', result);
+                throw new Error(result.message);
+            }
+        } catch (error) {
+            console.error('Erro ao enviar mensagem:', error);
+            throw error;
+        }
+    }
+
+    async getChatHistory(phone, limit = 50) {
+        try {
+            const response = await fetch(`/api/whatsapp/chat/${phone}?limit=${limit}`);
+            const result = await response.json();
+            
+            if (result.success) {
+                return result.messages;
+            } else {
+                console.error('Erro ao obter histórico:', result);
+                return [];
+            }
+        } catch (error) {
+            console.error('Erro ao obter histórico:', error);
+            return [];
+        }
     }
 
     render() {
@@ -25,21 +181,18 @@ class WhatsAppModule {
                         </div>
                         <div class="wa-header-title">
                             <h2>SACMAX - Comunicação</h2>
-                            <span class="wa-status">${this.isConnected ? 'Sistema Ativo' : 'Sistema Inativo'}</span>
+                            <span class="wa-status ${this.isConnected ? 'connected' : 'disconnected'}">
+                                ${this.isConnected ? 'WhatsApp Conectado' : 'WhatsApp Desconectado'}
+                            </span>
                         </div>
                     </div>
                     <div class="wa-header-right">
-                        <button class="wa-header-btn" onclick="this.toggleStatus()">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                            </svg>
-                        </button>
-                        <button class="wa-header-btn" onclick="this.showNewChat()">
+                        <button class="wa-header-btn" onclick="whatsappModule.showNewChat()">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                             </svg>
                         </button>
-                        <button class="wa-header-btn" onclick="this.showMenu()">
+                        <button class="wa-header-btn" onclick="whatsappModule.showMenu()">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
                             </svg>
@@ -63,11 +216,11 @@ class WhatsAppModule {
                                        id="contact-search"
                                        placeholder="Pesquisar ou começar uma nova conversa"
                                        value="${this.searchTerm}" />
-                                <button class="wa-search-filter" onclick="this.showFilterMenu()">
+                                <button class="wa-search-filter" onclick="whatsappModule.showFilterMenu()">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/>
                                     </svg>
-                            </button>
+                                </button>
                             </div>
                         </div>
                         
@@ -78,63 +231,39 @@ class WhatsAppModule {
                     </div>
                     
                     <!-- Área de Chat -->
-                                    <div class="wa-chat-area">
+                    <div class="wa-chat-area">
                         ${this.currentChat ? this.renderChatArea() : this.renderWelcomeScreen()}
                     </div>
                 
-                ${this.currentChat ? this.renderClientInfoPanel() : ''}
+                    ${this.currentChat ? this.renderClientInfoPanel() : ''}
                 </div>
                 
                 <!-- Menu de Anexos -->
                 <div class="wa-attachment-menu" id="attachment-menu" style="display: none;">
-                    <div class="wa-attachment-item" onclick="this.attachDocument()">
+                    <div class="wa-attachment-item" onclick="whatsappModule.attachDocument()">
                         <div class="wa-attachment-icon document">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
                             </svg>
                         </div>
                         <span>Documento</span>
-                                </div>
-                    <div class="wa-attachment-item" onclick="this.attachCamera()">
+                    </div>
+                    <div class="wa-attachment-item" onclick="whatsappModule.attachCamera()">
                         <div class="wa-attachment-icon camera">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M12 12m-3.2 0a3.2 3.2 0 1 0 6.4 0a3.2 3.2 0 1 0 -6.4 0"/>
                                 <path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
                             </svg>
-                            </div>
+                        </div>
                         <span>Câmera</span>
-                            </div>
-                    <div class="wa-attachment-item" onclick="this.attachGallery()">
+                    </div>
+                    <div class="wa-attachment-item" onclick="whatsappModule.attachGallery()">
                         <div class="wa-attachment-icon gallery">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                                <path d="M22 16V4c0-1.1-.9-2-2-2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2zm-11-4l2.03 2.71L16 11l4 5H8l3-4zM2 6v14c0 1.1.9 2 2 2h14v-2H4V6H2z"/>
                             </svg>
-                                </div>
+                        </div>
                         <span>Galeria</span>
-                            </div>
-                    <div class="wa-attachment-item" onclick="this.attachAudio()">
-                        <div class="wa-attachment-icon audio">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/>
-                            </svg>
-                            </div>
-                        <span>Áudio</span>
-                        </div>
-                    <div class="wa-attachment-item" onclick="this.attachLocation()">
-                        <div class="wa-attachment-icon location">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                            </svg>
-                        </div>
-                        <span>Localização</span>
-                    </div>
-                    <div class="wa-attachment-item" onclick="this.attachContact()">
-                        <div class="wa-attachment-icon contact">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A1.5 1.5 0 0 0 18.54 8H17c-.8 0-1.54.37-2.01 1l-1.7 2.26V16h-1.5v6h5zM12.5 11.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5S11 9.17 11 10s.67 1.5 1.5 1.5zM5.5 6c1.11 0 2-.89 2-2s-.89-2-2-2-2 .89-2 2 .89 2 2 2zm2 16v-7H9V9c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v6.5h1.5V22h4z"/>
-                            </svg>
-                        </div>
-                        <span>Contato</span>
                     </div>
                 </div>
             </div>
@@ -2266,6 +2395,52 @@ const whatsappStyles = `
             opacity: 1;
         }
     }
+
+    .qr-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+    }
+
+    .qr-modal-content {
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        text-align: center;
+        max-width: 400px;
+        width: 90%;
+    }
+
+    .qr-modal-content img {
+        max-width: 100%;
+        height: auto;
+        margin: 1rem 0;
+    }
+
+    .qr-modal-content button {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 1rem;
+    }
+
+    .wa-status.connected {
+        color: #28a745;
+    }
+
+    .wa-status.disconnected {
+        color: #dc3545;
+    }
 `;
 
 // Adiciona os estilos ao documento
@@ -2275,5 +2450,75 @@ if (!document.getElementById('whatsapp-styles')) {
     style.textContent = whatsappStyles;
     document.head.appendChild(style);
 }
+
+// Métodos para integração com WhatsApp real
+WhatsAppModule.prototype.toggleConnection = async function() {
+    if (this.isConnected) {
+        await this.stopWhatsAppSession();
+    } else {
+        await this.startWhatsAppSession();
+    }
+};
+
+WhatsAppModule.prototype.stopWhatsAppSession = async function() {
+    try {
+        const response = await fetch('/api/whatsapp/stop', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            this.isConnected = false;
+            this.sessionStatus = 'disconnected';
+            console.log('Sessão WhatsApp parada:', result);
+        }
+    } catch (error) {
+        console.error('Erro ao parar sessão WhatsApp:', error);
+    }
+};
+
+WhatsAppModule.prototype.showNewChat = function() {
+    console.log('Novo chat');
+};
+
+WhatsAppModule.prototype.showMenu = function() {
+    console.log('Menu');
+};
+
+WhatsAppModule.prototype.showFilterMenu = function() {
+    console.log('Filtros');
+};
+
+WhatsAppModule.prototype.attachDocument = function() {
+    console.log('Anexar documento');
+};
+
+WhatsAppModule.prototype.attachCamera = function() {
+    console.log('Anexar câmera');
+};
+
+WhatsAppModule.prototype.attachGallery = function() {
+    console.log('Anexar galeria');
+};
+
+WhatsAppModule.prototype.renderContactsList = function() {
+    return '<div>Lista de contatos</div>';
+};
+
+WhatsAppModule.prototype.renderChatArea = function() {
+    return '<div>Área de chat</div>';
+};
+
+WhatsAppModule.prototype.renderWelcomeScreen = function() {
+    return '<div>Tela de boas-vindas</div>';
+};
+
+WhatsAppModule.prototype.renderClientInfoPanel = function() {
+    return '<div>Painel de informações</div>';
+};
 
 export default WhatsAppModule;

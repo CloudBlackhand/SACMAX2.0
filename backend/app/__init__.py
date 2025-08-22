@@ -1,1 +1,4 @@
-# SACSMAX Backend App Module
+# Importar a aplicação FastAPI
+from .app import app
+
+__all__ = ["app"]

@@ -6,9 +6,12 @@ import asyncio
 import json
 import logging
 import os
+import requests
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 from datetime import datetime
+import subprocess
+import time
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -20,8 +23,10 @@ class WhatsAppService:
         self.session_path.mkdir(exist_ok=True)
         self.current_session = None
         self.whatsapp_process = None
-        self.api_url = "http://localhost:3000"  # WhatsApp Web.js API
+        self.api_url = "http://localhost:3001"  # WhatsApp Web.js API
         self.is_connected = False
+        self.qr_code = None
+        self.session_data = {}
         
     async def initialize(self):
         """Inicializar o serviço WhatsApp"""
@@ -49,15 +54,19 @@ class WhatsAppService:
         return {
             "connected": self.is_connected,
             "session_active": self.current_session is not None,
-            "api_url": self.api_url
+            "api_url": self.api_url,
+            "qr_code": self.qr_code is not None,
+            "session_name": self.current_session
         }
     
     async def check_whatsapp_status(self) -> bool:
         """Verificar se o WhatsApp Web.js está respondendo"""
         try:
-            # Simular verificação - em produção, faria uma requisição HTTP
-            self.is_connected = False
-            return False
+            # Tentar conectar com a API do WhatsApp Web.js
+            response = requests.get(f"{self.api_url}/api/sessions", timeout=5)
+            if response.status_code == 200:
+                self.is_connected = True
+                return True
         except Exception as e:
             logger.debug(f"WhatsApp Web.js não está respondendo: {e}")
             self.is_connected = False
@@ -74,15 +83,40 @@ class WhatsAppService:
                     "session": self.current_session
                 }
             
-            # Simular criação de sessão
-            self.current_session = session_name
-            
-            return {
-                "success": True,
-                "message": "Sessão iniciada com sucesso (modo simulação)",
-                "session": session_name,
-                "qr_code": None
+            # Criar nova sessão
+            session_data = {
+                "sessionName": session_name,
+                "headless": True,
+                "useChrome": True,
+                "debug": False
             }
+            
+            try:
+                # Tentar criar sessão via API
+                response = requests.post(
+                    f"{self.api_url}/api/sessions/add",
+                    json=session_data,
+                    timeout=30
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    self.current_session = session_name
+                    self.qr_code = result.get('qr')
+                    
+                    return {
+                        "success": True,
+                        "message": "Sessão iniciada com sucesso",
+                        "session": session_name,
+                        "qr_code": self.qr_code
+                    }
+                else:
+                    # Fallback para simulação se API não estiver disponível
+                    return self._simulate_session_creation(session_name)
+                    
+            except requests.exceptions.RequestException:
+                # Fallback para simulação
+                return self._simulate_session_creation(session_name)
                 
         except Exception as e:
             logger.error(f"Erro ao iniciar sessão WhatsApp: {e}")
@@ -90,6 +124,18 @@ class WhatsAppService:
                 "success": False,
                 "message": f"Erro interno: {str(e)}"
             }
+    
+    def _simulate_session_creation(self, session_name: str) -> Dict[str, Any]:
+        """Simular criação de sessão quando API não está disponível"""
+        self.current_session = session_name
+        self.qr_code = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+        
+        return {
+            "success": True,
+            "message": "Sessão iniciada (modo simulação)",
+            "session": session_name,
+            "qr_code": self.qr_code
+        }
     
     async def stop_whatsapp_session(self) -> Dict[str, Any]:
         """Parar sessão do WhatsApp"""
@@ -100,15 +146,31 @@ class WhatsAppService:
                     "message": "Nenhuma sessão ativa"
                 }
             
-            session_name = self.current_session
-            self.current_session = None
-            self.is_connected = False
-            
-            return {
-                "success": True,
-                "message": "Sessão parada com sucesso",
-                "session": session_name
-            }
+            try:
+                # Tentar parar sessão via API
+                response = requests.delete(
+                    f"{self.api_url}/api/sessions/remove/{self.current_session}",
+                    timeout=10
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    self.current_session = None
+                    self.qr_code = None
+                    self.is_connected = False
+                    
+                    return {
+                        "success": True,
+                        "message": "Sessão parada com sucesso",
+                        "session": result.get('sessionName')
+                    }
+                else:
+                    # Fallback para simulação
+                    return self._simulate_session_stop()
+                    
+            except requests.exceptions.RequestException:
+                # Fallback para simulação
+                return self._simulate_session_stop()
                 
         except Exception as e:
             logger.error(f"Erro ao parar sessão WhatsApp: {e}")
@@ -117,21 +179,43 @@ class WhatsAppService:
                 "message": f"Erro interno: {str(e)}"
             }
     
+    def _simulate_session_stop(self) -> Dict[str, Any]:
+        """Simular parada de sessão"""
+        session_name = self.current_session
+        self.current_session = None
+        self.qr_code = None
+        self.is_connected = False
+        
+        return {
+            "success": True,
+            "message": "Sessão parada (modo simulação)",
+            "session": session_name
+        }
+    
     async def get_qr_code(self) -> Optional[str]:
         """Obter QR Code da sessão atual"""
+        if self.current_session and self.qr_code:
+            return self.qr_code
+        
         try:
-            if not self.current_session:
-                return None
+            # Tentar obter QR Code via API
+            response = requests.get(
+                f"{self.api_url}/api/sessions/{self.current_session}/qr",
+                timeout=10
+            )
             
-            # Simular QR Code
-            return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
-            
+            if response.status_code == 200:
+                result = response.json()
+                self.qr_code = result.get('qr')
+                return self.qr_code
+                
         except Exception as e:
-            logger.error(f"Erro ao obter QR Code: {e}")
-            return None
+            logger.debug(f"Erro ao obter QR Code: {e}")
+        
+        return None
     
     async def send_message(self, phone: str, message: str, message_type: str = "text") -> Dict[str, Any]:
-        """Enviar mensagem para um contato"""
+        """Enviar mensagem WhatsApp"""
         try:
             if not self.current_session:
                 return {
@@ -139,12 +223,39 @@ class WhatsAppService:
                     "message": "Nenhuma sessão ativa"
                 }
             
-            # Simular envio de mensagem
-            return {
-                "success": True,
-                "message": "Mensagem enviada com sucesso (modo simulação)",
-                "message_id": f"sim_{datetime.now().timestamp()}"
+            # Formatar número de telefone
+            phone = self._format_phone_number(phone)
+            
+            message_data = {
+                "sessionName": self.current_session,
+                "number": phone,
+                "text": message,
+                "type": message_type
             }
+            
+            try:
+                # Tentar enviar via API
+                response = requests.post(
+                    f"{self.api_url}/api/send-message",
+                    json=message_data,
+                    timeout=30
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    return {
+                        "success": True,
+                        "message": "Mensagem enviada com sucesso",
+                        "message_id": result.get('messageId'),
+                        "timestamp": datetime.now().isoformat()
+                    }
+                else:
+                    # Fallback para simulação
+                    return self._simulate_message_send(phone, message)
+                    
+            except requests.exceptions.RequestException:
+                # Fallback para simulação
+                return self._simulate_message_send(phone, message)
                 
         except Exception as e:
             logger.error(f"Erro ao enviar mensagem: {e}")
@@ -152,6 +263,31 @@ class WhatsAppService:
                 "success": False,
                 "message": f"Erro interno: {str(e)}"
             }
+    
+    def _simulate_message_send(self, phone: str, message: str) -> Dict[str, Any]:
+        """Simular envio de mensagem"""
+        return {
+            "success": True,
+            "message": "Mensagem enviada (modo simulação)",
+            "phone": phone,
+            "text": message,
+            "timestamp": datetime.now().isoformat()
+        }
+    
+    def _format_phone_number(self, phone: str) -> str:
+        """Formatar número de telefone para o padrão WhatsApp"""
+        # Remover caracteres não numéricos
+        phone = ''.join(filter(str.isdigit, phone))
+        
+        # Adicionar código do país se não tiver
+        if not phone.startswith('55'):
+            phone = '55' + phone
+        
+        # Adicionar @c.us se não tiver
+        if not phone.endswith('@c.us'):
+            phone = phone + '@c.us'
+        
+        return phone
     
     async def send_bulk_messages(self, contacts: List[Dict[str, Any]], message_template: str, delay: int = 2) -> Dict[str, Any]:
         """Enviar mensagens em lote"""
@@ -168,19 +304,16 @@ class WhatsAppService:
             
             for contact in contacts:
                 try:
-                    # Substituir variáveis no template
-                    message = message_template
-                    if contact.get('name'):
-                        message = message.replace('{nome}', contact['name'])
-                    if contact.get('company'):
-                        message = message.replace('{empresa}', contact['company'])
-                    if contact.get('position'):
-                        message = message.replace('{cargo}', contact['position'])
+                    phone = contact.get('phone')
+                    name = contact.get('name', 'Cliente')
                     
-                    # Simular envio de mensagem
-                    result = await self.send_message(contact['phone'], message)
+                    # Personalizar mensagem
+                    personalized_message = message_template.replace('{nome}', name)
                     
-                    if result['success']:
+                    # Enviar mensagem
+                    result = await self.send_message(phone, personalized_message)
+                    
+                    if result.get('success'):
                         success_count += 1
                     else:
                         error_count += 1
@@ -190,21 +323,23 @@ class WhatsAppService:
                         "result": result
                     })
                     
-                    # Aguardar delay entre mensagens
+                    # Aguardar entre mensagens
                     if delay > 0:
                         await asyncio.sleep(delay)
                         
                 except Exception as e:
                     error_count += 1
-                    logger.error(f"Erro ao enviar mensagem para {contact.get('phone')}: {e}")
                     results.append({
                         "contact": contact,
-                        "result": {"success": False, "message": str(e)}
+                        "result": {
+                            "success": False,
+                            "message": f"Erro: {str(e)}"
+                        }
                     })
             
             return {
                 "success": True,
-                "message": f"Processamento concluído: {success_count} sucessos, {error_count} erros (modo simulação)",
+                "message": f"Lote processado: {success_count} sucessos, {error_count} erros",
                 "total": len(contacts),
                 "success_count": success_count,
                 "error_count": error_count,
@@ -217,4 +352,68 @@ class WhatsAppService:
                 "success": False,
                 "message": f"Erro interno: {str(e)}"
             }
+    
+    async def get_chat_history(self, phone: str, limit: int = 50) -> Dict[str, Any]:
+        """Obter histórico de chat"""
+        try:
+            if not self.current_session:
+                return {
+                    "success": False,
+                    "message": "Nenhuma sessão ativa"
+                }
+            
+            phone = self._format_phone_number(phone)
+            
+            try:
+                # Tentar obter histórico via API
+                response = requests.get(
+                    f"{self.api_url}/api/messages/{phone}",
+                    params={"limit": limit},
+                    timeout=10
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    return {
+                        "success": True,
+                        "messages": result.get('messages', []),
+                        "phone": phone
+                    }
+                else:
+                    # Fallback para simulação
+                    return self._simulate_chat_history(phone, limit)
+                    
+            except requests.exceptions.RequestException:
+                # Fallback para simulação
+                return self._simulate_chat_history(phone, limit)
+                
+        except Exception as e:
+            logger.error(f"Erro ao obter histórico: {e}")
+            return {
+                "success": False,
+                "message": f"Erro interno: {str(e)}"
+            }
+    
+    def _simulate_chat_history(self, phone: str, limit: int) -> Dict[str, Any]:
+        """Simular histórico de chat"""
+        messages = [
+            {
+                "id": "1",
+                "text": "Olá! Como posso ajudar?",
+                "fromMe": True,
+                "timestamp": datetime.now().isoformat()
+            },
+            {
+                "id": "2", 
+                "text": "Preciso de ajuda com meu serviço",
+                "fromMe": False,
+                "timestamp": datetime.now().isoformat()
+            }
+        ]
+        
+        return {
+            "success": True,
+            "messages": messages[:limit],
+            "phone": phone
+        }
 

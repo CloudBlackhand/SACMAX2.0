@@ -21,9 +21,8 @@
   "author": "SacsMax Team",
   "license": "MIT",
   "dependencies": {
-    "serve": "^14.2.1"
+    "serve": "^14.2.4"
   },
-  "devDependencies": {},
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=8.0.0"
