@@ -27,6 +27,7 @@ env/
 ENV/
 env.bak/
 venv.bak/
+sacsmax_env/
 
 # Node.js
 node_modules/
@@ -35,6 +36,10 @@ yarn-debug.log*
 yarn-error.log*
 .npm
 .yarn-integrity
+
+# WhatsApp Web.js
+.wwebjs_auth/
+.wwebjs_cache/
 
 # Environment variables
 .env
@@ -62,6 +67,9 @@ Thumbs.db
 # Logs
 *.log
 logs/
+backend.log
+frontend.log
+whatsapp.log
 
 # Runtime data
 pids
@@ -98,4 +106,3 @@ jspm_packages/
 
 # Temporary files
 *.tmp
-*.temp
