@@ -1,3 +1,2 @@
-2025/08/21-14:33:05.202 2fdce Reusing MANIFEST /home/cloud/Área de trabalho/sacmaxnew/SACMAX2.0/.wwebjs_auth/session-sacmax/Default/Local Storage/leveldb/MANIFEST-000001
-2025/08/21-14:33:05.202 2fdce Recovering log #3
-2025/08/21-14:33:05.203 2fdce Reusing old log /home/cloud/Área de trabalho/sacmaxnew/SACMAX2.0/.wwebjs_auth/session-sacmax/Default/Local Storage/leveldb/000003.log 
+2025/08/24-14:43:23.629 4f60 Creating DB c:\Users\Cloud\Desktop\MAX SAC1\SACMAX2.0\.wwebjs_auth\session-sacmax\Default\Local Storage\leveldb since it was missing.
+2025/08/24-14:43:23.638 4f60 Reusing MANIFEST c:\Users\Cloud\Desktop\MAX SAC1\SACMAX2.0\.wwebjs_auth\session-sacmax\Default\Local Storage\leveldb/MANIFEST-000001

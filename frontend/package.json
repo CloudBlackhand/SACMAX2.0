@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Frontend do sistema SacsMax - Sistema de Gestão de SAC",
   "main": "main.js",
-  "type": "module",
+  "type": "commonjs",
   "scripts": {
     "start": "npx serve -s . -l $PORT",
     "dev": "npx serve -s . -l 3000",

@@ -5,7 +5,7 @@ SacsMax Backend - Ponto de entrada principal
 
 import uvicorn
 import os
-from app import app
+from app.app import app
 
 if __name__ == "__main__":
     PORT = int(os.environ.get('BACKEND_PORT', 5000))

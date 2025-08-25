@@ -1,507 +1,406 @@
-// Módulo Bot - Configuração de chatbot e respostas automáticas
+// Módulo Bot - Configuração de horário de funcionamento e respostas automáticas
 
 class BotModule {
     constructor() {
         this.botConfig = {
             enabled: true,
-            name: 'SacsMax Bot',
-            welcomeMessage: 'Olá! Sou o assistente virtual da SacsMax. Como posso ajudá-lo?',
-            autoReplies: [],
-            keywords: [],
             workingHours: {
                 enabled: true,
                 start: '08:00',
-                end: '18:00',
-                timezone: 'America/Sao_Paulo'
+                end: '18:00'
             },
-            fallbackMessage: 'Desculpe, não entendi sua mensagem. Um técnico entrará em contato em breve.'
+            offHoursMessage: 'Estamos fora do horário de atendimento. Retornaremos em breve.'
         };
-        this.testMode = false;
-        this.testMessages = [];
+        
+        // URLs dos serviços - Detecta automaticamente as portas
+        this.whatsappUrl = this.detectWhatsAppUrl();
+        this.backendUrl = 'http://localhost:5000';
+        
+        // Status de conexão
+        this.whatsappConnected = false;
+        this.backendConnected = false;
+    }
+
+    detectWhatsAppUrl() {
+        // Tenta detectar a porta do WhatsApp server
+        const possiblePorts = [3001, 3002, 3003, 3004, 3005];
+        
+        // Por enquanto, usa a porta 3001 que está funcionando
+        return 'http://localhost:3001';
     }
 
     render() {
         return `
             <div class="module-container fade-in">
                 <div class="module-header">
-                    <span class="module-icon">🤖</span>
+                    <div class="header-content">
+                        <div class="header-left">
+                            <div class="bot-avatar">🤖</div>
+                            <div class="header-text">
                     <h2 class="module-title">Configurar Bot</h2>
-                    <div class="bot-status">
-                        <span class="status-indicator ${this.botConfig.enabled ? 'online' : 'offline'}"></span>
-                        <span class="status-text">${this.botConfig.enabled ? 'Ativo' : 'Inativo'}</span>
+                                <p class="module-subtitle">Automação de respostas fora do horário</p>
                     </div>
                 </div>
-                
-                <!-- Status do Bot -->
-                <div class="card">
-                    <div class="bot-status-card">
-                        <div class="bot-info">
-                            <div class="bot-avatar">🤖</div>
-                            <div class="bot-details">
-                                <h3>${this.botConfig.name}</h3>
-                                <p>Assistente Virtual Inteligente</p>
-                                <div class="bot-stats">
-                                    <span class="stat">📝 ${this.botConfig.autoReplies.length} respostas</span>
-                                    <span class="stat">🔑 ${this.botConfig.keywords.length} palavras-chave</span>
-                                    <span class="stat">⏰ ${this.botConfig.workingHours.enabled ? 'Horário configurado' : '24h'}</span>
+                        <div class="header-right">
+                            <div class="bot-status-badge ${this.botConfig.enabled ? 'active' : 'inactive'}">
+                                <span class="status-dot"></span>
+                                ${this.botConfig.enabled ? 'Ativo' : 'Inativo'}
                                 </div>
                             </div>
                         </div>
-                        <div class="bot-controls">
-                            <button class="btn ${this.botConfig.enabled ? 'btn-success' : 'btn-secondary'}" 
-                                    onclick="this.toggleBot()">
-                                ${this.botConfig.enabled ? '🟢 Ativo' : '🔴 Inativo'}
-                            </button>
-                            <button class="btn btn-primary" onclick="this.testBot()">
-                                🧪 Testar Bot
-                            </button>
+                        </div>
+                
+                <!-- Status dos Serviços -->
+                <div class="services-grid">
+                    <div class="service-card ${this.whatsappConnected ? 'connected' : 'disconnected'}">
+                        <div class="service-icon">💬</div>
+                        <div class="service-info">
+                            <h3>WhatsApp Server</h3>
+                            <p>${this.whatsappConnected ? 'Conectado' : 'Desconectado'}</p>
+                    </div>
+                        <div class="service-status">
+                            <span class="status-indicator ${this.whatsappConnected ? 'online' : 'offline'}"></span>
+                </div>
+                        </div>
+                        
+                    <div class="service-card ${this.backendConnected ? 'connected' : 'disconnected'}">
+                        <div class="service-icon">⚙️</div>
+                        <div class="service-info">
+                            <h3>Backend API</h3>
+                            <p>${this.backendConnected ? 'Conectado' : 'Desconectado'}</p>
+                        </div>
+                        <div class="service-status">
+                            <span class="status-indicator ${this.backendConnected ? 'online' : 'offline'}"></span>
                         </div>
                     </div>
-                </div>
-                
-                <!-- Configurações Principais -->
-                <div class="grid grid-2">
-                    <div class="card">
-                        <h3>⚙️ Configurações Básicas</h3>
-                        
-                        <div class="form-group">
-                            <label class="form-label">Nome do Bot:</label>
-                            <input type="text" class="form-input" id="bot-name" 
-                                   value="${this.botConfig.name}" />
                         </div>
                         
-                        <div class="form-group">
-                            <label class="form-label">Mensagem de Boas-vindas:</label>
-                            <textarea class="form-input" id="welcome-message" rows="3"
-                                    placeholder="Digite a mensagem de boas-vindas...">${this.botConfig.welcomeMessage}</textarea>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">Mensagem de Fallback:</label>
-                            <textarea class="form-input" id="fallback-message" rows="3"
-                                    placeholder="Mensagem quando o bot não entende...">${this.botConfig.fallbackMessage}</textarea>
-                        </div>
-                        
-                        <button class="btn btn-primary" onclick="this.saveBasicConfig()">
-                            💾 Salvar Configurações
-                        </button>
+                <!-- Configuração Principal -->
+                <div class="config-section">
+                    <div class="section-header">
+                        <h3>⚙️ Configuração Principal</h3>
+                        <p>Configure o comportamento automático do bot</p>
                     </div>
                     
-                    <div class="card">
-                        <h3>⏰ Horário de Funcionamento</h3>
-                        
-                        <div class="form-group">
-                            <label class="form-label">
+                    <div class="config-grid">
+                        <div class="config-card">
+                            <div class="config-header">
+                                <h4>🕐 Horário de Funcionamento</h4>
+                                <label class="toggle-switch">
                                 <input type="checkbox" id="working-hours-enabled" 
                                        ${this.botConfig.workingHours.enabled ? 'checked' : ''} />
-                                Ativar horário de funcionamento
+                                    <span class="toggle-slider"></span>
                             </label>
                         </div>
                         
-                        <div class="time-config">
-                            <div class="form-group">
-                                <label class="form-label">Horário de Início:</label>
-                                <input type="time" class="form-input" id="start-time" 
+                            <div class="time-config" id="time-config">
+                                <div class="time-inputs">
+                                    <div class="time-input-group">
+                                        <label>Início</label>
+                                        <input type="time" class="time-input" id="start-time" 
                                        value="${this.botConfig.workingHours.start}" />
                             </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">Horário de Fim:</label>
-                                <input type="time" class="form-input" id="end-time" 
+                                    <div class="time-separator">até</div>
+                                    <div class="time-input-group">
+                                        <label>Fim</label>
+                                        <input type="time" class="time-input" id="end-time" 
                                        value="${this.botConfig.workingHours.end}" />
                             </div>
+                        </div>
+                        
+                                <div class="timezone-info">
+                                    <label>Fuso Horário</label>
+                                    <div class="timezone-display">São Paulo (GMT-3)</div>
+                        </div>
+                    </div>
+                </div>
+                
+                        <div class="config-card">
+                            <div class="config-header">
+                                <h4>💬 Resposta Automática</h4>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="bot-enabled" 
+                                           ${this.botConfig.enabled ? 'checked' : ''} />
+                                    <span class="toggle-slider"></span>
+                                </label>
+                        </div>
+                        
+                            <div class="message-config">
+                                <label>Mensagem Fora do Horário</label>
+                                <textarea class="message-input" id="off-hours-message" rows="4"
+                                        placeholder="Digite a mensagem que será enviada automaticamente...">${this.botConfig.offHoursMessage}</textarea>
+                                <small class="input-help">Esta mensagem será enviada para novos contatos fora do horário de funcionamento</small>
+                                </div>
+                                </div>
+                            </div>
                             
-                            <div class="form-group">
-                                <label class="form-label">Fuso Horário:</label>
-                                <select class="form-input" id="timezone">
-                                    <option value="America/Sao_Paulo" selected>Brasília (GMT-3)</option>
-                                    <option value="America/Manaus">Manaus (GMT-4)</option>
-                                    <option value="America/Belem">Belém (GMT-3)</option>
-                                </select>
+                    <div class="action-buttons">
+                        <button class="btn btn-primary btn-save" onclick="botModule.saveBotConfig()">
+                            <span class="btn-icon">💾</span>
+                            Salvar Configuração
+                        </button>
+                        <button class="btn btn-secondary" onclick="botModule.syncWithWhatsApp()">
+                            <span class="btn-icon">🔄</span>
+                            Sincronizar
+                            </button>
+                    </div>
+                </div>
+                
+                <!-- Teste em Tempo Real -->
+                <div class="test-section">
+                    <div class="section-header">
+                        <h3>🧪 Teste em Tempo Real</h3>
+                        <p>Verifique o status atual do bot</p>
+                        </div>
+                        
+                    <div class="test-dashboard">
+                        <div class="test-card current-time-card">
+                            <div class="test-icon">🕐</div>
+                            <div class="test-content">
+                                <h4>Horário Atual</h4>
+                                <div class="time-display" id="current-time">${formatTime(new Date())}</div>
+                        </div>
+                    </div>
+                    
+                        <div class="test-card status-card">
+                            <div class="test-icon">📊</div>
+                            <div class="test-content">
+                                <h4>Status do Bot</h4>
+                                <div class="status-display" id="bot-status-test">
+                                    <span class="status-badge ${this.isWithinWorkingHours() ? 'working' : 'offline'}">
+                                        ${this.isWithinWorkingHours() ? '🟢 Dentro do Horário' : '🔴 Fora do Horário'}
+                                    </span>
+                    </div>
                             </div>
                         </div>
                         
-                        <div class="form-group">
-                            <label class="form-label">Mensagem Fora do Horário:</label>
-                            <textarea class="form-input" id="off-hours-message" rows="3"
-                                    placeholder="Mensagem quando estiver fora do horário...">Estamos fora do horário de atendimento. Retornaremos em breve.</textarea>
+                        <div class="test-card message-preview-card">
+                            <div class="test-icon">💬</div>
+                            <div class="test-content">
+                                <h4>Mensagem de Resposta</h4>
+                                <div class="message-preview" id="message-preview">
+                                    ${this.isWithinWorkingHours() ? 'Bot ativo - Sem resposta automática' : this.botConfig.offHoursMessage}
+                            </div>
+                        </div>
+                            </div>
                         </div>
                         
-                        <button class="btn btn-primary" onclick="this.saveTimeConfig()">
-                            💾 Salvar Horários
+                    <div class="test-actions">
+                        <button class="btn btn-test" onclick="botModule.testBotResponse()">
+                            <span class="btn-icon">🧪</span>
+                            Testar Resposta
+                        </button>
+                        <button class="btn btn-refresh" onclick="botModule.refreshStatus()">
+                            <span class="btn-icon">🔄</span>
+                            Atualizar Status
                         </button>
                     </div>
                 </div>
                 
-                <!-- Respostas Automáticas -->
-                <div class="card">
-                    <h3>💬 Respostas Automáticas</h3>
-                    <p class="section-description">
-                        Configure respostas automáticas baseadas em palavras-chave ou frases específicas.
-                    </p>
-                    
-                    <div class="auto-replies-container">
-                        <div class="auto-replies-list" id="auto-replies-list">
-                            ${this.renderAutoReplies()}
+                <!-- Logs do Sistema -->
+                <div class="logs-section">
+                    <div class="section-header">
+                        <h3>📋 Logs do Sistema</h3>
+                        <p>Histórico de atividades e eventos</p>
                         </div>
                         
-                        <div class="add-reply-section">
-                            <h4>➕ Adicionar Nova Resposta</h4>
-                            <div class="grid grid-2">
-                                <div class="form-group">
-                                    <label class="form-label">Palavras-chave:</label>
-                                    <input type="text" class="form-input" id="new-keywords" 
-                                           placeholder="Ex: preço, orçamento, valor" />
-                                    <small class="form-help">Separe múltiplas palavras com vírgula</small>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label class="form-label">Resposta:</label>
-                                    <textarea class="form-input" id="new-reply" rows="3"
-                                            placeholder="Digite a resposta automática..."></textarea>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">
-                                    <input type="checkbox" id="new-reply-priority" />
-                                    Resposta prioritária (sobrescreve outras)
-                                </label>
-                            </div>
-                            
-                            <button class="btn btn-success" onclick="this.addAutoReply()">
-                                ➕ Adicionar Resposta
+                    <div class="logs-container">
+                        <div class="logs-header">
+                            <div class="logs-stats">
+                                <span class="log-stat">Total: <span id="total-logs">0</span></span>
+                                <span class="log-stat">Hoje: <span id="today-logs">0</span></span>
+                        </div>
+                            <button class="btn btn-clear" onclick="botModule.clearLogs()">
+                                <span class="btn-icon">🗑️</span>
+                                Limpar Logs
                             </button>
                         </div>
-                    </div>
-                </div>
-                
-                <!-- Teste do Bot -->
-                <div class="card" id="test-section" style="display: none;">
-                    <h3>🧪 Teste do Bot</h3>
-                    <p class="section-description">
-                        Teste as respostas do bot em tempo real.
-                    </p>
-                    
-                    <div class="test-container">
-                        <div class="test-messages" id="test-messages">
-                            ${this.renderTestMessages()}
-                        </div>
                         
-                        <div class="test-input-area">
-                            <div class="test-input-container">
-                                <input type="text" class="test-input" id="test-message-input"
-                                       placeholder="Digite uma mensagem para testar..." />
-                                <button class="btn btn-primary" onclick="this.sendTestMessage()">
-                                    📤 Enviar
-                                </button>
-                            </div>
+                        <div class="logs-list" id="bot-logs">
+                            ${this.renderBotLogs()}
                         </div>
                     </div>
-                    
-                    <div class="test-controls">
-                        <button class="btn btn-secondary" onclick="this.clearTest()">
-                            🗑️ Limpar Teste
-                        </button>
-                        <button class="btn btn-secondary" onclick="this.closeTest()">
-                            ❌ Fechar Teste
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Estatísticas do Bot -->
-                <div class="card">
-                    <h3>📊 Estatísticas do Bot</h3>
-                    
-                    <div class="bot-stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-icon">💬</div>
-                            <div class="stat-content">
-                                <h4>1,247</h4>
-                                <p>Mensagens Respondidas</p>
-                            </div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-icon">✅</div>
-                            <div class="stat-content">
-                                <h4>89%</h4>
-                                <p>Taxa de Sucesso</p>
-                            </div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-icon">⏱️</div>
-                            <div class="stat-content">
-                                <h4>2.3s</h4>
-                                <p>Tempo Médio de Resposta</p>
-                            </div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-icon">👥</div>
-                            <div class="stat-content">
-                                <h4>156</h4>
-                                <p>Conversas Atendidas</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="stats-actions">
-                        <button class="btn btn-secondary" onclick="this.exportStats()">
-                            📊 Exportar Relatório
-                        </button>
-                        <button class="btn btn-secondary" onclick="this.resetStats()">
-                            🔄 Resetar Estatísticas
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Configurações Avançadas -->
-                <div class="card">
-                    <h3>🔧 Configurações Avançadas</h3>
-                    
-                    <div class="grid grid-2">
-                        <div class="form-group">
-                            <label class="form-label">
-                                <input type="checkbox" id="typing-indicator" checked />
-                                Mostrar indicador de digitação
-                            </label>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">
-                                <input type="checkbox" id="read-receipts" checked />
-                                Mostrar confirmação de leitura
-                            </label>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">
-                                <input type="checkbox" id="auto-escalation" />
-                                Escalar para humano automaticamente
-                            </label>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">
-                                <input type="checkbox" id="learning-mode" />
-                                Modo de aprendizado ativo
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Tempo de Espera para Escalação (minutos):</label>
-                        <input type="number" class="form-input" id="escalation-time" value="5" min="1" max="60" />
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Idiomas Suportados:</label>
-                        <select class="form-input" id="supported-languages" multiple>
-                            <option value="pt-BR" selected>Português (Brasil)</option>
-                            <option value="en-US">English (US)</option>
-                            <option value="es-ES">Español</option>
-                        </select>
-                    </div>
-                    
-                    <button class="btn btn-primary" onclick="this.saveAdvancedConfig()">
-                        💾 Salvar Configurações Avançadas
-                    </button>
                 </div>
             </div>
         `;
     }
 
-    renderAutoReplies() {
-        if (this.botConfig.autoReplies.length === 0) {
-            return '<p class="no-replies">Nenhuma resposta automática configurada</p>';
+    renderBotLogs() {
+        const logs = JSON.parse(localStorage.getItem('bot_logs') || '[]');
+        if (logs.length === 0) {
+            return '<div class="no-logs"><span>📝 Nenhum log disponível</span></div>';
         }
 
-        return this.botConfig.autoReplies.map((reply, index) => `
-            <div class="auto-reply-item" data-index="${index}">
-                <div class="reply-header">
-                    <div class="reply-keywords">
-                        <strong>Palavras-chave:</strong> ${reply.keywords.join(', ')}
-                        ${reply.priority ? '<span class="priority-badge">Prioritária</span>' : ''}
-                    </div>
-                    <div class="reply-actions">
-                        <button class="btn btn-sm btn-secondary" onclick="this.editReply(${index})">
-                            ✏️
-                        </button>
-                        <button class="btn btn-sm btn-danger" onclick="this.deleteReply(${index})">
-                            🗑️
-                        </button>
-                    </div>
-                </div>
-                <div class="reply-content">
-                    <strong>Resposta:</strong> ${reply.response}
+        return logs.slice(-10).reverse().map(log => `
+            <div class="log-item ${log.type}">
+                <div class="log-icon">${this.getLogIcon(log.type)}</div>
+                <div class="log-content">
+                    <div class="log-message">${log.message}</div>
+                    <div class="log-time">${log.time}</div>
                 </div>
             </div>
         `).join('');
     }
 
-    renderTestMessages() {
-        if (this.testMessages.length === 0) {
-            return '<p class="no-test-messages">Nenhuma mensagem de teste ainda</p>';
-        }
-
-        return this.testMessages.map(message => `
-            <div class="test-message ${message.isBot ? 'bot' : 'user'}">
-                <div class="test-message-content">
-                    <div class="test-message-text">${message.text}</div>
-                    <div class="test-message-time">${message.time}</div>
-                </div>
-            </div>
-        `).join('');
+    getLogIcon(type) {
+        const icons = {
+            'info': 'ℹ️',
+            'success': '✅',
+            'warning': '⚠️',
+            'error': '❌'
+        };
+        return icons[type] || 'ℹ️';
     }
 
     init() {
         this.loadBotConfig();
+        this.checkServicesStatus();
         this.setupEventListeners();
+        this.startTimeUpdate();
+        this.addLog('info', 'Módulo Bot inicializado');
+        this.updateLogStats();
     }
 
     destroy() {
-        // Limpa event listeners se necessário
+        if (this.timeUpdateInterval) {
+            clearInterval(this.timeUpdateInterval);
+        }
     }
 
     setupEventListeners() {
         setTimeout(() => {
-            this.setupFormValidation();
+            // Toggle horário de funcionamento
+            const workingHoursCheckbox = document.getElementById('working-hours-enabled');
+            const timeConfig = document.getElementById('time-config');
+            
+            if (workingHoursCheckbox && timeConfig) {
+                workingHoursCheckbox.addEventListener('change', () => {
+                    timeConfig.style.display = workingHoursCheckbox.checked ? 'block' : 'none';
+                    this.updateMessagePreview();
+                });
+                
+                // Aplica estado inicial
+                timeConfig.style.display = workingHoursCheckbox.checked ? 'block' : 'none';
+            }
+
+            // Atualiza preview da mensagem quando o texto muda
+            const messageInput = document.getElementById('off-hours-message');
+            if (messageInput) {
+                messageInput.addEventListener('input', () => {
+                    this.updateMessagePreview();
+                });
+            }
         }, 100);
     }
 
-    setupFormValidation() {
-        // Adiciona validação aos formulários
-        const inputs = document.querySelectorAll('.form-input');
-        inputs.forEach(input => {
-            input.addEventListener('blur', () => {
-                this.validateInput(input);
+    async checkServicesStatus() {
+        // Verifica WhatsApp Server
+        try {
+            const response = await fetch(`${this.whatsappUrl}/api/status`, {
+                method: 'GET',
+                timeout: 5000
             });
-        });
-    }
-
-    validateInput(input) {
-        const value = input.value.trim();
-        
-        if (input.required && !value) {
-            input.classList.add('error');
-            return false;
+            this.whatsappConnected = response.ok;
+            if (response.ok) {
+                const data = await response.json();
+                this.addLog('success', `WhatsApp Server conectado - ${data.status}`);
+            }
+        } catch (error) {
+            this.whatsappConnected = false;
+            this.addLog('error', `Erro ao conectar WhatsApp Server: ${error.message}`);
         }
-        
-        input.classList.remove('error');
-        return true;
+
+        // Verifica Backend
+        try {
+            const response = await fetch(`${this.backendUrl}/health`, {
+                method: 'GET',
+                timeout: 5000
+            });
+            this.backendConnected = response.ok;
+            if (response.ok) {
+                this.addLog('success', 'Backend API conectado');
+            }
+        } catch (error) {
+            this.backendConnected = false;
+            this.addLog('error', `Erro ao conectar Backend: ${error.message}`);
+        }
+
+        this.updateServicesStatus();
     }
 
-    toggleBot() {
-        this.botConfig.enabled = !this.botConfig.enabled;
-        this.updateBotStatus();
-        this.saveBotConfig();
-        
-        const message = this.botConfig.enabled ? 
-            'Bot ativado com sucesso!' : 
-            'Bot desativado. As mensagens serão direcionadas para técnicos.';
-        
-        this.showNotification(message, this.botConfig.enabled ? 'success' : 'warning');
-    }
-
-    updateBotStatus() {
-        const statusIndicator = document.querySelector('.bot-status .status-indicator');
-        const statusText = document.querySelector('.bot-status .status-text');
+    updateServicesStatus() {
+        const serviceCards = document.querySelectorAll('.service-card');
+        serviceCards.forEach((card, index) => {
+            const isConnected = index === 0 ? this.whatsappConnected : this.backendConnected;
+            card.className = `service-card ${isConnected ? 'connected' : 'disconnected'}`;
+            
+            const statusIndicator = card.querySelector('.status-indicator');
+            const statusText = card.querySelector('p');
         
         if (statusIndicator) {
-            statusIndicator.className = `status-indicator ${this.botConfig.enabled ? 'online' : 'offline'}`;
+                statusIndicator.className = `status-indicator ${isConnected ? 'online' : 'offline'}`;
         }
         
         if (statusText) {
-            statusText.textContent = this.botConfig.enabled ? 'Ativo' : 'Inativo';
-        }
+                statusText.textContent = isConnected ? 'Conectado' : 'Desconectado';
+            }
+        });
     }
 
-    testBot() {
-        this.testMode = true;
-        this.testMessages = [];
-        this.showTestSection();
-        this.addTestMessage('Olá! Como posso ajudá-lo?', true);
-    }
-
-    showTestSection() {
-        const testSection = document.getElementById('test-section');
-        if (testSection) {
-            testSection.style.display = 'block';
-            testSection.scrollIntoView({ behavior: 'smooth' });
-        }
-    }
-
-    closeTest() {
-        this.testMode = false;
-        const testSection = document.getElementById('test-section');
-        if (testSection) {
-            testSection.style.display = 'none';
-        }
-    }
-
-    sendTestMessage() {
-        const input = document.getElementById('test-message-input');
-        if (!input || !input.value.trim()) return;
-
-        const message = input.value.trim();
-        this.addTestMessage(message, false);
-        input.value = '';
-
-        // Simula resposta do bot
-        setTimeout(() => {
-            const botResponse = this.getBotResponse(message);
-            this.addTestMessage(botResponse, true);
+    startTimeUpdate() {
+        this.updateCurrentTime();
+        this.timeUpdateInterval = setInterval(() => {
+            this.updateCurrentTime();
         }, 1000);
     }
 
-    addTestMessage(text, isBot) {
-        const message = {
-            text: text,
-            time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-            isBot: isBot
-        };
-
-        this.testMessages.push(message);
-        this.updateTestMessages();
-    }
-
-    updateTestMessages() {
-        const testMessages = document.getElementById('test-messages');
-        if (testMessages) {
-            testMessages.innerHTML = this.renderTestMessages();
-            testMessages.scrollTop = testMessages.scrollHeight;
-        }
-    }
-
-    getBotResponse(message) {
-        const lowerMessage = message.toLowerCase();
+    updateCurrentTime() {
+        const currentTimeElement = document.getElementById('current-time');
+        const botStatusElement = document.getElementById('bot-status-test');
+        const statusBadge = botStatusElement?.querySelector('.status-badge');
         
-        // Verifica respostas automáticas
-        for (const reply of this.botConfig.autoReplies) {
-            const hasKeyword = reply.keywords.some(keyword => 
-                lowerMessage.includes(keyword.toLowerCase())
-            );
+        if (currentTimeElement) {
+            currentTimeElement.textContent = formatTime(new Date());
+        }
+        
+        if (statusBadge) {
+            const isWorking = this.isWithinWorkingHours();
+            statusBadge.className = `status-badge ${isWorking ? 'working' : 'offline'}`;
+            statusBadge.textContent = isWorking ? '🟢 Dentro do Horário' : '🔴 Fora do Horário';
+        }
+
+        this.updateMessagePreview();
+    }
+
+    updateMessagePreview() {
+        const messagePreview = document.getElementById('message-preview');
+        if (messagePreview) {
+            const isWorking = this.isWithinWorkingHours();
+            const message = document.getElementById('off-hours-message')?.value || this.botConfig.offHoursMessage;
             
-            if (hasKeyword) {
-                return reply.response;
+            if (isWorking) {
+                messagePreview.textContent = 'Bot ativo - Sem resposta automática';
+                messagePreview.className = 'message-preview active';
+            } else {
+                messagePreview.textContent = message;
+                messagePreview.className = 'message-preview offline';
             }
         }
-        
-        // Verifica horário de funcionamento
-        if (this.botConfig.workingHours.enabled) {
+    }
+
+    isWithinWorkingHours() {
+        if (!this.botConfig.workingHours.enabled) {
+            return true; // Sempre dentro do horário se não estiver configurado
+        }
+
             const now = new Date();
-            const currentTime = now.getHours() * 60 + now.getMinutes();
+        // Usa o fuso horário de São Paulo
+        const currentTime = formatTime(now);
+        const currentMinutes = this.parseTime(currentTime);
             const startTime = this.parseTime(this.botConfig.workingHours.start);
             const endTime = this.parseTime(this.botConfig.workingHours.end);
             
-            if (currentTime < startTime || currentTime > endTime) {
-                return 'Estamos fora do horário de atendimento. Retornaremos em breve.';
-            }
-        }
-        
-        return this.botConfig.fallbackMessage;
+        return currentMinutes >= startTime && currentMinutes <= endTime;
     }
 
     parseTime(timeString) {
@@ -509,128 +408,144 @@ class BotModule {
         return hours * 60 + minutes;
     }
 
-    clearTest() {
-        this.testMessages = [];
-        this.updateTestMessages();
-    }
-
-    saveBasicConfig() {
-        this.botConfig.name = document.getElementById('bot-name')?.value || this.botConfig.name;
-        this.botConfig.welcomeMessage = document.getElementById('welcome-message')?.value || this.botConfig.welcomeMessage;
-        this.botConfig.fallbackMessage = document.getElementById('fallback-message')?.value || this.botConfig.fallbackMessage;
-        
-        this.saveBotConfig();
-        this.showNotification('Configurações básicas salvas com sucesso!', 'success');
-    }
-
-    saveTimeConfig() {
+    async saveBotConfig() {
+        this.botConfig.enabled = document.getElementById('bot-enabled')?.checked || false;
         this.botConfig.workingHours.enabled = document.getElementById('working-hours-enabled')?.checked || false;
         this.botConfig.workingHours.start = document.getElementById('start-time')?.value || '08:00';
         this.botConfig.workingHours.end = document.getElementById('end-time')?.value || '18:00';
-        this.botConfig.workingHours.timezone = document.getElementById('timezone')?.value || 'America/Sao_Paulo';
-        
-        this.saveBotConfig();
-        this.showNotification('Configurações de horário salvas com sucesso!', 'success');
+        this.botConfig.offHoursMessage = document.getElementById('off-hours-message')?.value || 'Estamos fora do horário de atendimento. Retornaremos em breve.';
+
+        // Salva no localStorage
+        localStorage.setItem('sacsmax_bot_config', JSON.stringify(this.botConfig));
+
+        // Salva no backend
+        try {
+            const response = await fetch(`${this.backendUrl}/api/bot/config`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(this.botConfig)
+            });
+
+            if (response.ok) {
+                this.addLog('success', 'Configuração salva com sucesso no backend');
+                this.showNotification('✅ Configuração salva com sucesso!', 'success');
+            } else {
+                this.addLog('error', 'Erro ao salvar no backend');
+                this.showNotification('❌ Erro ao salvar no backend', 'error');
+            }
+        } catch (error) {
+            this.addLog('error', 'Erro de conexão com backend');
+            this.showNotification('❌ Erro de conexão com backend', 'error');
+        }
+
+        // Sincroniza com WhatsApp server
+        await this.syncWithWhatsApp();
     }
 
-    addAutoReply() {
-        const keywords = document.getElementById('new-keywords')?.value;
-        const response = document.getElementById('new-reply')?.value;
-        const priority = document.getElementById('new-reply-priority')?.checked || false;
-        
-        if (!keywords || !response) {
-            this.showNotification('Preencha todos os campos obrigatórios', 'error');
+        async syncWithWhatsApp() {
+        if (!this.whatsappConnected) {
+            this.addLog('warning', 'WhatsApp server não está conectado');
+            this.showNotification('⚠️ WhatsApp server não está conectado', 'warning');
             return;
         }
         
-        const keywordsArray = keywords.split(',').map(k => k.trim()).filter(k => k);
-        
-        const newReply = {
-            keywords: keywordsArray,
-            response: response,
-            priority: priority
-        };
-        
-        this.botConfig.autoReplies.push(newReply);
-        this.saveBotConfig();
-        this.updateAutoReplies();
-        
-        // Limpa campos
-        document.getElementById('new-keywords').value = '';
-        document.getElementById('new-reply').value = '';
-        document.getElementById('new-reply-priority').checked = false;
-        
-        this.showNotification('Resposta automática adicionada com sucesso!', 'success');
-    }
+        try {
+            const response = await fetch(`${this.whatsappUrl}/api/bot/config`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    enabled: this.botConfig.enabled,
+                    workingHours: this.botConfig.workingHours,
+                    offHoursMessage: this.botConfig.offHoursMessage
+                })
+            });
 
-    editReply(index) {
-        const reply = this.botConfig.autoReplies[index];
-        if (!reply) return;
-        
-        // Preenche formulário para edição
-        document.getElementById('new-keywords').value = reply.keywords.join(', ');
-        document.getElementById('new-reply').value = reply.response;
-        document.getElementById('new-reply-priority').checked = reply.priority;
-        
-        // Remove a resposta antiga
-        this.botConfig.autoReplies.splice(index, 1);
-        this.updateAutoReplies();
-        
-        this.showNotification('Resposta carregada para edição. Salve as alterações.', 'info');
-    }
-
-    deleteReply(index) {
-        if (confirm('Tem certeza que deseja excluir esta resposta automática?')) {
-            this.botConfig.autoReplies.splice(index, 1);
-            this.saveBotConfig();
-            this.updateAutoReplies();
-            this.showNotification('Resposta automática excluída com sucesso!', 'success');
+            if (response.ok) {
+                const data = await response.json();
+                this.addLog('success', 'Configuração sincronizada com WhatsApp server');
+                this.showNotification('✅ Sincronizado com WhatsApp!', 'success');
+                
+                // Atualiza a configuração local com a resposta do servidor
+                if (data.config) {
+                    this.botConfig = { ...this.botConfig, ...data.config };
+                }
+            } else {
+                const errorData = await response.json().catch(() => ({}));
+                this.addLog('error', `Erro ao sincronizar com WhatsApp server: ${errorData.message || 'Erro desconhecido'}`);
+                this.showNotification('❌ Erro ao sincronizar com WhatsApp', 'error');
+            }
+        } catch (error) {
+            this.addLog('error', `Erro de conexão com WhatsApp server: ${error.message}`);
+            this.showNotification('❌ Erro de conexão com WhatsApp', 'error');
         }
     }
 
-    updateAutoReplies() {
-        const autoRepliesList = document.getElementById('auto-replies-list');
-        if (autoRepliesList) {
-            autoRepliesList.innerHTML = this.renderAutoReplies();
+    async testBotResponse() {
+        const isWorking = this.isWithinWorkingHours();
+        const message = isWorking ? 
+            '🟢 Bot está ativo - Dentro do horário de funcionamento' : 
+            `🔴 Bot está ativo - Fora do horário de funcionamento\n\nMensagem que seria enviada:\n"${this.botConfig.offHoursMessage}"`;
+        
+        this.showNotification(message, isWorking ? 'success' : 'warning');
+        this.addLog('info', `Teste realizado - ${isWorking ? 'Dentro' : 'Fora'} do horário`);
+    }
+
+    refreshStatus() {
+        this.checkServicesStatus();
+        this.updateCurrentTime();
+        this.addLog('info', 'Status atualizado manualmente');
+        this.showNotification('🔄 Status atualizado!', 'info');
+    }
+
+    clearLogs() {
+        localStorage.removeItem('bot_logs');
+        const logsList = document.getElementById('bot-logs');
+        if (logsList) {
+            logsList.innerHTML = '<div class="no-logs"><span>📝 Nenhum log disponível</span></div>';
         }
+        this.updateLogStats();
+        this.addLog('info', 'Logs limpos');
+        this.showNotification('🗑️ Logs limpos!', 'info');
     }
 
-    saveAdvancedConfig() {
-        // Salva configurações avançadas
-        const config = {
-            typingIndicator: document.getElementById('typing-indicator')?.checked || false,
-            readReceipts: document.getElementById('read-receipts')?.checked || false,
-            autoEscalation: document.getElementById('auto-escalation')?.checked || false,
-            learningMode: document.getElementById('learning-mode')?.checked || false,
-            escalationTime: document.getElementById('escalation-time')?.value || 5
-        };
+    updateLogStats() {
+        const logs = JSON.parse(localStorage.getItem('bot_logs') || '[]');
+        const today = new Date().toDateString();
+        const todayLogs = logs.filter(log => new Date(log.time).toDateString() === today);
         
-        localStorage.setItem('bot_advanced_config', JSON.stringify(config));
-        this.showNotification('Configurações avançadas salvas com sucesso!', 'success');
+        const totalLogsElement = document.getElementById('total-logs');
+        const todayLogsElement = document.getElementById('today-logs');
+        
+        if (totalLogsElement) totalLogsElement.textContent = logs.length;
+        if (todayLogsElement) todayLogsElement.textContent = todayLogs.length;
     }
 
-    exportStats() {
-        const stats = {
-            totalMessages: 1247,
-            successRate: 89,
-            avgResponseTime: 2.3,
-            conversations: 156,
-            date: new Date().toISOString()
-        };
-        
-        const blob = new Blob([JSON.stringify(stats, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `bot-stats-${new Date().toISOString().split('T')[0]}.json`;
-        link.click();
-        
-        this.showNotification('Relatório exportado com sucesso!', 'success');
+    addLog(type, message) {
+        const logs = JSON.parse(localStorage.getItem('bot_logs') || '[]');
+        logs.push({
+            type: type,
+            message: message,
+            time: formatTime(new Date())
+        });
+
+        // Mantém apenas os últimos 50 logs
+        if (logs.length > 50) {
+            logs.splice(0, logs.length - 50);
+        }
+
+        localStorage.setItem('bot_logs', JSON.stringify(logs));
+        this.updateLogsDisplay();
+        this.updateLogStats();
     }
 
-    resetStats() {
-        if (confirm('Tem certeza que deseja resetar todas as estatísticas? Esta ação não pode ser desfeita.')) {
-            this.showNotification('Estatísticas resetadas com sucesso!', 'success');
+    updateLogsDisplay() {
+        const logsList = document.getElementById('bot-logs');
+        if (logsList) {
+            logsList.innerHTML = this.renderBotLogs();
         }
     }
 
@@ -639,10 +554,6 @@ class BotModule {
         if (savedConfig) {
             this.botConfig = { ...this.botConfig, ...JSON.parse(savedConfig) };
         }
-    }
-
-    saveBotConfig() {
-        localStorage.setItem('sacsmax_bot_config', JSON.stringify(this.botConfig));
     }
 
     showNotification(message, type) {
@@ -667,17 +578,22 @@ class BotModule {
 
 // Adiciona estilos específicos do módulo Bot
 const botStyles = `
-    .bot-status-card {
+    .module-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        color: white;
+        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+    }
+
+    .header-content {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 1.5rem;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        border-radius: 12px;
     }
 
-    .bot-info {
+    .header-left {
         display: flex;
         align-items: center;
         gap: 1.5rem;
@@ -685,264 +601,663 @@ const botStyles = `
 
     .bot-avatar {
         font-size: 3rem;
-        opacity: 0.9;
-    }
-
-    .bot-details h3 {
-        margin: 0 0 0.5rem 0;
-        font-size: 1.5rem;
-    }
-
-    .bot-details p {
-        margin: 0 0 1rem 0;
-        opacity: 0.8;
-    }
-
-    .bot-stats {
-        display: flex;
-        gap: 1rem;
-    }
-
-    .bot-stats .stat {
-        font-size: 0.8rem;
-        opacity: 0.8;
-    }
-
-    .bot-controls {
-        display: flex;
-        gap: 1rem;
-    }
-
-    .bot-status {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        width: 80px;
+        height: 80px;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        font-size: 0.9rem;
-    }
-
-    .section-description {
-        color: #6c757d;
-        margin-bottom: 1.5rem;
-    }
-
-    .auto-replies-container {
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
-    }
-
-    .auto-replies-list {
-        max-height: 400px;
-        overflow-y: auto;
-        border: 1px solid #e9ecef;
-        border-radius: 8px;
-        padding: 1rem;
-    }
-
-    .auto-reply-item {
-        background: #f8f9fa;
-        border-radius: 8px;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        border-left: 4px solid #667eea;
-    }
-
-    .auto-reply-item:last-child {
-        margin-bottom: 0;
-    }
-
-    .reply-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.5rem;
-    }
-
-    .reply-keywords {
-        font-size: 0.9rem;
-    }
-
-    .priority-badge {
-        background: #dc3545;
-        color: white;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.7rem;
-        margin-left: 0.5rem;
-    }
-
-    .reply-actions {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    .reply-content {
-        font-size: 0.9rem;
-        color: #495057;
-    }
-
-    .no-replies {
-        text-align: center;
-        color: #6c757d;
-        font-style: italic;
-        padding: 2rem;
-    }
-
-    .add-reply-section {
-        background: #f8f9fa;
-        border-radius: 8px;
-        padding: 1.5rem;
-        border: 2px dashed #dee2e6;
-    }
-
-    .add-reply-section h4 {
-        margin-bottom: 1rem;
-        color: #495057;
-    }
-
-    .form-help {
-        font-size: 0.8rem;
-        color: #6c757d;
-        margin-top: 0.25rem;
-    }
-
-    .test-container {
-        display: flex;
-        flex-direction: column;
-        height: 400px;
-        border: 1px solid #e9ecef;
-        border-radius: 8px;
-        overflow: hidden;
-    }
-
-    .test-messages {
-        flex: 1;
-        padding: 1rem;
-        overflow-y: auto;
-        background: #f0f2f5;
-    }
-
-    .test-message {
-        margin-bottom: 1rem;
-        display: flex;
-    }
-
-    .test-message.user {
-        justify-content: flex-end;
-    }
-
-    .test-message-content {
-        max-width: 70%;
-        padding: 0.75rem 1rem;
-        border-radius: 12px;
-    }
-
-    .test-message.user .test-message-content {
-        background: #667eea;
-        color: white;
-        border-bottom-right-radius: 4px;
-    }
-
-    .test-message.bot .test-message-content {
-        background: white;
-        color: #495057;
-        border-bottom-left-radius: 4px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .test-message-text {
-        margin-bottom: 0.25rem;
-    }
-
-    .test-message-time {
-        font-size: 0.7rem;
-        opacity: 0.7;
-    }
-
-    .test-input-area {
-        padding: 1rem;
-        background: white;
-        border-top: 1px solid #e9ecef;
-    }
-
-    .test-input-container {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    .test-input {
-        flex: 1;
-        padding: 0.75rem;
-        border: 1px solid #e9ecef;
-        border-radius: 6px;
-        font-size: 0.9rem;
-    }
-
-    .test-controls {
-        display: flex;
-        gap: 1rem;
-        margin-top: 1rem;
         justify-content: center;
+        backdrop-filter: blur(10px);
     }
 
-    .no-test-messages {
-        text-align: center;
-        color: #6c757d;
-        font-style: italic;
-        padding: 2rem;
-    }
-
-    .bot-stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .stat-card {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 1.5rem;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-    }
-
-    .stat-icon {
+    .header-text h2 {
+        margin: 0 0 0.5rem 0;
         font-size: 2rem;
-        opacity: 0.8;
-    }
-
-    .stat-content h4 {
-        font-size: 1.5rem;
-        margin: 0 0 0.25rem 0;
         font-weight: 700;
     }
 
-    .stat-content p {
+    .header-text p {
         margin: 0;
-        opacity: 0.8;
-        font-size: 0.9rem;
+        opacity: 0.9;
+        font-size: 1rem;
     }
 
-    .stats-actions {
+    .bot-status-badge {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        border-radius: 25px;
+        font-weight: 600;
+        backdrop-filter: blur(10px);
+    }
+
+    .bot-status-badge.active {
+        background: rgba(40, 167, 69, 0.2);
+        border: 1px solid rgba(40, 167, 69, 0.3);
+    }
+
+    .bot-status-badge.inactive {
+        background: rgba(220, 53, 69, 0.2);
+        border: 1px solid rgba(220, 53, 69, 0.3);
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #28a745;
+        animation: pulse 2s infinite;
+    }
+
+    .bot-status-badge.inactive .status-dot {
+        background: #dc3545;
+    }
+
+    .services-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .service-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+
+    .service-card.connected {
+        border-color: #28a745;
+        background: linear-gradient(135deg, #f8fff9 0%, #e8f5e8 100%);
+    }
+
+    .service-card.disconnected {
+        border-color: #dc3545;
+        background: linear-gradient(135deg, #fff8f8 0%, #f5e8e8 100%);
+    }
+
+    .service-icon {
+        font-size: 2rem;
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        background: rgba(102, 126, 234, 0.1);
+    }
+
+    .service-info {
+        flex: 1;
+    }
+
+    .service-info h3 {
+        margin: 0 0 0.25rem 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .service-info p {
+        margin: 0;
+        font-size: 0.9rem;
+        opacity: 0.7;
+    }
+
+    .status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #dc3545;
+    }
+
+    .status-indicator.online {
+        background: #28a745;
+        animation: pulse 2s infinite;
+    }
+
+    .config-section {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .section-header {
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+
+    .section-header h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .section-header p {
+        margin: 0;
+        color: #6c757d;
+        font-size: 1rem;
+    }
+
+    .config-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .config-card {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 1px solid #e9ecef;
+    }
+
+    .config-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .config-header h4 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+    }
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 24px;
+    }
+
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+    input:checked + .toggle-slider {
+        background-color: #667eea;
+    }
+
+    input:checked + .toggle-slider:before {
+        transform: translateX(26px);
+    }
+
+    .time-config {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        border: 1px solid #dee2e6;
+    }
+
+    .time-inputs {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .time-input-group {
+        flex: 1;
+    }
+
+    .time-input-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: #495057;
+    }
+
+    .time-input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.3s ease;
+    }
+
+    .time-input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .time-separator {
+        font-weight: 600;
+        color: #6c757d;
+        margin: 0 0.5rem;
+    }
+
+    .timezone-info {
+        margin-top: 1rem;
+    }
+
+    .timezone-info label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: #495057;
+    }
+
+    .timezone-display {
+        padding: 0.75rem;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        font-size: 1rem;
+        background: #f8f9fa;
+        color: #6c757d;
+        font-weight: 500;
+    }
+
+    .message-config label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: #495057;
+    }
+
+    .message-input {
+        width: 100%;
+        padding: 1rem;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-family: inherit;
+        resize: vertical;
+        transition: border-color 0.3s ease;
+    }
+
+    .message-input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .input-help {
+        display: block;
+        margin-top: 0.5rem;
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+
+    .action-buttons {
         display: flex;
         gap: 1rem;
         justify-content: center;
     }
 
-    .time-config {
-        background: #f8f9fa;
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        border: none;
         border-radius: 8px;
-        padding: 1rem;
-        margin-bottom: 1rem;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
     }
 
-    .form-input.error {
-        border-color: #dc3545;
-        box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #5a6268;
+        transform: translateY(-2px);
+    }
+
+    .btn-icon {
+        font-size: 1.1rem;
+    }
+
+    .test-section {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .test-dashboard {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .test-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 12px;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        border: 1px solid #dee2e6;
+        transition: all 0.3s ease;
+    }
+
+    .test-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+
+    .test-icon {
+        font-size: 2rem;
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        background: rgba(102, 126, 234, 0.1);
+    }
+
+    .test-content {
+        flex: 1;
+    }
+
+    .test-content h4 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .time-display {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #667eea;
+        font-family: monospace;
+    }
+
+    .status-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    .status-badge.working {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-badge.offline {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .message-preview {
+        font-size: 0.9rem;
+        line-height: 1.4;
+        max-height: 60px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+    }
+
+    .message-preview.active {
+        color: #28a745;
+        font-weight: 600;
+    }
+
+    .message-preview.offline {
+        color: #dc3545;
+        font-style: italic;
+    }
+
+    .test-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+    }
+
+    .btn-test {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+    }
+
+    .btn-test:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+    }
+
+    .btn-refresh {
+        background: linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%);
+        color: white;
+    }
+
+    .btn-refresh:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(23, 162, 184, 0.3);
+    }
+
+    .logs-section {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .logs-container {
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .logs-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        background: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .logs-stats {
+        display: flex;
+        gap: 1.5rem;
+    }
+
+    .log-stat {
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+
+    .log-stat span {
+        font-weight: 600;
+        color: #667eea;
+    }
+
+    .btn-clear {
+        background: #dc3545;
+        color: white;
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+
+    .btn-clear:hover {
+        background: #c82333;
+    }
+
+    .logs-list {
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 1rem;
+    }
+
+    .log-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .log-item.info {
+        background: #e7f3ff;
+        border-left: 4px solid #17a2b8;
+    }
+
+    .log-item.success {
+        background: #d4edda;
+        border-left: 4px solid #28a745;
+    }
+
+    .log-item.warning {
+        background: #fff3cd;
+        border-left: 4px solid #ffc107;
+    }
+
+    .log-item.error {
+        background: #f8d7da;
+        border-left: 4px solid #dc3545;
+    }
+
+    .log-icon {
+        font-size: 1.2rem;
+        margin-top: 0.1rem;
+    }
+
+    .log-content {
+        flex: 1;
+    }
+
+    .log-message {
+        margin-bottom: 0.25rem;
+        font-weight: 500;
+        color: #2c3e50;
+    }
+
+    .log-time {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+
+    .no-logs {
+        text-align: center;
+        padding: 3rem;
+        color: #6c757d;
+    }
+
+    .no-logs span {
+        font-size: 1.1rem;
+        opacity: 0.7;
+    }
+
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+
+    .notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: white;
+        border-radius: 8px;
+        padding: 1rem;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        z-index: 1000;
+        max-width: 400px;
+        border-left: 4px solid #667eea;
+    }
+
+    .notification.success {
+        border-left-color: #28a745;
+    }
+
+    .notification.error {
+        border-left-color: #dc3545;
+    }
+
+    .notification.warning {
+        border-left-color: #ffc107;
+    }
+
+    .notification-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .notification-message {
+        flex: 1;
+        white-space: pre-line;
+    }
+
+    .notification-close {
+        background: none;
+        border: none;
+        font-size: 1.2rem;
+        cursor: pointer;
+        color: #6c757d;
+        padding: 0;
+        line-height: 1;
+    }
+
+    .notification-close:hover {
+        color: #dc3545;
     }
 `;
 
@@ -954,4 +1269,10 @@ if (!document.getElementById('bot-styles')) {
     document.head.appendChild(style);
 }
 
-export default BotModule;
+// Exporta para uso global
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = BotModule;
+}
+
+// Variável global para acesso direto
+window.botModule = new BotModule();

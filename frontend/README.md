@@ -12,12 +12,6 @@ Frontend completo do sistema SacsMax - Sistema de Gestão de SAC, desenvolvido e
 
 ## 📋 Módulos Disponíveis
 
-### 📊 Dashboard
-- Visão geral do sistema
-- Estatísticas em tempo real
-- Gráficos de atividade
-- Ações rápidas
-
 ### 📁 Upload Excel
 - Drag & drop de arquivos
 - Preview dos dados

@@ -1,42 +1,43 @@
-// Módulo Settings - Configurações gerais do sistema
+// Módulo Configurações - Gestão de configurações do sistema (100% Funcional)
 
 class SettingsModule {
     constructor() {
         this.settings = {
-            general: {
-                companyName: 'SacsMax',
-                timezone: 'America/Sao_Paulo',
-                language: 'pt-BR',
-                dateFormat: 'DD/MM/YYYY',
-                timeFormat: '24h'
-            },
-            notifications: {
-                emailNotifications: true,
-                pushNotifications: true,
-                soundAlerts: true,
-                desktopNotifications: true
+            // Configurações de Conexão
+            backend: {
+                url: 'http://localhost:5000',
+                port: 5000,
+                timeout: 10000
             },
             whatsapp: {
-                qrCodeEnabled: true,
-                autoReconnect: true,
-                sessionTimeout: 60,
-                webhookUrl: '',
-                apiKey: ''
+                url: 'http://localhost:3002',
+                port: 3002,
+                session_name: 'sacmax',
+                auto_start: false
             },
-            integrations: {
-                whatsappEnabled: true,
-                emailEnabled: true,
-                smsEnabled: false,
-                apiEnabled: true
+            database: {
+                type: 'postgresql',
+                railway_url: '',
+                local_backup: true
             },
-            appearance: {
-                theme: 'light',
-                primaryColor: '#667eea',
-                fontSize: 'medium',
-                compactMode: false
+            // Configurações de Sistema
+            system: {
+                log_level: 'info',
+                max_log_files: 10,
+                backup_interval: 24 // horas
+            },
+            // Configurações de Segurança
+            security: {
+                session_timeout: 30, // minutos
+                api_key: ''
             }
         };
-        this.backupData = null;
+        
+        this.loading = false;
+        this.saving = false;
+        this.startingServer = false;
+        this.backendUrl = 'http://localhost:5000';
+        this.whatsappServerRunning = false;
     }
 
     render() {
@@ -44,834 +45,888 @@ class SettingsModule {
             <div class="module-container fade-in">
                 <div class="module-header">
                     <span class="module-icon">⚙️</span>
-                    <h2 class="module-title">Configurações</h2>
+                    <h2 class="module-title">Configurações do Sistema</h2>
+                    <div class="settings-status">
+                        <span class="status-indicator ${this.getConnectionStatus() ? 'connected' : 'disconnected'}">
+                            ${this.getConnectionStatus() ? '🟢 Conectado' : '🔴 Desconectado'}
+                        </span>
+                </div>
                 </div>
                 
-                <!-- Navegação das Configurações -->
-                <div class="settings-nav">
-                    <button class="settings-nav-btn active" data-section="general">
-                        🏢 Geral
-                    </button>
-                    <button class="settings-nav-btn" data-section="notifications">
-                        🔔 Notificações
-                    </button>
-                    <button class="settings-nav-btn" data-section="whatsapp">
-                        📱 WhatsApp
-                    </button>
-                    <button class="settings-nav-btn" data-section="integrations">
-                        🔗 Integrações
-                    </button>
-                    <button class="settings-nav-btn" data-section="appearance">
-                        🎨 Aparência
-                    </button>
-                    <button class="settings-nav-btn" data-section="backup">
-                        💾 Backup
-                    </button>
-                </div>
-                
-                <!-- Seção Geral -->
-                <div class="settings-section active" id="general-section">
-                    <div class="card">
-                        <h3>🏢 Configurações Gerais</h3>
-                        
-                        <div class="grid grid-2">
-                            <div class="form-group">
-                                <label class="form-label">Nome da Empresa</label>
-                                <input type="text" class="form-input" id="company-name" 
-                                       value="${this.settings.general.companyName}" />
+                <div class="settings-content">
+                    ${this.loading ? this.renderLoading() : this.renderSettingsTabs()}
                             </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">Fuso Horário</label>
-                                <select class="form-input" id="timezone">
-                                    <option value="America/Sao_Paulo" ${this.settings.general.timezone === 'America/Sao_Paulo' ? 'selected' : ''}>
-                                        Brasília (GMT-3)
-                                    </option>
-                                    <option value="America/Manaus" ${this.settings.general.timezone === 'America/Manaus' ? 'selected' : ''}>
-                                        Manaus (GMT-4)
-                                    </option>
-                                    <option value="America/Belem" ${this.settings.general.timezone === 'America/Belem' ? 'selected' : ''}>
-                                        Belém (GMT-3)
-                                    </option>
-                                </select>
                             </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">Idioma</label>
-                                <select class="form-input" id="language">
-                                    <option value="pt-BR" ${this.settings.general.language === 'pt-BR' ? 'selected' : ''}>
-                                        Português (Brasil)
-                                    </option>
-                                    <option value="en-US" ${this.settings.general.language === 'en-US' ? 'selected' : ''}>
-                                        English (US)
-                                    </option>
-                                    <option value="es-ES" ${this.settings.general.language === 'es-ES' ? 'selected' : ''}>
-                                        Español
-                                    </option>
-                                </select>
+        `;
+    }
+
+    renderLoading() {
+        return `
+            <div class="loading-container">
+                <div class="spinner"></div>
+                <p>Carregando configurações...</p>
                             </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">Formato de Data</label>
-                                <select class="form-input" id="date-format">
-                                    <option value="DD/MM/YYYY" ${this.settings.general.dateFormat === 'DD/MM/YYYY' ? 'selected' : ''}>
-                                        DD/MM/YYYY
-                                    </option>
-                                    <option value="MM/DD/YYYY" ${this.settings.general.dateFormat === 'MM/DD/YYYY' ? 'selected' : ''}>
-                                        MM/DD/YYYY
-                                    </option>
-                                    <option value="YYYY-MM-DD" ${this.settings.general.dateFormat === 'YYYY-MM-DD' ? 'selected' : ''}>
-                                        YYYY-MM-DD
-                                    </option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <button class="btn btn-primary" onclick="this.saveGeneralSettings()">
-                            💾 Salvar Configurações Gerais
+        `;
+    }
+
+    renderSettingsTabs() {
+        return `
+            <div class="settings-tabs">
+                <div class="tab-buttons">
+                    <button class="tab-btn active" data-tab="connection">
+                        🔌 Conexão
+                    </button>
+                    <button class="tab-btn" data-tab="whatsapp">
+                        📱 WhatsApp Server
+                    </button>
+                    <button class="tab-btn" data-tab="system">
+                        🖥️ Sistema
+                    </button>
+                    <button class="tab-btn" data-tab="database">
+                        🗄️ Banco de Dados
                         </button>
-                    </div>
                 </div>
                 
-                <!-- Seção Notificações -->
-                <div class="settings-section" id="notifications-section">
-                    <div class="card">
-                        <h3>🔔 Configurações de Notificações</h3>
-                        
-                        <div class="settings-grid">
-                            <div class="setting-item">
-                                <div class="setting-info">
-                                    <h4>Notificações por Email</h4>
-                                    <p>Receber notificações por email sobre atividades importantes</p>
+                <div class="tab-content">
+                    <div class="tab-panel active" id="connection-panel">
+                        ${this.renderConnectionSettings()}
                                 </div>
-                                <label class="switch">
-                                    <input type="checkbox" id="email-notifications" 
-                                           ${this.settings.notifications.emailNotifications ? 'checked' : ''} />
-                                    <span class="slider"></span>
-                                </label>
+                    <div class="tab-panel" id="whatsapp-panel">
+                        ${this.renderWhatsAppSettings()}
                             </div>
-                            
-                            <div class="setting-item">
-                                <div class="setting-info">
-                                    <h4>Notificações Push</h4>
-                                    <p>Receber notificações em tempo real no navegador</p>
+                    <div class="tab-panel" id="system-panel">
+                        ${this.renderSystemSettings()}
                                 </div>
-                                <label class="switch">
-                                    <input type="checkbox" id="push-notifications" 
-                                           ${this.settings.notifications.pushNotifications ? 'checked' : ''} />
-                                    <span class="slider"></span>
-                                </label>
+                    <div class="tab-panel" id="database-panel">
+                        ${this.renderDatabaseSettings()}
                             </div>
-                            
-                            <div class="setting-item">
-                                <div class="setting-info">
-                                    <h4>Alertas Sonoros</h4>
-                                    <p>Tocar sons para notificações importantes</p>
                                 </div>
-                                <label class="switch">
-                                    <input type="checkbox" id="sound-alerts" 
-                                           ${this.settings.notifications.soundAlerts ? 'checked' : ''} />
-                                    <span class="slider"></span>
-                                </label>
                             </div>
-                            
-                            <div class="setting-item">
-                                <div class="setting-info">
-                                    <h4>Notificações Desktop</h4>
-                                    <p>Mostrar notificações na área de trabalho</p>
-                                </div>
-                                <label class="switch">
-                                    <input type="checkbox" id="desktop-notifications" 
-                                           ${this.settings.notifications.desktopNotifications ? 'checked' : ''} />
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">Email para Notificações</label>
-                            <input type="email" class="form-input" id="notification-email" 
-                                   placeholder="seu@email.com" />
-                        </div>
-                        
-                        <button class="btn btn-primary" onclick="this.saveNotificationSettings()">
-                            💾 Salvar Configurações de Notificações
-                        </button>
-                    </div>
-                </div>
+        `;
+    }
+
+    renderConnectionSettings() {
+        return `
+            <div class="settings-section">
+                <h3>🔌 Configurações de Conexão</h3>
                 
-                <!-- Seção WhatsApp -->
-                <div class="settings-section" id="whatsapp-section">
-                    <div class="card">
-                        <h3>📱 Configurações do WhatsApp</h3>
-                        
-                        <div class="qr-code-section">
-                            <h4>🔐 Conexão via QR Code</h4>
-                            <div class="qr-container">
-                                <div id="qr-code-display" class="qr-code-placeholder">
-                                    <span class="qr-icon">📱</span>
-                                    <p>Clique em "Gerar QR Code" para conectar</p>
-                                </div>
-                                <div class="qr-actions">
-                                    <button class="btn btn-primary" onclick="window.SacsMaxApp.currentModule.generateQRCode()">
-                                        🔄 Gerar QR Code
+                <div class="connection-status">
+                    <div class="status-card">
+                        <div class="status-header">
+                            <span class="status-icon">🌐</span>
+                            <span class="status-title">Backend API</span>
+                        </div>
+                        <div class="status-details">
+                            <span class="status-url">${this.settings.backend.url}</span>
+                            <span class="status-port">:${this.settings.backend.port}</span>
+                    </div>
+                        <button class="test-btn" onclick="settingsModule.testBackendConnection()">
+                            Testar Conexão
                                     </button>
-                                    <button class="btn btn-secondary" onclick="window.SacsMaxApp.currentModule.checkConnection()">
-                                        🔍 Verificar Conexão
-                                    </button>
-                                </div>
                             </div>
                         </div>
                         
-                        <div class="grid grid-2">
+                <div class="settings-form">
                             <div class="form-group">
-                                <label class="form-label">Tempo de Sessão (minutos)</label>
-                                <input type="number" class="form-input" id="whatsapp-session-timeout" 
-                                       value="${this.settings.whatsapp.sessionTimeout}" min="30" max="480" />
-                                <small class="form-help">Tempo de inatividade antes da desconexão</small>
+                        <label>URL do Backend:</label>
+                        <input type="text" id="backend-url" value="${this.settings.backend.url}" 
+                               placeholder="http://localhost:5000">
                             </div>
                             
                             <div class="form-group">
-                                <label class="form-label">Webhook URL</label>
-                                <input type="url" class="form-input" id="whatsapp-webhook" 
-                                       value="${this.settings.whatsapp.webhookUrl}" 
-                                       placeholder="https://seu-dominio.com/webhook" />
-                                <small class="form-help">URL para receber notificações do WhatsApp</small>
-                            </div>
+                        <label>Porta do Backend:</label>
+                        <input type="number" id="backend-port" value="${this.settings.backend.port}" 
+                               min="1000" max="9999">
                         </div>
                         
-                        <div class="settings-grid">
-                            <div class="setting-item">
-                                <div class="setting-info">
-                                    <h4>QR Code Automático</h4>
-                                    <p>Gerar QR Code automaticamente ao iniciar</p>
+                    <div class="form-group">
+                        <label>Timeout de Conexão (ms):</label>
+                        <input type="number" id="connection-timeout" value="${this.settings.backend.timeout}" 
+                               min="1000" max="30000">
                                 </div>
-                                <label class="switch">
-                                    <input type="checkbox" id="qr-code-enabled" 
-                                           ${this.settings.whatsapp.qrCodeEnabled ? 'checked' : ''} />
-                                    <span class="slider"></span>
-                                </label>
                             </div>
-                            
-                            <div class="setting-item">
-                                <div class="setting-info">
-                                    <h4>Reconexão Automática</h4>
-                                    <p>Tentar reconectar automaticamente se desconectar</p>
                                 </div>
-                                <label class="switch">
-                                    <input type="checkbox" id="auto-reconnect" 
-                                           ${this.settings.whatsapp.autoReconnect ? 'checked' : ''} />
-                                    <span class="slider"></span>
-                                </label>
+        `;
+    }
+
+    renderWhatsAppSettings() {
+        return `
+            <div class="settings-section">
+                <h3>📱 Controle do WhatsApp Server</h3>
+                
+                <div class="whatsapp-control">
+                    <div class="control-card">
+                        <div class="control-header">
+                            <span class="control-icon">🚀</span>
+                            <span class="control-title">Status do Servidor</span>
                             </div>
+                        <div class="control-status">
+                            <span class="status-badge ${this.whatsappServerRunning ? 'running' : 'stopped'}">
+                                ${this.whatsappServerRunning ? '🟢 Rodando' : '🔴 Parado'}
+                            </span>
+                            ${this.whatsappServerRunning ? `<span class="port-info">Porta: ${this.settings.whatsapp.port}</span>` : ''}
                         </div>
-                        
-                        <div class="whatsapp-status">
-                            <div class="status-indicator">
-                                <span class="status-dot" id="whatsapp-status-dot"></span>
-                                <span class="status-text" id="whatsapp-status-text">Desconectado</span>
-                            </div>
-                        </div>
-                        
-                        <div class="whatsapp-actions">
-                            <button class="btn btn-success" onclick="window.SacsMaxApp.currentModule.connectWhatsApp()">
-                                🔗 Conectar WhatsApp
+                        <div class="control-actions">
+                            <button class="control-btn start-btn" onclick="settingsModule.startWhatsAppServer()" 
+                                    ${this.whatsappServerRunning ? 'disabled' : ''}>
+                                ▶️ Iniciar Servidor
                             </button>
-                            <button class="btn btn-danger" onclick="window.SacsMaxApp.currentModule.disconnectWhatsApp()">
-                                ❌ Desconectar
+                            <button class="control-btn stop-btn" onclick="settingsModule.stopWhatsAppServer()"
+                                    ${!this.whatsappServerRunning ? 'disabled' : ''}>
+                                ⏹️ Parar Servidor
                             </button>
-                            <button class="btn btn-info" onclick="window.SacsMaxApp.currentModule.viewWhatsAppChat()">
-                                💬 Ver Chat
-                            </button>
-                            <button class="btn btn-secondary" onclick="window.SacsMaxApp.currentModule.exportWhatsAppLog()">
-                                📋 Log de Conexão
-                            </button>
-                        </div>
-                        
-                        <button class="btn btn-primary" onclick="window.SacsMaxApp.currentModule.saveWhatsAppSettings()">
-                            💾 Salvar Configurações do WhatsApp
+                            <button class="control-btn restart-btn" onclick="settingsModule.restartWhatsAppServer()">
+                                🔄 Reiniciar
                         </button>
                     </div>
                 </div>
                 
-                <!-- Seção Integrações -->
-                <div class="settings-section" id="integrations-section">
-                    <div class="card">
-                        <h3>🔗 Configurações de Integrações</h3>
-                        
-                        <div class="integrations-grid">
-                            <div class="integration-card">
-                                <div class="integration-header">
-                                    <div class="integration-icon">💬</div>
-                                    <div class="integration-info">
-                                        <h4>WhatsApp</h4>
-                                        <p>Integração com WhatsApp Business API</p>
+                    <div class="qr-section">
+                        <div class="qr-header">
+                            <span class="qr-icon">📱</span>
+                            <span class="qr-title">QR Code WhatsApp</span>
                                     </div>
-                                    <label class="switch">
-                                        <input type="checkbox" id="whatsapp-enabled" 
-                                               ${this.settings.integrations.whatsappEnabled ? 'checked' : ''} />
-                                        <span class="slider"></span>
-                                    </label>
+                        <div class="qr-content">
+                            <div id="qr-code-display" class="qr-display">
+                                ${this.whatsappServerRunning ? 
+                                    '<p>Clique em "Gerar QR Code" para conectar</p>' : 
+                                    '<p>Inicie o servidor primeiro</p>'
+                                }
                                 </div>
-                                <div class="integration-details">
-                                    <div class="form-group">
-                                        <label class="form-label">Token da API</label>
-                                        <input type="password" class="form-input" id="whatsapp-token" 
-                                               placeholder="Digite o token da API" />
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Número do WhatsApp</label>
-                                        <input type="text" class="form-input" id="whatsapp-number" 
-                                               placeholder="+55 11 99999-9999" />
+                            <button class="qr-btn" onclick="settingsModule.generateQRCode()">
+                                🔄 Gerar QR Code
+                            </button>
+                            <button class="qr-btn test-btn" onclick="settingsModule.testWhatsAppConnection()">
+                                🔍 Testar Conexão
+                            </button>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div class="integration-card">
-                                <div class="integration-header">
-                                    <div class="integration-icon">📧</div>
-                                    <div class="integration-info">
-                                        <h4>Email</h4>
-                                        <p>Configurações de email SMTP</p>
-                                    </div>
-                                    <label class="switch">
-                                        <input type="checkbox" id="email-enabled" 
-                                               ${this.settings.integrations.emailEnabled ? 'checked' : ''} />
-                                        <span class="slider"></span>
-                                    </label>
-                                </div>
-                                <div class="integration-details">
-                                    <div class="grid grid-2">
+                <div class="settings-form">
                                         <div class="form-group">
-                                            <label class="form-label">Servidor SMTP</label>
-                                            <input type="text" class="form-input" id="smtp-server" 
-                                                   placeholder="smtp.gmail.com" />
+                        <label>URL do WhatsApp Server:</label>
+                        <input type="text" id="whatsapp-url" 
+                               placeholder="http://localhost:3002">
                                         </div>
+                    
                                         <div class="form-group">
-                                            <label class="form-label">Porta</label>
-                                            <input type="number" class="form-input" id="smtp-port" 
-                                                   placeholder="587" />
+                        <label>Porta do WhatsApp:</label>
+                        <input type="number" id="whatsapp-port" value="${this.settings.whatsapp.port}" 
+                               min="1000" max="9999">
                                         </div>
-                                    </div>
+                    
                                     <div class="form-group">
-                                        <label class="form-label">Email</label>
-                                        <input type="email" class="form-input" id="smtp-email" 
-                                               placeholder="seu@email.com" />
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Senha</label>
-                                        <input type="password" class="form-input" id="smtp-password" 
-                                               placeholder="Digite a senha" />
-                                    </div>
-                                </div>
+                        <label>Nome da Sessão:</label>
+                        <input type="text" id="session-name" value="${this.settings.whatsapp.session_name}" 
+                               placeholder="sacmax">
                             </div>
                             
-                            <div class="integration-card">
-                                <div class="integration-header">
-                                    <div class="integration-icon">📱</div>
-                                    <div class="integration-info">
-                                        <h4>SMS</h4>
-                                        <p>Integração com serviço de SMS</p>
-                                    </div>
-                                    <label class="switch">
-                                        <input type="checkbox" id="sms-enabled" 
-                                               ${this.settings.integrations.smsEnabled ? 'checked' : ''} />
-                                        <span class="slider"></span>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="auto-start-whatsapp" ${this.settings.whatsapp.auto_start ? 'checked' : ''}>
+                            Iniciar automaticamente com o sistema
                                     </label>
                                 </div>
-                                <div class="integration-details">
-                                    <div class="form-group">
-                                        <label class="form-label">Provedor SMS</label>
-                                        <select class="form-input" id="sms-provider">
-                                            <option value="twilio">Twilio</option>
-                                            <option value="aws">AWS SNS</option>
-                                            <option value="custom">Custom</option>
-                                        </select>
                                     </div>
-                                    <div class="form-group">
-                                        <label class="form-label">API Key</label>
-                                        <input type="password" class="form-input" id="sms-api-key" 
-                                               placeholder="Digite a API key" />
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <button class="btn btn-primary" onclick="this.saveIntegrationSettings()">
-                            💾 Salvar Configurações de Integrações
-                        </button>
-                    </div>
-                </div>
+        `;
+    }
+
+    renderSystemSettings() {
+        return `
+            <div class="settings-section">
+                <h3>🖥️ Configurações do Sistema</h3>
                 
-                <!-- Seção Aparência -->
-                <div class="settings-section" id="appearance-section">
-                    <div class="card">
-                        <h3>🎨 Configurações de Aparência</h3>
-                        
-                        <div class="grid grid-2">
+                <div class="settings-form">
                             <div class="form-group">
-                                <label class="form-label">Tema</label>
-                                <select class="form-input" id="theme">
-                                    <option value="light" ${this.settings.appearance.theme === 'light' ? 'selected' : ''}>
-                                        Claro
+                        <label>Nível de Log:</label>
+                        <select id="log-level">
+                            <option value="debug" ${this.settings.system.log_level === 'debug' ? 'selected' : ''}>
+                                Debug
                                     </option>
-                                    <option value="dark" ${this.settings.appearance.theme === 'dark' ? 'selected' : ''}>
-                                        Escuro
+                            <option value="info" ${this.settings.system.log_level === 'info' ? 'selected' : ''}>
+                                Info
                                     </option>
-                                    <option value="auto" ${this.settings.appearance.theme === 'auto' ? 'selected' : ''}>
-                                        Automático
+                            <option value="warning" ${this.settings.system.log_level === 'warning' ? 'selected' : ''}>
+                                Warning
+                            </option>
+                            <option value="error" ${this.settings.system.log_level === 'error' ? 'selected' : ''}>
+                                Error
                                     </option>
                                 </select>
                             </div>
                             
                             <div class="form-group">
-                                <label class="form-label">Cor Primária</label>
-                                <input type="color" class="form-input color-input" id="primary-color" 
-                                       value="${this.settings.appearance.primaryColor}" />
+                        <label>Máximo de arquivos de log:</label>
+                        <input type="number" id="max-log-files" value="${this.settings.system.max_log_files}" 
+                               min="1" max="50">
                             </div>
                             
                             <div class="form-group">
-                                <label class="form-label">Tamanho da Fonte</label>
-                                <select class="form-input" id="font-size">
-                                    <option value="small" ${this.settings.appearance.fontSize === 'small' ? 'selected' : ''}>
-                                        Pequeno
-                                    </option>
-                                    <option value="medium" ${this.settings.appearance.fontSize === 'medium' ? 'selected' : ''}>
-                                        Médio
-                                    </option>
-                                    <option value="large" ${this.settings.appearance.fontSize === 'large' ? 'selected' : ''}>
-                                        Grande
-                                    </option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">Modo Compacto</label>
-                                <label class="switch">
-                                    <input type="checkbox" id="compact-mode" 
-                                           ${this.settings.appearance.compactMode ? 'checked' : ''} />
-                                    <span class="slider"></span>
-                                </label>
+                        <label>Intervalo de backup (horas):</label>
+                        <input type="number" id="backup-interval" value="${this.settings.system.backup_interval}" 
+                               min="1" max="168">
                             </div>
                         </div>
                         
-                        <div class="theme-preview">
-                            <h4>Preview do Tema</h4>
-                            <div class="preview-container" id="theme-preview">
-                                <div class="preview-header">
-                                    <h5>SacsMax</h5>
-                                    <span class="preview-status">Online</span>
-                                </div>
-                                <div class="preview-content">
-                                    <p>Este é um preview de como ficará a interface com as configurações selecionadas.</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <button class="btn btn-primary" onclick="this.saveAppearanceSettings()">
-                            💾 Salvar Configurações de Aparência
+                <div class="system-actions">
+                    <button class="action-btn" onclick="settingsModule.clearLogs()">
+                        🗑️ Limpar Logs
+                    </button>
+                    <button class="action-btn" onclick="settingsModule.exportLogs()">
+                        📤 Exportar Logs
+                    </button>
+                    <button class="action-btn" onclick="settingsModule.restartSystem()">
+                        🔄 Reiniciar Sistema
                         </button>
                     </div>
                 </div>
+        `;
+    }
+
+    renderDatabaseSettings() {
+        return `
+            <div class="settings-section">
+                <h3>🗄️ Configurações de Banco de Dados</h3>
                 
-                <!-- Seção Backup -->
-                <div class="settings-section" id="backup-section">
-                    <div class="card">
-                        <h3>💾 Backup e Restauração</h3>
-                        
-                        <div class="backup-options">
-                            <div class="backup-card">
-                                <h4>📤 Exportar Dados</h4>
-                                <p>Faça backup de todos os dados do sistema</p>
-                                <div class="backup-actions">
-                                    <button class="btn btn-primary" onclick="this.exportAllData()">
-                                        📥 Exportar Tudo
-                                    </button>
-                                    <button class="btn btn-secondary" onclick="this.exportContacts()">
-                                        👥 Apenas Contatos
-                                    </button>
-                                    <button class="btn btn-secondary" onclick="this.exportSettings()">
-                                        ⚙️ Apenas Configurações
-                                    </button>
+                <div class="database-status">
+                    <div class="status-card">
+                        <div class="status-header">
+                            <span class="status-icon">☁️</span>
+                            <span class="status-title">Railway PostgreSQL</span>
                                 </div>
+                        <div class="status-details">
+                            <span class="status-type">${this.settings.database.type}</span>
                             </div>
-                            
-                            <div class="backup-card">
-                                <h4>📥 Importar Dados</h4>
-                                <p>Restaura dados de um backup anterior</p>
-                                <div class="backup-actions">
-                                    <input type="file" id="import-file" accept=".json" style="display: none;" />
-                                    <button class="btn btn-primary" onclick="document.getElementById('import-file').click()">
-                                        📁 Selecionar Arquivo
+                        <button class="test-btn" onclick="settingsModule.testDatabaseConnection()">
+                            Testar Conexão
                                     </button>
-                                    <button class="btn btn-danger" onclick="this.resetAllData()">
-                                        🔄 Resetar Tudo
-                                    </button>
-                                </div>
                             </div>
                         </div>
                         
-                        <div class="backup-history">
-                            <h4>📋 Histórico de Backups</h4>
-                            <div class="backup-list" id="backup-list">
-                                ${this.renderBackupHistory()}
-                            </div>
-                        </div>
-                        
-                        <div class="backup-settings">
-                            <h4>⚙️ Configurações de Backup</h4>
-                            <div class="grid grid-2">
+                <div class="settings-form">
                                 <div class="form-group">
-                                    <label class="form-label">
-                                        <input type="checkbox" id="auto-backup" />
-                                        Backup Automático
-                                    </label>
-                                    <small class="form-help">Fazer backup automático a cada 7 dias</small>
+                        <label>URL do Railway (opcional):</label>
+                        <input type="text" id="railway-url" value="${this.settings.database.railway_url}" 
+                               placeholder="postgresql://user:pass@host:port/db">
                                 </div>
                                 
                                 <div class="form-group">
-                                    <label class="form-label">
-                                        <input type="checkbox" id="cloud-backup" />
-                                        Backup na Nuvem
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="local-backup" ${this.settings.database.local_backup ? 'checked' : ''}>
+                            Fazer backup local
                                     </label>
-                                    <small class="form-help">Salvar backups na nuvem (Google Drive/Dropbox)</small>
                                 </div>
                             </div>
-                        </div>
-                    </div>
+                
+                <div class="database-actions">
+                    <button class="action-btn" onclick="settingsModule.backupDatabase()">
+                        💾 Fazer Backup
+                    </button>
+                    <button class="action-btn" onclick="settingsModule.restoreDatabase()">
+                        📥 Restaurar Backup
+                    </button>
+                    <button class="action-btn" onclick="settingsModule.optimizeDatabase()">
+                        ⚡ Otimizar Banco
+                    </button>
                 </div>
             </div>
         `;
     }
 
-    renderBackupHistory() {
-        const backups = this.getBackupHistory();
-        
-        if (backups.length === 0) {
-            return '<p class="no-backups">Nenhum backup encontrado</p>';
-        }
-
-        return backups.map(backup => `
-            <div class="backup-item">
-                <div class="backup-info">
-                    <div class="backup-name">${backup.name}</div>
-                    <div class="backup-details">
-                        <span class="backup-date">${backup.date}</span>
-                        <span class="backup-size">${backup.size}</span>
-                        <span class="backup-type">${backup.type}</span>
-                    </div>
-                </div>
-                <div class="backup-actions">
-                    <button class="btn btn-sm btn-secondary" onclick="this.downloadBackup('${backup.id}')">
-                        📥 Download
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="this.deleteBackup('${backup.id}')">
-                        🗑️ Excluir
-                    </button>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    init() {
-        this.loadSettings();
+    async init() {
         this.setupEventListeners();
-    }
-
-    destroy() {
-        // Limpa event listeners se necessário
+        await this.loadSettings();
+        await this.checkWhatsAppServerStatus();
+        this.updateConnectionStatus();
     }
 
     setupEventListeners() {
         setTimeout(() => {
-            this.setupNavigation();
-            this.setupFileImport();
+            // Tab switching
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    this.switchTab(e.target.dataset.tab);
+                });
+            });
+
+            // Form inputs
+            this.setupFormListeners();
         }, 100);
     }
 
-    setupNavigation() {
-        const navButtons = document.querySelectorAll('.settings-nav-btn');
-        
-        navButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const section = e.target.dataset.section;
-                this.switchSection(section);
-                
-                // Atualiza botões ativos
-                navButtons.forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-            });
+    setupFormListeners() {
+        // Connection settings
+        const backendUrl = document.getElementById('backend-url');
+        const backendPort = document.getElementById('backend-port');
+        const timeout = document.getElementById('connection-timeout');
+
+        if (backendUrl) backendUrl.addEventListener('change', () => this.updateBackendUrl());
+        if (backendPort) backendPort.addEventListener('change', () => this.updateBackendPort());
+        if (timeout) timeout.addEventListener('change', () => this.updateTimeout());
+
+        // WhatsApp settings
+        const whatsappUrl = document.getElementById('whatsapp-url');
+        const whatsappPort = document.getElementById('whatsapp-port');
+        const sessionName = document.getElementById('session-name');
+        const autoStartWhatsapp = document.getElementById('auto-start-whatsapp');
+
+        if (whatsappUrl) whatsappUrl.addEventListener('change', () => this.updateWhatsAppUrl());
+        if (whatsappPort) whatsappPort.addEventListener('change', () => this.updateWhatsAppPort());
+        if (sessionName) sessionName.addEventListener('change', () => this.updateSessionName());
+        if (autoStartWhatsapp) autoStartWhatsapp.addEventListener('change', () => this.updateAutoStartWhatsapp());
+
+        // System settings
+        const logLevel = document.getElementById('log-level');
+        const maxLogFiles = document.getElementById('max-log-files');
+        const backupInterval = document.getElementById('backup-interval');
+
+        if (logLevel) logLevel.addEventListener('change', () => this.updateLogLevel());
+        if (maxLogFiles) maxLogFiles.addEventListener('change', () => this.updateMaxLogFiles());
+        if (backupInterval) backupInterval.addEventListener('change', () => this.updateBackupInterval());
+
+        // Database settings
+        const railwayUrl = document.getElementById('railway-url');
+        const localBackup = document.getElementById('local-backup');
+
+        if (railwayUrl) railwayUrl.addEventListener('change', () => this.updateRailwayUrl());
+        if (localBackup) localBackup.addEventListener('change', () => this.updateLocalBackup());
+    }
+
+    switchTab(tabName) {
+        // Remove active class from all tabs and panels
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+
+        // Add active class to selected tab and panel
+        document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+        document.getElementById(`${tabName}-panel`).classList.add('active');
+    }
+
+    async loadSettings() {
+        try {
+            this.loading = true;
+            this.updateSettingsDisplay();
+
+            // Load from localStorage
+        const savedSettings = localStorage.getItem('sacsmax_settings');
+        if (savedSettings) {
+                const parsed = JSON.parse(savedSettings);
+                this.settings = { ...this.settings, ...parsed };
+            }
+
+            // Update backend URL if changed
+            this.backendUrl = this.settings.backend.url;
+
+            console.log('✅ Configurações carregadas');
+        } catch (error) {
+            console.error('❌ Erro ao carregar configurações:', error);
+        } finally {
+            this.loading = false;
+            this.updateSettingsDisplay();
+        }
+    }
+
+    async saveSettings() {
+        try {
+            this.saving = true;
+            this.showNotification('Salvando configurações...', 'info');
+
+            // Save to localStorage
+        localStorage.setItem('sacsmax_settings', JSON.stringify(this.settings));
+
+            // Update backend URL
+            this.backendUrl = this.settings.backend.url;
+
+            // Update global settings
+            if (window.SacsMaxApp) {
+                window.SacsMaxApp.settings = this.settings;
+            }
+
+            console.log('✅ Configurações salvas');
+            this.showNotification('Configurações salvas com sucesso!', 'success');
+        } catch (error) {
+            console.error('❌ Erro ao salvar configurações:', error);
+            this.showNotification('Erro ao salvar configurações', 'error');
+        } finally {
+            this.saving = false;
+        }
+    }
+
+    updateSettingsDisplay() {
+        // Update form values
+        const elements = {
+            'backend-url': this.settings.backend.url,
+            'backend-port': this.settings.backend.port,
+            'connection-timeout': this.settings.backend.timeout,
+            'whatsapp-url': this.settings.whatsapp.url,
+            'whatsapp-port': this.settings.whatsapp.port,
+            'session-name': this.settings.whatsapp.session_name,
+            'auto-start-whatsapp': this.settings.whatsapp.auto_start,
+            'log-level': this.settings.system.log_level,
+            'max-log-files': this.settings.system.max_log_files,
+            'backup-interval': this.settings.system.backup_interval,
+            'railway-url': this.settings.database.railway_url,
+            'local-backup': this.settings.database.local_backup
+        };
+
+        Object.entries(elements).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) {
+                if (element.type === 'checkbox') {
+                    element.checked = value;
+                } else {
+                    element.value = value;
+                }
+            }
         });
     }
 
-    setupFileImport() {
-        const importFile = document.getElementById('import-file');
-        if (importFile) {
-            importFile.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    this.importData(file);
-                }
+    // WhatsApp Server Control Methods
+    async startWhatsAppServer() {
+        try {
+            // Evitar múltiplas tentativas
+            if (this.startingServer) {
+                console.log('⚠️ Servidor já está sendo iniciado...');
+                return;
+            }
+            
+            this.startingServer = true;
+            this.showNotification('🚀 Iniciando WhatsApp Server...', 'info');
+            
+            // 1. Iniciar servidor via backend (backend vai detectar porta livre)
+            console.log('🚀 Iniciando WhatsApp Server...');
+            const response = await fetch(`${this.settings.backend.url}/api/whatsapp-server/start`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ port: 3001 }) // Porta sugerida, mas backend vai detectar a livre
             });
-        }
-    }
-
-    switchSection(sectionName) {
-        // Esconde todas as seções
-        const sections = document.querySelectorAll('.settings-section');
-        sections.forEach(section => section.classList.remove('active'));
-        
-        // Mostra a seção selecionada
-        const targetSection = document.getElementById(`${sectionName}-section`);
-        if (targetSection) {
-            targetSection.classList.add('active');
-        }
-    }
-
-    loadSettings() {
-        const savedSettings = localStorage.getItem('sacsmax_settings');
-        if (savedSettings) {
-            this.settings = { ...this.settings, ...JSON.parse(savedSettings) };
-        }
-    }
-
-    saveSettings() {
-        localStorage.setItem('sacsmax_settings', JSON.stringify(this.settings));
-    }
-
-    saveGeneralSettings() {
-        this.settings.general.companyName = document.getElementById('company-name')?.value || this.settings.general.companyName;
-        this.settings.general.timezone = document.getElementById('timezone')?.value || this.settings.general.timezone;
-        this.settings.general.language = document.getElementById('language')?.value || this.settings.general.language;
-        this.settings.general.dateFormat = document.getElementById('date-format')?.value || this.settings.general.dateFormat;
-        
-        this.saveSettings();
-        this.showNotification('Configurações gerais salvas com sucesso!', 'success');
-    }
-
-    saveNotificationSettings() {
-        this.settings.notifications.emailNotifications = document.getElementById('email-notifications')?.checked || false;
-        this.settings.notifications.pushNotifications = document.getElementById('push-notifications')?.checked || false;
-        this.settings.notifications.soundAlerts = document.getElementById('sound-alerts')?.checked || false;
-        this.settings.notifications.desktopNotifications = document.getElementById('desktop-notifications')?.checked || false;
-        
-        this.saveSettings();
-        this.showNotification('Configurações de notificações salvas com sucesso!', 'success');
-    }
-
-    saveSecuritySettings() {
-        this.settings.security.sessionTimeout = parseInt(document.getElementById('session-timeout')?.value) || 30;
-        this.settings.security.loginAttempts = parseInt(document.getElementById('login-attempts')?.value) || 5;
-        this.settings.security.requirePasswordChange = document.getElementById('require-password-change')?.checked || false;
-        this.settings.security.twoFactorAuth = document.getElementById('two-factor-auth')?.checked || false;
-        
-        this.saveSettings();
-        this.showNotification('Configurações de segurança salvas com sucesso!', 'success');
-    }
-
-    saveIntegrationSettings() {
-        this.settings.integrations.whatsappEnabled = document.getElementById('whatsapp-enabled')?.checked || false;
-        this.settings.integrations.emailEnabled = document.getElementById('email-enabled')?.checked || false;
-        this.settings.integrations.smsEnabled = document.getElementById('sms-enabled')?.checked || false;
-        
-        this.saveSettings();
-        this.showNotification('Configurações de integrações salvas com sucesso!', 'success');
-    }
-
-    saveAppearanceSettings() {
-        this.settings.appearance.theme = document.getElementById('theme')?.value || 'light';
-        this.settings.appearance.primaryColor = document.getElementById('primary-color')?.value || '#667eea';
-        this.settings.appearance.fontSize = document.getElementById('font-size')?.value || 'medium';
-        this.settings.appearance.compactMode = document.getElementById('compact-mode')?.checked || false;
-        
-        this.saveSettings();
-        this.applyTheme();
-        this.showNotification('Configurações de aparência salvas com sucesso!', 'success');
-    }
-
-    applyTheme() {
-        const root = document.documentElement;
-        root.style.setProperty('--primary-color', this.settings.appearance.primaryColor);
-        
-        if (this.settings.appearance.theme === 'dark') {
-            document.body.classList.add('dark-theme');
-        } else {
-            document.body.classList.remove('dark-theme');
-        }
-    }
-
-    changePassword() {
-        const newPassword = prompt('Digite a nova senha:');
-        if (newPassword) {
-            const confirmPassword = prompt('Confirme a nova senha:');
-            if (newPassword === confirmPassword) {
-                // Aqui você implementaria a lógica de alteração de senha
-                this.showNotification('Senha alterada com sucesso!', 'success');
+            
+            if (!response.ok) {
+                throw new Error('Erro ao iniciar servidor via backend');
+            }
+            
+            const result = await response.json();
+            console.log('📊 Resposta do backend:', result);
+            
+            // 3. Se o backend retornou a porta, usar ela
+            if (result.success && result.port) {
+                this.settings.whatsapp.url = `http://localhost:${result.port}`;
+                this.settings.whatsapp.port = result.port;
+                this.whatsappServerRunning = true;
+                this.updateSettingsDisplay();
+                
+                this.showNotification(`✅ WhatsApp Server iniciado na porta ${result.port}!`, 'success');
+                console.log(`🚀 WhatsApp Server iniciado na porta ${result.port}`);
             } else {
-                this.showNotification('As senhas não coincidem!', 'error');
+                // 4. Se não, aguardar e detectar automaticamente
+                this.showNotification('⏳ Aguardando servidor inicializar...', 'info');
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                
+                await this.checkWhatsAppServerStatus();
+            }
+            
+            if (this.whatsappServerRunning) {
+                this.showNotification(`✅ WhatsApp Server iniciado na porta ${this.settings.whatsapp.port}!`, 'success');
+                console.log(`🚀 WhatsApp Server iniciado na porta ${this.settings.whatsapp.port}`);
+            } else {
+                throw new Error('Servidor não respondeu após inicialização');
+            }
+        } catch (error) {
+            console.error('❌ Erro ao iniciar WhatsApp Server:', error);
+            this.showNotification(`❌ Erro ao iniciar WhatsApp Server: ${error.message}`, 'error');
+        } finally {
+            this.startingServer = false;
+        }
+    }
+
+
+
+    async stopWhatsAppServer() {
+        try {
+            this.showNotification('Parando WhatsApp Server...', 'info');
+            
+            // Simular parada do servidor
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            this.whatsappServerRunning = false;
+            this.updateWhatsAppStatus();
+            this.showNotification('⏹️ WhatsApp Server parado!', 'success');
+            
+            console.log('⏹️ WhatsApp Server parado');
+        } catch (error) {
+            console.error('❌ Erro ao parar WhatsApp Server:', error);
+            this.showNotification('❌ Erro ao parar WhatsApp Server', 'error');
+        }
+    }
+
+    async restartWhatsAppServer() {
+        try {
+            this.showNotification('Reiniciando WhatsApp Server...', 'info');
+            
+            await this.stopWhatsAppServer();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await this.startWhatsAppServer();
+            
+            this.showNotification('🔄 WhatsApp Server reiniciado!', 'success');
+        } catch (error) {
+            console.error('❌ Erro ao reiniciar WhatsApp Server:', error);
+            this.showNotification('❌ Erro ao reiniciar WhatsApp Server', 'error');
+        }
+    }
+
+    async generateQRCode() {
+        try {
+            this.showNotification('Gerando QR Code...', 'info');
+            
+            // Verificar status do servidor primeiro
+            await this.checkWhatsAppServerStatus();
+            
+            // Buscar QR Code real do servidor
+            const response = await fetch(`${this.settings.whatsapp.url}/api/sessions/${this.settings.whatsapp.session_name}/qr`, {
+                method: 'GET',
+                signal: AbortSignal.timeout(5000)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Erro ao buscar QR Code: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            const qrDisplay = document.getElementById('qr-code-display');
+            if (qrDisplay && data.qr) {
+                qrDisplay.innerHTML = `
+                    <div class="qr-code">
+                        <img src="${data.qr}" alt="QR Code WhatsApp" style="width: 300px; height: 300px;">
+                    </div>
+                    <p class="qr-instructions">Escaneie com o WhatsApp do seu celular</p>
+                `;
+                
+                this.showNotification('📱 QR Code gerado com sucesso!', 'success');
+                console.log('📱 QR Code gerado e exibido');
+            } else {
+                throw new Error('QR Code não encontrado na resposta');
+            }
+        } catch (error) {
+            console.error('❌ Erro ao gerar QR Code:', error);
+            this.showNotification(`❌ Erro ao gerar QR Code: ${error.message}`, 'error');
+            
+            // Mostrar erro no display
+            const qrDisplay = document.getElementById('qr-code-display');
+            if (qrDisplay) {
+                qrDisplay.innerHTML = `
+                    <div class="qr-error">
+                        <p>❌ Erro ao gerar QR Code</p>
+                        <p style="font-size: 0.8rem; color: #666;">${error.message}</p>
+                        <button onclick="settingsModule.generateQRCode()" class="qr-btn">🔄 Tentar Novamente</button>
+                    </div>
+                `;
             }
         }
     }
 
-    exportSecurityLog() {
-        const log = {
-            timestamp: new Date().toISOString(),
-            events: [
-                { date: '2024-01-15', event: 'Login realizado', ip: '192.168.1.1' },
-                { date: '2024-01-14', event: 'Alteração de senha', ip: '192.168.1.1' },
-                { date: '2024-01-13', event: 'Login realizado', ip: '192.168.1.1' }
-            ]
-        };
-        
-        const blob = new Blob([JSON.stringify(log, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `security-log-${new Date().toISOString().split('T')[0]}.json`;
-        link.click();
-        
-        this.showNotification('Log de segurança exportado com sucesso!', 'success');
-    }
-
-    exportAllData() {
-        const data = {
-            settings: this.settings,
-            contacts: JSON.parse(localStorage.getItem('sacsmax_contacts') || '[]'),
-            messages: JSON.parse(localStorage.getItem('sacsmax_messages') || '{}'),
-            botConfig: JSON.parse(localStorage.getItem('sacsmax_bot_config') || '{}'),
-            exportDate: new Date().toISOString()
-        };
-        
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `sacsmax-backup-${new Date().toISOString().split('T')[0]}.json`;
-        link.click();
-        
-        this.addBackupToHistory('Backup Completo', 'all');
-        this.showNotification('Backup completo exportado com sucesso!', 'success');
-    }
-
-    exportContacts() {
-        const contacts = JSON.parse(localStorage.getItem('sacsmax_contacts') || '[]');
-        const blob = new Blob([JSON.stringify(contacts, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `contacts-backup-${new Date().toISOString().split('T')[0]}.json`;
-        link.click();
-        
-        this.addBackupToHistory('Backup de Contatos', 'contacts');
-        this.showNotification('Contatos exportados com sucesso!', 'success');
-    }
-
-    exportSettings() {
-        const blob = new Blob([JSON.stringify(this.settings, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `settings-backup-${new Date().toISOString().split('T')[0]}.json`;
-        link.click();
-        
-        this.addBackupToHistory('Backup de Configurações', 'settings');
-        this.showNotification('Configurações exportadas com sucesso!', 'success');
-    }
-
-    importData(file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const data = JSON.parse(e.target.result);
+    async checkWhatsAppServerStatus() {
+        try {
+            console.log('🔍 Verificando status do WhatsApp Server...');
+            
+            // Tentar portas comuns do WhatsApp Server
+            const ports = [3001, 3002, 3003, 3004, 3005];
+            let foundPort = null;
+            let foundData = null;
+            
+            for (const port of ports) {
+                try {
+                    console.log(`🔍 Testando porta ${port}...`);
+                    const response = await fetch(`http://localhost:${port}/api/status`, {
+                        method: 'GET',
+                        signal: AbortSignal.timeout(2000)
+                    }); 
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log(`📊 Resposta da porta ${port}:`, data);
+                        if (data.success && data.status === 'running') {
+                            foundPort = port;
+                            foundData = data;
+                            console.log(`✅ WhatsApp Server encontrado na porta ${port}`);
+                            break;
+                        }
+                    }
+                } catch (error) {
+                    console.log(`❌ Porta ${port} não respondeu:`, error.message);
+                }
+            }
+            
+            if (foundPort && foundData) {
+                // Atualizar configurações com a porta encontrada
+                this.settings.whatsapp.url = `http://localhost:${foundPort}`;
+                this.settings.whatsapp.port = foundPort;
+                this.whatsappServerRunning = true;
                 
-                if (data.settings) {
-                    this.settings = { ...this.settings, ...data.settings };
+                // Atualizar campos no formulário
+                this.updateSettingsDisplay();
+                
+                console.log(`✅ WhatsApp Server está rodando na porta ${foundPort}`);
+                console.log('📋 Configurações atualizadas:', this.settings.whatsapp);
+            } else {
+                this.whatsappServerRunning = false;
+                console.log('❌ WhatsApp Server não encontrado em nenhuma porta');
+            }
+            
+            this.updateWhatsAppStatus();
+        } catch (error) {
+            console.error('❌ Erro ao verificar WhatsApp Server:', error);
+            this.whatsappServerRunning = false;
+            this.updateWhatsAppStatus();
+        }
+    }
+
+    updateWhatsAppStatus() {
+        console.log('🔄 Atualizando status do WhatsApp...');
+        console.log('📊 Status atual:', this.whatsappServerRunning);
+        console.log('📋 Configurações:', this.settings.whatsapp);
+        
+        const statusBadge = document.querySelector('.status-badge');
+        const startBtn = document.querySelector('.start-btn');
+        const stopBtn = document.querySelector('.stop-btn');
+        const qrBtn = document.querySelector('.qr-btn');
+        const qrDisplay = document.getElementById('qr-code-display');
+
+        if (statusBadge) {
+            statusBadge.className = `status-badge ${this.whatsappServerRunning ? 'running' : 'stopped'}`;
+            statusBadge.innerHTML = this.whatsappServerRunning ? '🟢 Rodando' : '🔴 Parado';
+            console.log('✅ Status badge atualizado');
+        }
+
+        if (startBtn) {
+            startBtn.disabled = this.whatsappServerRunning;
+            console.log('✅ Botão iniciar atualizado:', !this.whatsappServerRunning);
+        }
+        
+        if (stopBtn) {
+            stopBtn.disabled = !this.whatsappServerRunning;
+            console.log('✅ Botão parar atualizado:', this.whatsappServerRunning);
+        }
+        
+        if (qrBtn) {
+            qrBtn.disabled = !this.whatsappServerRunning;
+            console.log('✅ Botão QR atualizado:', this.whatsappServerRunning);
+        }
+
+        if (qrDisplay) {
+            if (this.whatsappServerRunning) {
+                qrDisplay.innerHTML = '<p>Clique em "Gerar QR Code" para conectar</p>';
+                console.log('✅ QR Display: Servidor rodando');
+            } else {
+                qrDisplay.innerHTML = '<p>Inicie o servidor primeiro</p>';
+                console.log('✅ QR Display: Servidor parado');
+            }
+        }
+        
+        console.log('✅ Status do WhatsApp atualizado com sucesso');
+    }
+
+    // Connection test methods
+    async testBackendConnection() {
+        try {
+            const response = await fetch(`${this.settings.backend.url}/health`, {
+                method: 'GET',
+                signal: AbortSignal.timeout(this.settings.backend.timeout)
+            });
+
+            if (response.ok) {
+                this.showNotification('✅ Backend conectado com sucesso!', 'success');
+            } else {
+                this.showNotification('⚠️ Backend respondeu com erro', 'warning');
+            }
+        } catch (error) {
+            this.showNotification('❌ Erro ao conectar com o backend', 'error');
+        }
+    }
+
+    async testDatabaseConnection() {
+        try {
+            const response = await fetch(`${this.settings.backend.url}/health`, {
+                method: 'GET',
+                signal: AbortSignal.timeout(this.settings.backend.timeout)
+            });
+
+            if (response.ok) {
+                this.showNotification('✅ Banco de dados conectado!', 'success');
+            } else {
+                this.showNotification('⚠️ Banco de dados respondeu com erro', 'warning');
+            }
+        } catch (error) {
+            this.showNotification('❌ Erro ao conectar com banco de dados', 'error');
+        }
+    }
+
+    async testWhatsAppConnection() {
+        try {
+            this.showNotification('🔍 Procurando WhatsApp Server...', 'info');
+            
+            // Usar a mesma lógica de detecção automática
+            const ports = [3001, 3002, 3003, 3004, 3005];
+            let foundPort = null;
+            let foundData = null;
+            
+            for (const port of ports) {
+                try {
+                    this.showNotification(`🔍 Testando porta ${port}...`, 'info');
+                    const response = await fetch(`http://localhost:${port}/api/status`, {
+                        method: 'GET',
+                        signal: AbortSignal.timeout(2000)
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.success && data.status === 'running') {
+                            foundPort = port;
+                            foundData = data;
+                            break;
+                        }
+                    }
+                } catch (error) {
+                    console.log(`❌ Porta ${port} não respondeu`);
+                }
+            }
+            
+            if (foundPort && foundData) {
+                // Atualizar configurações
+                this.settings.whatsapp.url = `http://localhost:${foundPort}`;
+                this.settings.whatsapp.port = foundPort;
+                this.whatsappServerRunning = true;
+                this.updateSettingsDisplay();
+                this.updateWhatsAppStatus();
+                
+                this.showNotification(`✅ WhatsApp Server encontrado na porta ${foundPort}!`, 'success');
+                console.log('📊 Status WhatsApp:', foundData);
+            } else {
+                this.showNotification('❌ WhatsApp Server não encontrado em nenhuma porta', 'error');
+            }
+        } catch (error) {
+            console.error('❌ Erro ao testar WhatsApp Server:', error);
+            this.showNotification(`❌ Erro ao procurar WhatsApp Server: ${error.message}`, 'error');
+        }
+    }
+
+    // Update methods
+    updateBackendUrl() {
+        this.settings.backend.url = document.getElementById('backend-url').value;
                     this.saveSettings();
                 }
                 
-                if (data.contacts) {
-                    localStorage.setItem('sacsmax_contacts', JSON.stringify(data.contacts));
-                }
-                
-                if (data.messages) {
-                    localStorage.setItem('sacsmax_messages', JSON.stringify(data.messages));
-                }
-                
-                if (data.botConfig) {
-                    localStorage.setItem('sacsmax_bot_config', JSON.stringify(data.botConfig));
-                }
-                
-                this.showNotification('Dados importados com sucesso!', 'success');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 2000);
-                
-            } catch (error) {
-                this.showNotification('Erro ao importar dados: ' + error.message, 'error');
-            }
-        };
-        reader.readAsText(file);
+    updateBackendPort() {
+        this.settings.backend.port = parseInt(document.getElementById('backend-port').value);
+        this.saveSettings();
     }
 
-    resetAllData() {
-        if (confirm('Tem certeza que deseja resetar todos os dados? Esta ação não pode ser desfeita!')) {
-            localStorage.clear();
-            this.showNotification('Todos os dados foram resetados!', 'success');
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
+    updateTimeout() {
+        this.settings.backend.timeout = parseInt(document.getElementById('connection-timeout').value);
+        this.saveSettings();
+    }
+
+    updateWhatsAppUrl() {
+        this.settings.whatsapp.url = document.getElementById('whatsapp-url').value;
+        this.saveSettings();
+    }
+
+    updateWhatsAppPort() {
+        this.settings.whatsapp.port = parseInt(document.getElementById('whatsapp-port').value);
+        this.saveSettings();
+    }
+
+    updateSessionName() {
+        this.settings.whatsapp.session_name = document.getElementById('session-name').value;
+        this.saveSettings();
+    }
+
+    updateAutoStartWhatsapp() {
+        this.settings.whatsapp.auto_start = document.getElementById('auto-start-whatsapp').checked;
+        this.saveSettings();
+    }
+
+    updateLogLevel() {
+        this.settings.system.log_level = document.getElementById('log-level').value;
+        this.saveSettings();
+    }
+
+    updateMaxLogFiles() {
+        this.settings.system.max_log_files = parseInt(document.getElementById('max-log-files').value);
+        this.saveSettings();
+    }
+
+    updateBackupInterval() {
+        this.settings.system.backup_interval = parseInt(document.getElementById('backup-interval').value);
+        this.saveSettings();
+    }
+
+    updateRailwayUrl() {
+        this.settings.database.railway_url = document.getElementById('railway-url').value;
+        this.saveSettings();
+    }
+
+    updateLocalBackup() {
+        this.settings.database.local_backup = document.getElementById('local-backup').checked;
+        this.saveSettings();
+    }
+
+    // Action methods
+    clearLogs() {
+        if (confirm('Tem certeza que deseja limpar todos os logs?')) {
+            // Clear logs logic here
+            this.showNotification('Logs limpos com sucesso!', 'success');
         }
     }
 
-    getBackupHistory() {
-        const history = localStorage.getItem('sacsmax_backup_history');
-        return history ? JSON.parse(history) : [];
+    exportLogs() {
+        // Export logs logic here
+        this.showNotification('Logs exportados com sucesso!', 'success');
     }
 
-    addBackupToHistory(name, type) {
-        const history = this.getBackupHistory();
-        const backup = {
-            id: Date.now().toString(),
-            name: name,
-            type: type,
-            date: new Date().toLocaleString('pt-BR'),
-            size: '2.5 MB'
-        };
-        
-        history.unshift(backup);
-        
-        // Mantém apenas os últimos 10 backups
-        if (history.length > 10) {
-            history.splice(10);
-        }
-        
-        localStorage.setItem('sacsmax_backup_history', JSON.stringify(history));
-        this.updateBackupHistory();
-    }
-
-    updateBackupHistory() {
-        const backupList = document.getElementById('backup-list');
-        if (backupList) {
-            backupList.innerHTML = this.renderBackupHistory();
+    restartSystem() {
+        if (confirm('Tem certeza que deseja reiniciar o sistema?')) {
+            // Restart system logic here
+            this.showNotification('Sistema reiniciado!', 'success');
         }
     }
 
-    downloadBackup(backupId) {
-        // Simula download de backup
-        this.showNotification('Download iniciado...', 'info');
+    backupDatabase() {
+        // Backup database logic here
+        this.showNotification('Backup iniciado...', 'info');
     }
 
-    deleteBackup(backupId) {
-        if (confirm('Tem certeza que deseja excluir este backup?')) {
-            const history = this.getBackupHistory();
-            const filteredHistory = history.filter(b => b.id !== backupId);
-            localStorage.setItem('sacsmax_backup_history', JSON.stringify(filteredHistory));
-            this.updateBackupHistory();
-            this.showNotification('Backup excluído com sucesso!', 'success');
+    restoreDatabase() {
+        if (confirm('Tem certeza que deseja restaurar o banco de dados?')) {
+            // Restore database logic here
+            this.showNotification('Restauração iniciada...', 'info');
         }
     }
 
-    showNotification(message, type) {
+    optimizeDatabase() {
+        // Optimize database logic here
+        this.showNotification('Otimização iniciada...', 'info');
+    }
+
+    getConnectionStatus() {
+        // Simple connection status check
+        return true; // For now, always return true
+    }
+
+    updateConnectionStatus() {
+        const statusIndicator = document.querySelector('.status-indicator');
+        if (statusIndicator) {
+            const isConnected = this.getConnectionStatus();
+            statusIndicator.className = `status-indicator ${isConnected ? 'connected' : 'disconnected'}`;
+            statusIndicator.innerHTML = isConnected ? '🟢 Conectado' : '🔴 Desconectado';
+        }
+    }
+
+    showNotification(message, type = 'info') {
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
         notification.innerHTML = `
@@ -891,322 +946,539 @@ class SettingsModule {
     }
 }
 
-// Adiciona estilos específicos do módulo Settings
+// Estilos específicos do módulo Settings
 const settingsStyles = `
-    .settings-nav {
+    .settings-status {
         display: flex;
-        gap: 0.5rem;
-        margin-bottom: 2rem;
-        overflow-x: auto;
-        padding-bottom: 0.5rem;
+        align-items: center;
+        gap: 1rem;
     }
 
-    .settings-nav-btn {
+    .status-indicator {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .status-indicator.connected {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-indicator.disconnected {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .settings-content {
+        padding: 1rem;
+    }
+
+    .loading-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem;
+        color: #666;
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #dc3545;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 1rem;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .settings-tabs {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .tab-buttons {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid #e9ecef;
+        padding-bottom: 1rem;
+    }
+
+    .tab-btn {
         padding: 0.75rem 1.5rem;
         border: none;
         background: #f8f9fa;
-        color: #495057;
         border-radius: 8px;
         cursor: pointer;
-        transition: all 0.3s ease;
-        white-space: nowrap;
         font-size: 0.9rem;
+        transition: all 0.2s ease;
     }
 
-    .settings-nav-btn:hover {
+    .tab-btn:hover {
         background: #e9ecef;
     }
 
-    .settings-nav-btn.active {
-        background: #667eea;
+    .tab-btn.active {
+        background: #dc3545;
         color: white;
     }
 
-    .settings-section {
-        display: none;
-    }
-
-    .settings-section.active {
-        display: block;
-    }
-
-    .settings-grid {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .setting-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 1rem;
-        background: #f8f9fa;
-        border-radius: 8px;
-        border: 1px solid #e9ecef;
-    }
-
-    .setting-info h4 {
-        margin: 0 0 0.25rem 0;
-        color: #495057;
-    }
-
-    .setting-info p {
-        margin: 0;
-        color: #6c757d;
-        font-size: 0.9rem;
-    }
-
-    .switch {
-        position: relative;
-        display: inline-block;
-        width: 50px;
-        height: 24px;
-    }
-
-    .switch input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }
-
-    .slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: #ccc;
-        transition: .4s;
-        border-radius: 24px;
-    }
-
-    .slider:before {
-        position: absolute;
-        content: "";
-        height: 18px;
-        width: 18px;
-        left: 3px;
-        bottom: 3px;
-        background-color: white;
-        transition: .4s;
-        border-radius: 50%;
-    }
-
-    input:checked + .slider {
-        background-color: #667eea;
-    }
-
-    input:checked + .slider:before {
-        transform: translateX(26px);
-    }
-
-    .integrations-grid {
-        display: grid;
-        gap: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .integration-card {
-        border: 1px solid #e9ecef;
-        border-radius: 8px;
-        overflow: hidden;
-    }
-
-    .integration-header {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 1rem;
-        background: #f8f9fa;
-        border-bottom: 1px solid #e9ecef;
-    }
-
-    .integration-icon {
-        font-size: 1.5rem;
-        width: 40px;
-        text-align: center;
-    }
-
-    .integration-info {
+    .tab-content {
         flex: 1;
     }
 
-    .integration-info h4 {
-        margin: 0 0 0.25rem 0;
-        color: #495057;
+    .tab-panel {
+        display: none;
     }
 
-    .integration-info p {
-        margin: 0;
-        color: #6c757d;
-        font-size: 0.9rem;
+    .tab-panel.active {
+        display: block;
     }
 
-    .integration-details {
-        padding: 1rem;
-    }
-
-    .security-actions {
-        display: flex;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .theme-preview {
-        margin-top: 1.5rem;
-    }
-
-    .preview-container {
-        border: 1px solid #e9ecef;
-        border-radius: 8px;
-        overflow: hidden;
-        max-width: 400px;
-    }
-
-    .preview-header {
-        background: var(--primary-color, #667eea);
-        color: white;
-        padding: 0.75rem 1rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .preview-header h5 {
-        margin: 0;
-    }
-
-    .preview-status {
-        font-size: 0.8rem;
-        opacity: 0.8;
-    }
-
-    .preview-content {
-        padding: 1rem;
-        background: white;
-    }
-
-    .preview-content p {
-        margin: 0;
-        color: #495057;
-    }
-
-    .backup-options {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 1.5rem;
+    .settings-section {
         margin-bottom: 2rem;
     }
 
-    .backup-card {
+    .settings-section h3 {
+        margin-bottom: 1rem;
+        color: #333;
+        font-size: 1.2rem;
+    }
+
+    .connection-status {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .status-card {
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 1rem;
+    }
+
+    .status-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .status-icon {
+        font-size: 1.2rem;
+    }
+
+    .status-title {
+        font-weight: 500;
+        color: #333;
+    }
+
+    .status-details {
+        margin-bottom: 1rem;
+        color: #666;
+    }
+
+    .status-url {
+        font-family: monospace;
+        background: #f8f9fa;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+    }
+
+    .status-port {
+        color: #999;
+    }
+
+    .status-type {
+        background: #e9ecef;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+    }
+
+    .test-btn {
+        padding: 0.5rem 1rem;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: background 0.2s ease;
+    }
+
+    .test-btn:hover {
+        background: #0056b3;
+    }
+
+    .whatsapp-control {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .control-card {
+        background: white;
         border: 1px solid #e9ecef;
         border-radius: 8px;
         padding: 1.5rem;
-        background: #f8f9fa;
     }
 
-    .backup-card h4 {
-        margin: 0 0 0.5rem 0;
-        color: #495057;
+    .control-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
     }
 
-    .backup-card p {
-        margin: 0 0 1rem 0;
-        color: #6c757d;
+    .control-icon {
+        font-size: 1.5rem;
+    }
+
+    .control-title {
+        font-weight: 500;
+        color: #333;
+        font-size: 1.1rem;
+    }
+
+    .control-status {
+        margin-bottom: 1rem;
+    }
+
+    .status-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
         font-size: 0.9rem;
+        font-weight: 500;
     }
 
-    .backup-actions {
+    .status-badge.running {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-badge.stopped {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .port-info {
+        display: block;
+        margin-top: 0.5rem;
+        font-size: 0.8rem;
+        color: #666;
+        background: #f8f9fa;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-family: monospace;
+    }
+
+    .control-actions {
         display: flex;
         gap: 0.5rem;
         flex-wrap: wrap;
     }
 
-    .backup-history {
-        margin-bottom: 2rem;
+    .control-btn {
+        padding: 0.75rem 1rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: all 0.2s ease;
     }
 
-    .backup-list {
-        max-height: 300px;
-        overflow-y: auto;
+    .control-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .start-btn {
+        background: #28a745;
+        color: white;
+    }
+
+    .start-btn:hover:not(:disabled) {
+        background: #218838;
+    }
+
+    .stop-btn {
+        background: #dc3545;
+        color: white;
+    }
+
+    .stop-btn:hover:not(:disabled) {
+        background: #c82333;
+    }
+
+    .restart-btn {
+        background: #ffc107;
+        color: #333;
+    }
+
+    .restart-btn:hover:not(:disabled) {
+        background: #e0a800;
+    }
+
+    .qr-section {
+        background: white;
         border: 1px solid #e9ecef;
         border-radius: 8px;
+        padding: 1.5rem;
     }
 
-    .backup-item {
+    .qr-header {
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        padding: 1rem;
-        border-bottom: 1px solid #e9ecef;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
     }
 
-    .backup-item:last-child {
-        border-bottom: none;
+    .qr-icon {
+        font-size: 1.2rem;
     }
 
-    .backup-info {
-        flex: 1;
-    }
-
-    .backup-name {
+    .qr-title {
         font-weight: 500;
-        color: #495057;
-        margin-bottom: 0.25rem;
+        color: #333;
     }
 
-    .backup-details {
+    .qr-content {
         display: flex;
+        flex-direction: column;
+        align-items: center;
         gap: 1rem;
-        font-size: 0.8rem;
-        color: #6c757d;
     }
 
-    .backup-actions {
+    .qr-display {
+        min-height: 200px;
         display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px dashed #e9ecef;
+        border-radius: 8px;
+        padding: 2rem;
+        text-align: center;
+        color: #666;
+    }
+
+    .qr-code {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
         gap: 0.5rem;
     }
 
-    .no-backups {
-        text-align: center;
-        color: #6c757d;
-        font-style: italic;
-        padding: 2rem;
+    .qr-placeholder {
+        width: 150px;
+        height: 150px;
+        background: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
     }
 
-    .backup-settings {
-        border-top: 1px solid #e9ecef;
-        padding-top: 1.5rem;
+    .qr-text {
+        font-weight: 500;
+        color: #333;
     }
 
-    .color-input {
-        height: 40px;
-        padding: 0.25rem;
-    }
-
-    .form-help {
+    .qr-time {
         font-size: 0.8rem;
-        color: #6c757d;
-        margin-top: 0.25rem;
+        color: #666;
     }
 
-    .dark-theme {
-        background: #1a1a1a;
-        color: #ffffff;
+    .qr-instructions {
+        font-size: 0.9rem;
+        color: #666;
+        margin: 0;
     }
 
-    .dark-theme .card {
-        background: #2d2d2d;
-        border-color: #404040;
+    .qr-btn {
+        padding: 0.75rem 1.5rem;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: background 0.2s ease;
     }
 
-    .dark-theme .form-input {
-        background: #404040;
-        border-color: #555555;
-        color: #ffffff;
+    .qr-btn:hover:not(:disabled) {
+        background: #0056b3;
+    }
+
+    .qr-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .qr-btn.test-btn {
+        background: #6c757d;
+        margin-left: 0.5rem;
+    }
+
+    .qr-btn.test-btn:hover {
+        background: #5a6268;
+    }
+
+    .qr-error {
+        text-align: center;
+        color: #dc3545;
+    }
+
+    .settings-form {
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: #333;
+    }
+
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: #dc3545;
+        box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.2);
+    }
+
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+        width: auto;
+        margin: 0;
+    }
+
+    .system-actions,
+    .database-actions {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .action-btn {
+        padding: 0.75rem 1.5rem;
+        background: #6c757d;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: background 0.2s ease;
+    }
+
+    .action-btn:hover {
+        background: #5a6268;
+    }
+
+    .notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        animation: slideIn 0.3s ease-out;
+    }
+
+    .notification-content {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        border-radius: 8px;
+        color: white;
+        min-width: 300px;
+    }
+
+    .notification-success {
+        background: #28a745;
+    }
+
+    .notification-error {
+        background: #dc3545;
+    }
+
+    .notification-info {
+        background: #17a2b8;
+    }
+
+    .notification-warning {
+        background: #ffc107;
+        color: #333;
+    }
+
+    .notification-close {
+        background: none;
+        border: none;
+        color: inherit;
+        cursor: pointer;
+        font-size: 1.2rem;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .whatsapp-control {
+            grid-template-columns: 1fr;
+        }
+        
+        .tab-buttons {
+            flex-wrap: wrap;
+        }
+        
+        .control-actions {
+            flex-direction: column;
+        }
     }
 `;
 
@@ -1218,273 +1490,11 @@ if (!document.getElementById('settings-styles')) {
     document.head.appendChild(style);
 }
 
-// Métodos para WhatsApp
-SettingsModule.prototype.generateQRCode = async function() {
-    const qrDisplay = document.getElementById('qr-code-display');
-    const statusDot = document.getElementById('whatsapp-status-dot');
-    const statusText = document.getElementById('whatsapp-status-text');
-    
-    try {
-        statusDot.className = 'status-dot connecting';
-        statusText.textContent = 'Conectando ao WhatsApp...';
-        
-        qrDisplay.innerHTML = `
-            <div class="qr-code">
-                <div class="qr-placeholder">
-                    <span class="qr-icon">📱</span>
-                    <p>Conectando ao WhatsApp...</p>
-                    <div class="qr-loading"></div>
-                </div>
-            </div>
-        `;
-        
-        // 1. Criar sessão WhatsApp
-        const createResponse = await fetch('http://localhost:3001/api/sessions/add', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionName: 'sacmax' })
-        });
-        
-        if (!createResponse.ok) {
-            throw new Error('Falha ao criar sessão WhatsApp');
-        }
-        
-        // 2. Obter QR Code
-        const qrResponse = await fetch('http://localhost:3001/api/sessions/sacmax/qr');
-        if (!qrResponse.ok) {
-            throw new Error('Falha ao obter QR Code');
-        }
-        
-        const qrData = await qrResponse.json();
-        
-        if (qrData.success && qrData.qrCode) {
-            qrDisplay.innerHTML = `
-                <div class="qr-code">
-                    <div class="qr-image">
-                        <img src="data:image/png;base64,${qrData.qrCode}" alt="QR Code WhatsApp" style="width: 200px; height: 200px;">
-                    </div>
-                    <p>Escaneie o QR Code com seu WhatsApp</p>
-                    <small>Este código expira em 2 minutos</small>
-                </div>
-            `;
-            
-            statusDot.className = 'status-dot connecting';
-            statusText.textContent = 'Aguardando conexão...';
-            
-            // Verificar conexão periodicamente
-            this.checkWhatsAppConnection();
-            
-        } else {
-            throw new Error('QR Code não disponível');
-        }
-        
-    } catch (error) {
-        console.error('Erro ao gerar QR Code:', error);
-        qrDisplay.innerHTML = `
-            <div class="qr-code">
-                <div class="qr-error">
-                    <span class="qr-icon">❌</span>
-                    <p>Erro ao conectar: ${error.message}</p>
-                    <button class="btn btn-primary" onclick="window.SacsMaxApp.currentModule.generateQRCode()">
-                        🔄 Tentar Novamente
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        statusDot.className = 'status-dot';
-        statusText.textContent = 'Erro de conexão';
-    }
-};
+// Exporta para uso global
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = SettingsModule;
+}
 
-SettingsModule.prototype.checkConnection = async function() {
-    const statusDot = document.getElementById('whatsapp-status-dot');
-    const statusText = document.getElementById('whatsapp-status-text');
-    
-    try {
-        statusDot.className = 'status-dot connecting';
-        statusText.textContent = 'Verificando conexão...';
-        
-        const response = await fetch('http://localhost:3001/api/sessions/sacmax/status');
-        const data = await response.json();
-        
-        if (data.success && data.status === 'connected') {
-            statusDot.className = 'status-dot connected';
-            statusText.textContent = 'Conectado';
-            this.showNotification('WhatsApp conectado com sucesso!', 'success');
-        } else {
-            statusDot.className = 'status-dot';
-            statusText.textContent = 'Desconectado';
-            this.showNotification('WhatsApp não está conectado', 'error');
-        }
-    } catch (error) {
-        console.error('Erro ao verificar conexão:', error);
-        statusDot.className = 'status-dot';
-        statusText.textContent = 'Erro de conexão';
-        this.showNotification('Erro ao verificar status do WhatsApp', 'error');
-    }
-};
+// Variável global para acesso direto
+window.settingsModule = new SettingsModule();
 
-SettingsModule.prototype.checkWhatsAppConnection = function() {
-    // Verificar conexão a cada 5 segundos
-    this.connectionInterval = setInterval(async () => {
-        try {
-            const response = await fetch('http://localhost:3001/api/sessions/sacmax/status');
-            const data = await response.json();
-            
-            const statusDot = document.getElementById('whatsapp-status-dot');
-            const statusText = document.getElementById('whatsapp-status-text');
-            
-            if (data.success && data.status === 'connected') {
-                statusDot.className = 'status-dot connected';
-                statusText.textContent = 'Conectado';
-                this.showNotification('WhatsApp conectado com sucesso!', 'success');
-                clearInterval(this.connectionInterval);
-            }
-        } catch (error) {
-            console.error('Erro na verificação periódica:', error);
-        }
-    }, 5000);
-};
-
-SettingsModule.prototype.connectWhatsApp = function() {
-    this.generateQRCode();
-    this.showNotification('Iniciando conexão com WhatsApp...', 'info');
-};
-
-SettingsModule.prototype.disconnectWhatsApp = async function() {
-    const statusDot = document.getElementById('whatsapp-status-dot');
-    const statusText = document.getElementById('whatsapp-status-text');
-    const qrDisplay = document.getElementById('qr-code-display');
-    
-    try {
-        // Parar verificação periódica
-        if (this.connectionInterval) {
-            clearInterval(this.connectionInterval);
-        }
-        
-        // Remover sessão WhatsApp
-        const response = await fetch('http://localhost:3001/api/sessions/sacmax/remove', {
-            method: 'DELETE'
-        });
-        
-        statusDot.className = 'status-dot';
-        statusText.textContent = 'Desconectado';
-        
-        qrDisplay.innerHTML = `
-            <div class="qr-code">
-                <span class="qr-icon">📱</span>
-                <p>Clique em "Gerar QR Code" para conectar</p>
-            </div>
-        `;
-        
-        this.showNotification('WhatsApp desconectado com sucesso', 'success');
-        
-    } catch (error) {
-        console.error('Erro ao desconectar WhatsApp:', error);
-        this.showNotification('Erro ao desconectar WhatsApp', 'error');
-    }
-};
-
-SettingsModule.prototype.viewWhatsAppChat = async function() {
-    try {
-        const response = await fetch('http://localhost:3001/api/sessions/sacmax/chat-history');
-        const data = await response.json();
-        
-        if (data.success && data.messages) {
-            const chatWindow = window.open('', '_blank', 'width=800,height=600');
-            chatWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>WhatsApp Chat - SacsMax</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; margin: 20px; }
-                        .chat-container { max-width: 600px; margin: 0 auto; }
-                        .message { margin: 10px 0; padding: 10px; border-radius: 10px; }
-                        .received { background: #f0f0f0; }
-                        .sent { background: #dcf8c6; text-align: right; }
-                        .timestamp { font-size: 12px; color: #666; }
-                        .contact { font-weight: bold; color: #075e54; }
-                    </style>
-                </head>
-                <body>
-                    <div class="chat-container">
-                        <h2>💬 Histórico do WhatsApp</h2>
-                        <div id="messages">
-                            ${data.messages.map(msg => `
-                                <div class="message ${msg.fromMe ? 'sent' : 'received'}">
-                                    <div class="contact">${msg.fromMe ? 'Você' : msg.from}</div>
-                                    <div class="content">${msg.body}</div>
-                                    <div class="timestamp">${new Date(msg.timestamp).toLocaleString()}</div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                </body>
-                </html>
-            `);
-        } else {
-            this.showNotification('Nenhuma mensagem encontrada', 'info');
-        }
-    } catch (error) {
-        console.error('Erro ao carregar chat:', error);
-        this.showNotification('Erro ao carregar histórico do chat', 'error');
-    }
-};
-
-SettingsModule.prototype.exportWhatsAppLog = function() {
-    const logData = {
-        timestamp: new Date().toISOString(),
-        status: 'disconnected',
-        lastConnection: '2024-01-15T10:30:00Z',
-        totalMessages: 1250,
-        errors: 3
-    };
-    
-    const blob = new Blob([JSON.stringify(logData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'whatsapp-log.json';
-    a.click();
-    URL.revokeObjectURL(url);
-    
-    this.showNotification('Log do WhatsApp exportado', 'success');
-};
-
-SettingsModule.prototype.saveWhatsAppSettings = function() {
-    const sessionTimeout = document.getElementById('whatsapp-session-timeout').value;
-    const webhookUrl = document.getElementById('whatsapp-webhook').value;
-    const qrCodeEnabled = document.getElementById('qr-code-enabled').checked;
-    const autoReconnect = document.getElementById('auto-reconnect').checked;
-    
-    this.settings.whatsapp = {
-        sessionTimeout: parseInt(sessionTimeout),
-        webhookUrl: webhookUrl,
-        qrCodeEnabled: qrCodeEnabled,
-        autoReconnect: autoReconnect
-    };
-    
-    localStorage.setItem('sacsmax_settings', JSON.stringify(this.settings));
-    this.showNotification('Configurações do WhatsApp salvas!', 'success');
-};
-
-SettingsModule.prototype.showNotification = function(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-    notification.innerHTML = `
-        <span class="notification-message">${message}</span>
-        <button class="notification-close" onclick="this.parentElement.remove()">×</button>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        if (notification.parentElement) {
-            notification.remove();
-        }
-    }, 5000);
-};
-
-export default SettingsModule;

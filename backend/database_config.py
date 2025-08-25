@@ -75,6 +75,16 @@ class DatabaseManager:
 # Instância global do gerenciador de banco
 db_manager = DatabaseManager()
 
+def get_db_connection():
+    """Obtém uma conexão direta com o banco de dados"""
+    try:
+        connection = psycopg2.connect(DATABASE_URL)
+        connection.autocommit = True
+        return connection
+    except Exception as e:
+        logger.error(f"❌ Erro ao obter conexão com banco: {e}")
+        return None
+
 def init_database():
     """Inicializa a conexão com o banco"""
     return db_manager.connect()

@@ -68,16 +68,60 @@ async def get_whatsapp_status(db: Session = Depends(get_db) if get_db else None)
     """
     if not whatsapp_service:
         return {
-            "connected": False,
-            "session_active": False,
-            "message": "WhatsApp service not available"
+            "success": True,
+            "data": {
+                "status": "disconnected",
+                "session_active": False,
+                "message": "WhatsApp service not available"
+            }
         }
     
     try:
         status = whatsapp_service.get_status()
-        return status
+        return {
+            "success": True,
+            "data": {
+                "status": "connected" if status.get("connected") else "disconnected",
+                "session_active": status.get("session_active", False),
+                "message": status.get("message", "")
+            }
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@router.post("/qr-code")
+async def generate_qr_code(db: Session = Depends(get_db) if get_db else None):
+    """
+    Gerar novo QR Code para conexão WhatsApp
+    """
+    if not whatsapp_service:
+        raise HTTPException(status_code=503, detail="WhatsApp service not available")
+    
+    try:
+        qr_data = await whatsapp_service.generate_qr_code()
+        if qr_data:
+            return {
+                "success": True,
+                "data": {
+                    "qr_code_url": qr_data.get("qr_code_url"),
+                    "session_id": qr_data.get("session_id"),
+                    "expires_in": qr_data.get("expires_in", 120),  # 2 minutos
+                    "created_at": qr_data.get("created_at")
+                }
+            }
+        else:
+            return {
+                "success": False,
+                "error": "Não foi possível gerar o QR Code"
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 @router.get("/qr")
 async def get_qr_code(db: Session = Depends(get_db) if get_db else None):

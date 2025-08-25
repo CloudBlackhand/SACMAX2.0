@@ -82,10 +82,10 @@ class ExcelModule {
                     </div>
                     
                     <div class="processing-actions">
-                        <button class="btn btn-primary" id="process-btn" onclick="this.processExcel()">
+                        <button class="btn btn-primary" id="process-btn" onclick="excelModule.processExcel()">
                             🔄 Processar Dados
                         </button>
-                        <button class="btn btn-secondary" onclick="this.resetUpload()">
+                        <button class="btn btn-secondary" onclick="excelModule.resetUpload()">
                             🔄 Novo Upload
                         </button>
                     </div>
@@ -99,10 +99,10 @@ class ExcelModule {
                             <span id="preview-count">0</span> registros encontrados
                         </div>
                         <div class="preview-actions">
-                            <button class="btn btn-success" onclick="this.importData()">
+                            <button class="btn btn-success" onclick="excelModule.importData()">
                                 ✅ Importar Todos
                             </button>
-                            <button class="btn btn-secondary" onclick="this.exportPreview()">
+                            <button class="btn btn-secondary" onclick="excelModule.exportPreview()">
                                 📥 Exportar Preview
                             </button>
                         </div>
@@ -189,10 +189,10 @@ class ExcelModule {
                     </div>
                 </div>
                 <div class="history-actions">
-                    <button class="btn btn-sm btn-secondary" onclick="this.downloadFile('${upload.id}')">
+                    <button class="btn btn-sm btn-secondary" onclick="excelModule.downloadFile('${upload.id}')">
                         📥 Download
                     </button>
-                    <button class="btn btn-sm btn-danger" onclick="this.deleteUpload('${upload.id}')">
+                    <button class="btn btn-sm btn-danger" onclick="excelModule.deleteUpload('${upload.id}')">
                         🗑️ Excluir
                     </button>
                 </div>
@@ -934,4 +934,10 @@ if (!document.getElementById('excel-styles')) {
     document.head.appendChild(style);
 }
 
-export default ExcelModule;
+// Exporta para uso global
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = ExcelModule;
+}
+
+// Variável global para acesso direto
+window.excelModule = new ExcelModule();

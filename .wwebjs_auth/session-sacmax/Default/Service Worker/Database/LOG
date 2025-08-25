@@ -1,3 +1,2 @@
-2025/08/21-14:33:05.220 2fdce Reusing MANIFEST /home/cloud/Área de trabalho/sacmaxnew/SACMAX2.0/.wwebjs_auth/session-sacmax/Default/Service Worker/Database/MANIFEST-000001
-2025/08/21-14:33:05.220 2fdce Recovering log #3
-2025/08/21-14:33:05.220 2fdce Reusing old log /home/cloud/Área de trabalho/sacmaxnew/SACMAX2.0/.wwebjs_auth/session-sacmax/Default/Service Worker/Database/000003.log 
+2025/08/24-14:43:25.130 7094 Creating DB c:\Users\Cloud\Desktop\MAX SAC1\SACMAX2.0\.wwebjs_auth\session-sacmax\Default\Service Worker\Database since it was missing.
+2025/08/24-14:43:25.139 7094 Reusing MANIFEST c:\Users\Cloud\Desktop\MAX SAC1\SACMAX2.0\.wwebjs_auth\session-sacmax\Default\Service Worker\Database/MANIFEST-000001

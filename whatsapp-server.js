@@ -1,24 +1,55 @@
 #!/usr/bin/env node
 /**
- * Servidor WhatsApp Web.js Real
- * Integração com o backend SacsMax
+ * Servidor WhatsApp Web.js Real com WebSocket
+ * Integração em tempo real como WhatsApp Web
  */
 
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const express = require('express');
 const cors = require('cors');
 const qrcode = require('qrcode');
+const http = require('http');
+const WebSocket = require('ws');
 
 const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
 const PORT = 3001;
 
 // Configurar CORS
 app.use(cors());
 app.use(express.json());
 
-// Armazenar clientes ativos
+// Armazenar clientes ativos e WebSocket connections
 const clients = new Map();
 const sessions = new Map();
+const wsConnections = new Set();
+
+// Broadcast para todos os clientes WebSocket
+function broadcastToClients(event, data) {
+    wsConnections.forEach(ws => {
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ event, data }));
+        }
+    });
+}
+
+// WebSocket connection handler
+wss.on('connection', (ws) => {
+    console.log('🔌 Nova conexão WebSocket estabelecida');
+    wsConnections.add(ws);
+    
+    ws.on('close', () => {
+        console.log('🔌 Conexão WebSocket fechada');
+        wsConnections.delete(ws);
+    });
+    
+    ws.on('error', (error) => {
+        console.error('❌ Erro na conexão WebSocket:', error);
+        wsConnections.delete(ws);
+    });
+});
 
 // Função para criar novo cliente WhatsApp
 function createWhatsAppClient(sessionName) {
@@ -32,11 +63,44 @@ function createWhatsAppClient(sessionName) {
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--no-first-run',
+                '--disable-gpu',
+                '--disable-web-security',
+                '--disable-features=VizDisplayCompositor',
+                '--disable-extensions',
+                '--disable-plugins',
+                '--disable-images',
+                '--disable-javascript',
+                '--disable-background-timer-throttling',
+                '--disable-backgrounding-occluded-windows',
+                '--disable-renderer-backgrounding',
+                '--disable-features=TranslateUI',
+                '--disable-ipc-flooding-protection',
+                '--single-process',
                 '--no-zygote',
-                '--disable-gpu'
-            ]
+                '--disable-default-apps',
+                '--disable-sync',
+                '--disable-translate',
+                '--hide-scrollbars',
+                '--mute-audio',
+                '--no-first-run',
+                '--disable-background-networking',
+                '--disable-background-timer-throttling',
+                '--disable-client-side-phishing-detection',
+                '--disable-component-extensions-with-background-pages',
+                '--disable-default-apps',
+                '--disable-extensions',
+                '--disable-features=TranslateUI',
+                '--disable-ipc-flooding-protection',
+                '--disable-renderer-backgrounding',
+                '--disable-sync',
+                '--force-color-profile=srgb',
+                '--metrics-recording-only',
+                '--no-first-run',
+                '--password-store=basic',
+                '--use-mock-keychain'
+            ],
+            timeout: 60000,
+            ignoreDefaultArgs: ['--disable-extensions']
         }
     });
 
@@ -44,11 +108,23 @@ function createWhatsAppClient(sessionName) {
     client.on('qr', async (qr) => {
         console.log(`📱 QR Code gerado para sessão: ${sessionName}`);
         try {
-            const qrDataUrl = await qrcode.toDataURL(qr);
+            let qrDataUrl;
+            if (qr.startsWith('data:image/')) {
+                qrDataUrl = qr;
+            } else {
+                qrDataUrl = await qrcode.toDataURL(qr);
+            }
+            
             sessions.set(sessionName, {
                 status: 'qr_ready',
                 qr: qrDataUrl,
                 client: client
+            });
+            
+            // Broadcast QR Code para frontend
+            broadcastToClients('qr_ready', {
+                sessionName,
+                qr: qrDataUrl
             });
         } catch (error) {
             console.error('Erro ao gerar QR Code:', error);
@@ -61,29 +137,108 @@ function createWhatsAppClient(sessionName) {
             status: 'ready',
             client: client
         });
+        broadcastToClients('whatsapp_ready', { sessionName });
     });
 
     client.on('authenticated', () => {
-        console.log(`🔐 Cliente autenticado para sessão: ${sessionName}`);
+        console.log(`🔐 Cliente WhatsApp autenticado para sessão: ${sessionName}`);
+        sessions.set(sessionName, {
+            status: 'authenticated',
+            client: client
+        });
+        broadcastToClients('authenticated', { sessionName });
     });
 
     client.on('auth_failure', (msg) => {
         console.error(`❌ Falha na autenticação para sessão ${sessionName}:`, msg);
         sessions.set(sessionName, {
-            status: 'auth_failed',
-            error: msg
+            status: 'auth_failure',
+            error: msg,
+            client: client
         });
+        broadcastToClients('auth_failure', { sessionName, error: msg });
     });
 
     client.on('disconnected', (reason) => {
-        console.log(`🔌 Cliente desconectado da sessão ${sessionName}:`, reason);
-        sessions.delete(sessionName);
+        console.log(`🔌 Cliente WhatsApp desconectado da sessão ${sessionName}:`, reason);
+        sessions.set(sessionName, {
+            status: 'disconnected',
+            reason: reason,
+            client: client
+        });
+        broadcastToClients('disconnected', { sessionName, reason });
     });
 
-    client.on('message', (msg) => {
+    client.on('loading_screen', (percent, message) => {
+        console.log(`📱 Carregando WhatsApp para sessão ${sessionName}: ${percent}% - ${message}`);
+        broadcastToClients('loading_screen', { sessionName, percent, message });
+    });
+
+    client.on('message', async (msg) => {
         console.log(`💬 Nova mensagem recebida na sessão ${sessionName}:`, msg.body);
+        
+        const messageData = {
+            sessionName,
+            id: msg.id._serialized,
+            from: msg.from,
+            to: msg.to,
+            body: msg.body,
+            timestamp: msg.timestamp,
+            type: msg.type,
+            hasMedia: msg.hasMedia,
+            isGroup: msg.isGroup,
+            isStatus: msg.isStatus
+        };
+
+        if (msg.hasMedia) {
+            try {
+                const media = await msg.downloadMedia();
+                messageData.media = {
+                    mimetype: media.mimetype,
+                    data: media.data,
+                    filename: media.filename
+                };
+            } catch (error) {
+                console.error('Erro ao baixar mídia:', error);
+            }
+        }
+
+        broadcastToClients('new_message', messageData);
     });
 
+    client.on('message_create', async (msg) => {
+        if (msg.fromMe) {
+            console.log(`📤 Mensagem enviada na sessão ${sessionName}:`, msg.body);
+            
+            const messageData = {
+                sessionName,
+                id: msg.id._serialized,
+                from: msg.from,
+                to: msg.to,
+                body: msg.body,
+                timestamp: msg.timestamp,
+                type: msg.type,
+                hasMedia: msg.hasMedia,
+                isGroup: msg.isGroup,
+                isStatus: msg.isStatus
+            };
+
+            broadcastToClients('message_sent', messageData);
+        }
+    });
+
+    client.on('change_state', (state) => {
+        console.log(`🔄 Estado alterado na sessão ${sessionName}:`, state);
+        broadcastToClients('state_change', { sessionName, state });
+    });
+
+    // Evento de contato atualizado
+    client.on('contact_changed', async (message, oldId, newId, isContact) => {
+        console.log(`👤 Contato alterado na sessão ${sessionName}:`, { oldId, newId, isContact });
+        broadcastToClients('contact_changed', { sessionName, oldId, newId, isContact });
+    });
+
+    console.log(`🔧 Cliente WhatsApp criado para sessão: ${sessionName}`);
     return client;
 }
 
@@ -121,14 +276,44 @@ app.post('/api/sessions/add', (req, res) => {
     }
 
     try {
-        const client = createWhatsAppClient(sessionName);
-        client.initialize();
+        console.log(`🚀 Iniciando criação da sessão: ${sessionName}`);
         
-        sessions.set(sessionName, {
-            status: 'initializing',
-            client: client
+        const client = createWhatsAppClient(sessionName);
+        
+        // Adicionar tratamento de erro para inicialização
+        client.on('error', (error) => {
+            console.error(`❌ Erro no cliente WhatsApp para sessão ${sessionName}:`, error);
+            sessions.set(sessionName, {
+                status: 'error',
+                error: error.message,
+                client: client
+            });
+            broadcastToClients('error', { sessionName, error: error.message });
         });
-
+        
+        // Inicializar cliente com timeout
+        const initPromise = client.initialize();
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Timeout na inicialização')), 30000);
+        });
+        
+        Promise.race([initPromise, timeoutPromise])
+            .then(() => {
+                console.log(`✅ Cliente WhatsApp inicializado com sucesso para sessão: ${sessionName}`);
+                sessions.set(sessionName, {
+                    status: 'initializing',
+                    client: client
+                });
+            })
+            .catch((error) => {
+                console.error(`❌ Erro na inicialização do cliente para sessão ${sessionName}:`, error);
+                sessions.set(sessionName, {
+                    status: 'init_error',
+                    error: error.message,
+                    client: client
+                });
+            });
+        
         res.json({
             success: true,
             message: 'Sessão criada com sucesso',
@@ -318,25 +503,87 @@ app.get('/api/messages/:number', async (req, res) => {
     }
 });
 
+// Obter todos os chats
+app.get('/api/chats', async (req, res) => {
+    const { sessionName } = req.query;
+    
+    if (!sessionName) {
+        return res.status(400).json({
+            success: false,
+            message: 'sessionName é obrigatório'
+        });
+    }
+
+    if (!sessions.has(sessionName)) {
+        return res.status(404).json({
+            success: false,
+            message: 'Sessão não encontrada'
+        });
+    }
+
+    const session = sessions.get(sessionName);
+    
+    if (session.status !== 'ready') {
+        return res.status(400).json({
+            success: false,
+            message: 'Sessão não está pronta'
+        });
+    }
+
+    try {
+        const chats = await session.client.getChats();
+        const formattedChats = chats.map(chat => ({
+            id: chat.id._serialized,
+            name: chat.name,
+            isGroup: chat.isGroup,
+            unreadCount: chat.unreadCount,
+            lastMessage: chat.lastMessage ? {
+                id: chat.lastMessage.id._serialized,
+                text: chat.lastMessage.body,
+                timestamp: chat.lastMessage.timestamp * 1000
+            } : null
+        }));
+
+        res.json({
+            success: true,
+            chats: formattedChats
+        });
+    } catch (error) {
+        console.error('Erro ao obter chats:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Erro ao obter chats',
+            error: error.message
+        });
+    }
+});
+
 // Status do servidor
 app.get('/api/status', (req, res) => {
     res.json({
         success: true,
         status: 'running',
         sessions: sessions.size,
+        websocketConnections: wsConnections.size,
         timestamp: new Date().toISOString()
     });
 });
 
 // Iniciar servidor
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`🚀 Servidor WhatsApp Web.js rodando na porta ${PORT}`);
     console.log(`📱 API disponível em: http://localhost:${PORT}/api`);
+    console.log(`🔌 WebSocket disponível em: ws://localhost:${PORT}`);
 });
 
 // Graceful shutdown
 process.on('SIGINT', () => {
     console.log('\n🛑 Encerrando servidor WhatsApp...');
+    
+    // Fechar todas as conexões WebSocket
+    wsConnections.forEach(ws => {
+        ws.close();
+    });
     
     // Desconectar todos os clientes
     for (const [sessionName, session] of sessions) {

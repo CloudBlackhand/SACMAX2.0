@@ -24,3 +24,6 @@ google-api-python-client==2.108.0
 
 # HTTP requests
 requests==2.31.0
+
+# Process control
+psutil==5.9.6
