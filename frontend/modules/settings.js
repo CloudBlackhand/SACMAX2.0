@@ -733,32 +733,30 @@ class SettingsModule {
             
             const qrDisplay = document.getElementById('qr-code-display');
             if (qrDisplay) {
+                // Limpar o display primeiro
+                qrDisplay.innerHTML = '';
+                
                 // Gerar QR Code real usando a biblioteca
                 const qrData = `https://wa.me/5511999999999?text=Olá! Conectando com SacsMax`;
                 
-                QRCode.toCanvas(qrDisplay, qrData, {
+                // Criar novo QR Code
+                new QRCode(qrDisplay, {
+                    text: qrData,
                     width: 300,
                     height: 300,
-                    margin: 2,
-                    color: {
-                        dark: '#000000',
-                        light: '#FFFFFF'
-                    }
-                }, function (error) {
-                    if (error) {
-                        console.error('Erro ao gerar QR Code:', error);
-                        qrDisplay.innerHTML = '<p>Erro ao gerar QR Code</p>';
-                    } else {
-                        // Adicionar instruções abaixo do QR Code
-                        const instructions = document.createElement('p');
-                        instructions.className = 'qr-instructions';
-                        instructions.textContent = 'Escaneie com o WhatsApp do seu celular';
-                        instructions.style.textAlign = 'center';
-                        instructions.style.marginTop = '10px';
-                        instructions.style.color = '#666';
-                        qrDisplay.appendChild(instructions);
-                    }
+                    colorDark: "#000000",
+                    colorLight: "#FFFFFF",
+                    correctLevel: QRCode.CorrectLevel.H
                 });
+                
+                // Adicionar instruções abaixo do QR Code
+                const instructions = document.createElement('p');
+                instructions.className = 'qr-instructions';
+                instructions.textContent = 'Escaneie com o WhatsApp do seu celular';
+                instructions.style.textAlign = 'center';
+                instructions.style.marginTop = '10px';
+                instructions.style.color = '#666';
+                qrDisplay.appendChild(instructions);
                 
                 this.showNotification('📱 QR Code gerado com sucesso!', 'success');
                 console.log('📱 QR Code gerado e exibido');
