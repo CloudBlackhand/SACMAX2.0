@@ -6,8 +6,67 @@ Configuração de banco de dados PostgreSQL para Railway
 import psycopg2
 import os
 import logging
+from psycopg2.extras import RealDictCursor
 
 logger = logging.getLogger(__name__)
+
+class DatabaseManager:
+    """Gerenciador de conexão com banco de dados"""
+    
+    def __init__(self):
+        self.connection = None
+        self.cursor = None
+    
+    def connect(self):
+        """Conectar ao banco de dados"""
+        try:
+            self.connection = get_db_connection()
+            self.cursor = self.connection.cursor(cursor_factory=RealDictCursor)
+            logger.info("✅ DatabaseManager conectado com sucesso")
+            return True
+        except Exception as e:
+            logger.error(f"❌ Erro ao conectar DatabaseManager: {e}")
+            return False
+    
+    def disconnect(self):
+        """Desconectar do banco de dados"""
+        try:
+            if self.cursor:
+                self.cursor.close()
+            if self.connection:
+                self.connection.close()
+            logger.info("🔌 DatabaseManager desconectado")
+        except Exception as e:
+            logger.error(f"❌ Erro ao desconectar DatabaseManager: {e}")
+    
+    def execute_query(self, query, params=None):
+        """Executar query"""
+        try:
+            if not self.connection or self.connection.closed:
+                self.connect()
+            
+            self.cursor.execute(query, params)
+            
+            if query.strip().upper().startswith('SELECT'):
+                return self.cursor.fetchall()
+            else:
+                self.connection.commit()
+                return True
+        except Exception as e:
+            logger.error(f"❌ Erro ao executar query: {e}")
+            raise e
+    
+    def fetch_all(self, query, params=None):
+        """Buscar todos os resultados"""
+        try:
+            if not self.connection or self.connection.closed:
+                self.connect()
+            
+            self.cursor.execute(query, params)
+            return self.cursor.fetchall()
+        except Exception as e:
+            logger.error(f"❌ Erro ao buscar dados: {e}")
+            raise e
 
 def get_db_connection():
     """Obter conexão com banco PostgreSQL do Railway"""
@@ -57,4 +116,19 @@ def test_connection():
     except Exception as e:
         logger.error(f"❌ Teste de conexão falhou: {e}")
         return False
+
+def init_database():
+    """Inicializar banco de dados"""
+    db_manager = DatabaseManager()
+    if db_manager.connect():
+        return db_manager
+    return None
+
+def close_database(db_manager):
+    """Fechar conexão com banco de dados"""
+    if db_manager:
+        db_manager.disconnect()
+
+# Instância global do db_manager
+db_manager = None
 
