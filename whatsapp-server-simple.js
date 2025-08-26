@@ -180,6 +180,55 @@ app.delete('/api/sessions/remove', (req, res) => {
     }
 });
 
+// Endpoint para gerar QR Code
+app.get('/api/sessions/:sessionName/qr', (req, res) => {
+    try {
+        const { sessionName } = req.params;
+        
+        // Simular QR Code real (em produção seria gerado pelo WhatsApp Web.js)
+        const qrCodeData = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+        
+        const response = {
+            success: true,
+            qr: qrCodeData,
+            sessionName: sessionName,
+            status: 'qr_ready',
+            timestamp: new Date().toISOString()
+        };
+
+        res.json(response);
+    } catch (error) {
+        console.error('❌ Erro ao gerar QR Code:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Erro interno do servidor'
+        });
+    }
+});
+
+// Endpoint para verificar status da sessão
+app.get('/api/sessions/:sessionName/status', (req, res) => {
+    try {
+        const { sessionName } = req.params;
+        
+        // Simular status da sessão
+        const response = {
+            success: true,
+            sessionName: sessionName,
+            status: 'connected', // ou 'disconnected', 'qr_ready'
+            timestamp: new Date().toISOString()
+        };
+
+        res.json(response);
+    } catch (error) {
+        console.error('❌ Erro ao verificar status da sessão:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Erro interno do servidor'
+        });
+    }
+});
+
 // Iniciar servidor
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 WhatsApp Server rodando na porta ${PORT}`);

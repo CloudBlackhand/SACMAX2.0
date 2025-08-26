@@ -706,14 +706,24 @@ class SettingsModule {
         try {
             this.showNotification('Gerando QR Code...', 'info');
             
-            // Verificar status do servidor primeiro
-            await this.checkWhatsAppServerStatus();
+            // Verificar se estamos no Railway
+            const isRailway = window.location.hostname.includes('railway.app') || window.location.hostname.includes('up.railway.app');
             
-            // Buscar QR Code real do servidor
-            const response = await fetch(`${this.settings.whatsapp.url}/api/sessions/${this.settings.whatsapp.session_name}/qr`, {
-                method: 'GET',
-                signal: AbortSignal.timeout(5000)
-            });
+            let response;
+            if (isRailway) {
+                // No Railway, usar proxy do backend
+                response = await fetch(`${window.location.origin}/api/sessions/${this.settings.whatsapp.session_name}/qr`, {
+                    method: 'GET',
+                    signal: AbortSignal.timeout(5000)
+                });
+            } else {
+                // Localmente, usar servidor direto
+                await this.checkWhatsAppServerStatus();
+                response = await fetch(`${this.settings.whatsapp.url}/api/sessions/${this.settings.whatsapp.session_name}/qr`, {
+                    method: 'GET',
+                    signal: AbortSignal.timeout(5000)
+                });
+            }
             
             if (!response.ok) {
                 throw new Error(`Erro ao buscar QR Code: ${response.status}`);

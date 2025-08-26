@@ -136,6 +136,24 @@ async def remove_whatsapp_session(request: dict):
     except requests.RequestException as e:
         return JSONResponse(content={"error": "Erro ao remover sessão WhatsApp"}, status_code=503)
 
+@app.get("/api/sessions/{session_name}/qr")
+async def get_whatsapp_qr(session_name: str):
+    """Proxy para gerar QR Code WhatsApp"""
+    try:
+        response = requests.get(f"{WHATSAPP_API_URL}/api/sessions/{session_name}/qr", timeout=10)
+        return JSONResponse(content=response.json(), status_code=response.status_code)
+    except requests.RequestException as e:
+        return JSONResponse(content={"error": "Erro ao gerar QR Code WhatsApp"}, status_code=503)
+
+@app.get("/api/sessions/{session_name}/status")
+async def get_whatsapp_session_status(session_name: str):
+    """Proxy para verificar status da sessão WhatsApp"""
+    try:
+        response = requests.get(f"{WHATSAPP_API_URL}/api/sessions/{session_name}/status", timeout=10)
+        return JSONResponse(content=response.json(), status_code=response.status_code)
+    except requests.RequestException as e:
+        return JSONResponse(content={"error": "Erro ao verificar status da sessão WhatsApp"}, status_code=503)
+
 @app.websocket("/ws/whatsapp")
 async def websocket_whatsapp(websocket: WebSocket):
     """Proxy WebSocket para WhatsApp"""
