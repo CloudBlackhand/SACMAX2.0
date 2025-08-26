@@ -18,12 +18,9 @@ import time
 from pathlib import Path
 import logging
 import pandas as pd
-try:
-    from database_pool import get_db_pool, init_database_pool, close_database_pool
-    POOL_AVAILABLE = True
-except ImportError:
-    POOL_AVAILABLE = False
-    print("⚠️ Pool de conexões não disponível, usando conexão direta")
+# Pool de conexões desabilitado temporariamente
+POOL_AVAILABLE = False
+print("⚠️ Pool de conexões desabilitado, usando conexão direta")
 
 try:
     import sys
@@ -803,10 +800,9 @@ async def import_excel_data(request: dict):
             # Ler a aba PRODUTIVIDADE
             df = pd.read_excel(file_path, sheet_name=sheet_name)
             
-            # Usar pool de conexões
-            db_pool = get_db_pool()
-            with db_pool.get_connection() as conn:
-                cursor = conn.cursor()
+            # Usar conexão direta
+            conn = get_db_connection()
+            cursor = conn.cursor()
             
             # Limpar tabela existente (opcional - comentar se quiser manter dados)
             # cursor.execute("DELETE FROM produtividade")
@@ -876,12 +872,11 @@ async def update_bot_config(config: dict):
 async def get_productivity_metrics():
     """Obter métricas de produtividade do PostgreSQL"""
     try:
-        # Usar pool de conexões
-        db_pool = get_db_pool()
-        with db_pool.get_connection() as conn:
-            cursor = conn.cursor()
-            
-            # Métricas principais
+        # Usar conexão direta
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Métricas principais
             cursor.execute("""
                 SELECT 
                     COUNT(*) as total_contacts,
@@ -1439,10 +1434,9 @@ async def search_productivity_contacts(
 ):
     """Buscar contatos com filtros"""
     try:
-        # Usar pool de conexões
-        db_pool = get_db_pool()
-        with db_pool.get_connection() as conn:
-            cursor = conn.cursor()
+        # Usar conexão direta
+        conn = get_db_connection()
+        cursor = conn.cursor()
             
             # Construir query dinamicamente
             query = """
