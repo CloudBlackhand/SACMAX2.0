@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["python3", "nodejs", "npm", "git"]
+nixPkgs = ["python3", "nodejs", "git"]
 
 [phases.install]
 cmds = [
@@ -13,4 +13,4 @@ cmds = [
 ]
 
 [start]
-cmd = "python3 railway_startup.py"
+cmd = "python railway_startup.py"
