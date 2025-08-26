@@ -204,11 +204,42 @@ class ProdutividadeModule {
     async init() {
         this.setupEventListeners();
         
-        // NOVO: Inicializar com cache
-        await this.initializeCache();
+        // NOVO: Verificar conectividade antes de carregar dados
+        await this.checkConnectionAndLoad();
         
-        // NOVO: Atualizar interface automaticamente
-        this.updateContactsDisplay();
+        // IMPORTANTE: Forçar atualização da interface após inicialização
+        setTimeout(() => {
+            this.updateContactsDisplay();
+            this.updateLogsDisplay();
+        }, 100);
+    }
+
+    // NOVO: Verificar conectividade e carregar dados
+    async checkConnectionAndLoad() {
+        try {
+            console.log('🔌 Verificando conectividade...');
+            
+            // Health check simples
+            const response = await fetch(`${this.backendUrl}/api/health`, {
+                method: 'GET',
+                signal: AbortSignal.timeout(5000)
+            });
+            
+            if (response.ok) {
+                console.log('✅ Conectado ao servidor, carregando dados...');
+                await this.initializeCache();
+            } else {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+        } catch (error) {
+            console.error('❌ Erro de conectividade:', error.message);
+            
+            // Tentar novamente em 3 segundos
+            setTimeout(() => {
+                this.checkConnectionAndLoad();
+            }, 3000);
+        }
     }
 
     setupEventListeners() {
