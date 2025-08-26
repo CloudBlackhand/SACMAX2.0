@@ -328,21 +328,35 @@ class ProdutividadeModule {
     // }
 
     updateContactsDisplay() {
+        console.log('🔄 Atualizando interface com', this.filteredContacts.length, 'contatos');
+        
         const contactsList = document.getElementById('contacts-list');
         if (contactsList) {
             contactsList.innerHTML = this.renderContactsList();
+            console.log('✅ Lista de contatos atualizada');
+        } else {
+            console.warn('⚠️ Elemento contacts-list não encontrado');
         }
         
-        // NOVO: Atualizar contador no header
+        // Atualizar contador no header
         const contactsHeader = document.querySelector('.contacts-header h3');
         if (contactsHeader) {
             contactsHeader.innerHTML = `📋 Lista de Serviços (${this.filteredContacts.length})`;
+            console.log('✅ Header atualizado');
         }
         
-        // NOVO: Atualizar status do cache
+        // Atualizar status do cache
         const cacheStatus = document.querySelector('.cache-status');
         if (cacheStatus && this.cache.isInitialized) {
             cacheStatus.textContent = `💾 Cache ativo - Última atualização: ${new Date(this.cache.lastUpdate).toLocaleTimeString('pt-BR')}`;
+            console.log('✅ Status do cache atualizado');
+        }
+        
+        // Forçar reflow do DOM
+        if (contactsList) {
+            contactsList.style.display = 'none';
+            contactsList.offsetHeight; // Força reflow
+            contactsList.style.display = '';
         }
     }
 
