@@ -269,28 +269,51 @@ async def get_whatsapp_messages(session_name: str, limit: int = 100):
 async def websocket_whatsapp(websocket: WebSocket):
     """Proxy WebSocket para WhatsApp"""
     await websocket.accept()
+    ws = None
     try:
         # Conectar ao WebSocket do servidor WhatsApp
         import websockets
-        async with websockets.connect(f"ws://localhost:3002") as ws:
-            # Bidirecional proxy
-            async def forward_to_whatsapp():
+        ws = await websockets.connect(f"ws://localhost:3002")
+        
+        # Bidirecional proxy
+        async def forward_to_whatsapp():
+            try:
                 async for message in websocket.iter_text():
-                    await ws.send(message)
-            
-            async def forward_to_client():
+                    if ws.open:
+                        await ws.send(message)
+            except Exception as e:
+                logger.error(f"Erro ao encaminhar para WhatsApp: {e}")
+        
+        async def forward_to_client():
+            try:
                 async for message in ws:
-                    await websocket.send_text(message)
-            
-            # Executar ambas as direções
-            import asyncio
-            await asyncio.gather(
-                forward_to_whatsapp(),
-                forward_to_client()
-            )
+                    if websocket.client_state.value < 3:  # Verificar se ainda está aberto
+                        await websocket.send_text(str(message))
+            except Exception as e:
+                logger.error(f"Erro ao encaminhar para cliente: {e}")
+        
+        # Executar ambas as direções
+        import asyncio
+        await asyncio.gather(
+            forward_to_whatsapp(),
+            forward_to_client(),
+            return_exceptions=True
+        )
     except Exception as e:
         logger.error(f"Erro no WebSocket proxy: {e}")
-        await websocket.close()
+    finally:
+        # Fechar conexões de forma segura
+        try:
+            if ws and ws.open:
+                await ws.close()
+        except:
+            pass
+        
+        try:
+            if websocket.client_state.value < 3:
+                await websocket.close()
+        except:
+            pass
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
