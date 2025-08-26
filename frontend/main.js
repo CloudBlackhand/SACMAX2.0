@@ -68,7 +68,7 @@ class SacsMaxApp {
         header.className = 'app-header';
         header.innerHTML = `
             <div class="logo">
-                <h1>📞 SacsMax</h1>
+                <h1>📞</h1>
             </div>
             <nav class="main-nav">
                 <button class="nav-btn active" data-module="excel">
@@ -165,36 +165,35 @@ class SacsMaxApp {
             }
 
             .logo h1 {
-                font-size: 1.2rem;
+                font-size: 1.5rem;
                 margin: 0;
                 line-height: 1;
                 display: flex;
                 align-items: center;
-                gap: 0.3rem;
             }
 
             .main-nav {
                 display: flex;
-                gap: 0.3rem;
+                gap: 0.4rem;
                 flex-wrap: nowrap;
                 justify-content: center;
                 align-items: center;
                 flex: 1;
-                margin: 0 1rem;
+                margin: 0 0.5rem;
             }
 
             .nav-btn {
                 display: flex;
                 align-items: center;
-                gap: 0.3rem;
-                padding: 0.6rem 0.8rem;
+                gap: 0.4rem;
+                padding: 0.7rem 1rem;
                 border: none;
                 background: rgba(255,255,255,0.1);
                 color: white;
-                border-radius: 6px;
+                border-radius: 8px;
                 cursor: pointer;
                 transition: all 0.3s ease;
-                font-size: 0.8rem;
+                font-size: 0.85rem;
                 white-space: nowrap;
                 min-width: fit-content;
                 height: fit-content;
@@ -212,7 +211,7 @@ class SacsMaxApp {
             }
 
             .nav-btn .icon {
-                font-size: 0.9rem;
+                font-size: 1rem;
             }
 
             .user-info {
