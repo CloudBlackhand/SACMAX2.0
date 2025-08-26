@@ -201,28 +201,39 @@ class ProdutividadeModule {
             return;
         }
 
-        // Formatar telefone para WhatsApp (adicionar código do país se necessário)
-        let whatsappPhone = cleanPhone;
-        if (cleanPhone.length === 11 && cleanPhone.startsWith('0')) {
-            whatsappPhone = '55' + cleanPhone.substring(1); // Brasil
-        } else if (cleanPhone.length === 10) {
-            whatsappPhone = '55' + cleanPhone; // Brasil
-        }
-
-        // Criar mensagem padrão
-        const defaultMessage = `Olá ${clientName}! Tudo bem? Aqui é da equipe técnica.`;
-        
-        // URL do WhatsApp Web
-        const whatsappUrl = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(defaultMessage)}`;
-        
-        // Abrir em nova aba
-        window.open(whatsappUrl, '_blank');
-        
         // Log da ação
-        this.addLog('success', `✅ WhatsApp aberto para ${clientName} (${phone})`);
+        this.addLog('success', `✅ Abrindo WhatsApp para ${clientName} (${phone})`);
         
-        // Opcional: Mudar para aba WhatsApp se existir
-        this.switchToWhatsAppTab();
+        // Mudar para aba WhatsApp e abrir conversa
+        this.openWhatsAppConversation(phone, clientName);
+    }
+
+    // NOVO: Abrir conversa no WhatsApp interno
+    openWhatsAppConversation(phone, clientName) {
+        // Primeiro, mudar para a aba WhatsApp
+        const whatsappTab = document.querySelector('[data-module="whatsapp"]');
+        if (whatsappTab) {
+            whatsappTab.click();
+            
+            // Aguardar um pouco para a aba carregar
+            setTimeout(() => {
+                // Tentar encontrar e ativar o módulo WhatsApp
+                if (window.whatsappModule) {
+                    // Abrir conversa com o cliente
+                    window.whatsappModule.openConversationWithContact(phone, clientName);
+                } else {
+                    // Fallback: mostrar mensagem
+                    this.addLog('info', '🔄 Módulo WhatsApp carregando...');
+                    setTimeout(() => {
+                        if (window.whatsappModule) {
+                            window.whatsappModule.openConversationWithContact(phone, clientName);
+                        }
+                    }, 1000);
+                }
+            }, 500);
+        } else {
+            this.addLog('error', '❌ Aba WhatsApp não encontrada');
+        }
     }
 
     // NOVO: Mudar para aba WhatsApp
