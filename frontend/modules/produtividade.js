@@ -78,7 +78,7 @@ class ProdutividadeModule {
                 <div class="contacts-section">
                     <div class="contacts-header">
                         <h3>📋 Lista de Serviços (${this.filteredContacts.length})</h3>
-                        ${this.cache.isInitialized ? `<span class="cache-status">💾 Cache ativo - Última atualização: ${this.formatTime(this.cache.lastUpdate)}</span>` : ''}
+                        ${this.cache.isInitialized ? `<span class="cache-status">💾 Cache ativo - Última atualização: ${new Date(this.cache.lastUpdate).toLocaleTimeString('pt-BR')}</span>` : ''}
                     </div>
                     
                     <div class="contacts-list" id="contacts-list">
@@ -133,26 +133,6 @@ class ProdutividadeModule {
         this.cache.data = null;
         this.cache.lastUpdate = null;
         await this.loadContacts();
-    }
-
-    // NOVO: Texto de status inteligente
-    getConnectionStatusText() {
-        if (this.loading) return 'Carregando...';
-        if (this.cache.isInitialized && this.isCacheValid()) {
-            return `Conectado ao PostgreSQL (Cache ativo - ${this.formatTime(this.cache.lastUpdate)})`;
-        }
-        return 'Conectado ao PostgreSQL';
-    }
-
-    // NOVO: Formatar tempo
-    formatTime(timestamp) {
-        if (!timestamp) return 'N/A';
-        const date = new Date(timestamp);
-        return date.toLocaleTimeString('pt-BR', { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            second: '2-digit'
-        });
     }
 
     renderContactsList() {
@@ -370,7 +350,7 @@ class ProdutividadeModule {
         // NOVO: Atualizar status do cache
         const cacheStatus = document.querySelector('.cache-status');
         if (cacheStatus && this.cache.isInitialized) {
-            cacheStatus.textContent = `💾 Cache ativo - Última atualização: ${this.formatTime(this.cache.lastUpdate)}`;
+            cacheStatus.textContent = `💾 Cache ativo - Última atualização: ${new Date(this.cache.lastUpdate).toLocaleTimeString('pt-BR')}`;
         }
     }
 
@@ -379,7 +359,7 @@ class ProdutividadeModule {
         logs.push({
             type: type,
             message: message,
-            time: formatTime(new Date())
+            time: new Date().toLocaleTimeString('pt-BR')
         });
 
         if (logs.length > 50) {
