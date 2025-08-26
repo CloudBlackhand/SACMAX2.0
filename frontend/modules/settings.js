@@ -162,13 +162,13 @@ class SettingsModule {
                 
                 ${isRailway ? `
                 <div class="railway-notice">
-                    <div class="notice-icon">ℹ️</div>
+                    <div class="notice-icon">✅</div>
                     <div class="notice-content">
                         <h4>WhatsApp no Railway</h4>
-                        <p>O WhatsApp server não pode ser iniciado no Railway devido a limitações da plataforma. Para usar a funcionalidade completa do WhatsApp, execute o sistema localmente.</p>
+                        <p>O WhatsApp server está configurado para funcionar no Railway. O servidor Node.js está rodando na porta 3002.</p>
                         <div class="notice-actions">
-                            <button class="notice-btn" onclick="settingsModule.showLocalInstructions()">
-                                📋 Ver Instruções Locais
+                            <button class="notice-btn" onclick="settingsModule.testWhatsAppConnection()">
+                                🔍 Testar Conexão
                             </button>
                         </div>
                     </div>
