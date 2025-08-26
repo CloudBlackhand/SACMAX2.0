@@ -877,7 +877,7 @@ async def get_productivity_metrics():
         cursor = conn.cursor()
         
         # Métricas principais
-            cursor.execute("""
+        cursor.execute("""
                 SELECT 
                     COUNT(*) as total_contacts,
                     COUNT(CASE WHEN status = 'ativo' THEN 1 END) as active_contacts,
@@ -886,34 +886,34 @@ async def get_productivity_metrics():
                 FROM produtividade
             """)
             
-            metrics = cursor.fetchone()
-            
-            # Produtividade por técnico
-            cursor.execute("""
-                SELECT tecnico, COUNT(*) as services
-                FROM produtividade 
-                WHERE tecnico IS NOT NULL 
-                GROUP BY tecnico 
-                ORDER BY services DESC
-            """)
-            
-            technicians = cursor.fetchall()
-            productivity_by_technician = {
-                tech[0]: {"services": tech[1], "percentage": 0} 
-                for tech in technicians
-            }
-            
-            # Tipos de serviço
-            cursor.execute("""
-                SELECT servico, COUNT(*) as count
-                FROM produtividade 
-                WHERE servico IS NOT NULL 
-                GROUP BY servico 
-                ORDER BY count DESC
-            """)
-            
-            services = cursor.fetchall()
-            services_by_type = {service[0]: service[1] for service in services}
+        metrics = cursor.fetchone()
+        
+        # Produtividade por técnico
+        cursor.execute("""
+            SELECT tecnico, COUNT(*) as services
+            FROM produtividade 
+            WHERE tecnico IS NOT NULL 
+            GROUP BY tecnico 
+            ORDER BY services DESC
+        """)
+        
+        technicians = cursor.fetchall()
+        productivity_by_technician = {
+            tech[0]: {"services": tech[1], "percentage": 0} 
+            for tech in technicians
+        }
+        
+        # Tipos de serviço
+        cursor.execute("""
+            SELECT servico, COUNT(*) as count
+            FROM produtividade 
+            WHERE servico IS NOT NULL 
+            GROUP BY servico 
+            ORDER BY count DESC
+        """)
+        
+        services = cursor.fetchall()
+        services_by_type = {service[0]: service[1] for service in services}
         
         return {
             "totalContacts": metrics[0] or 0,
