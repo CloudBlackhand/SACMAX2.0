@@ -521,15 +521,22 @@ class MessagesModule {
             if (response.ok) {
                 const data = await response.json();
                 if (data.success) {
-                this.contacts = (data.contacts || []).map((contact, index) => ({
-                    ...contact,
-                    id: `contact_${index}`
-                }));
-                this.filteredContacts = [...this.contacts];
-                this.updateFilters();
-                this.updateCache(this.contacts); // Atualiza cache
-                this.addLog('success', `${this.contacts.length} contatos carregados do PostgreSQL`);
-            } else {
+                    this.contacts = (data.contacts || []).map((contact, index) => ({
+                        ...contact,
+                        id: `contact_${index}`
+                    }));
+                    this.filteredContacts = [...this.contacts];
+                    
+                    // NOVO: Atualizar cache
+                    this.updateCache(this.contacts);
+                    
+                    this.updateFilters();
+                    this.updateCount++;
+                    this.addLog('success', `✅ ${this.contacts.length} contatos carregados (Cache atualizado)`);
+                    
+                    // NOVO: Atualizar interface automaticamente
+                    this.updateContactsDisplay();
+                } else {
                     throw new Error(data.message || 'Erro na resposta do servidor');
                 }
             } else {
