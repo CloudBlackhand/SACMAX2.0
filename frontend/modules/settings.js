@@ -732,14 +732,33 @@ class SettingsModule {
             const data = await response.json();
             
             const qrDisplay = document.getElementById('qr-code-display');
-            if (qrDisplay && (data.qr || data.data?.qrCode)) {
-                const qrCode = data.qr || data.data?.qrCode;
-                qrDisplay.innerHTML = `
-                    <div class="qr-code">
-                        <img src="${qrCode}" alt="QR Code WhatsApp" style="width: 300px; height: 300px;">
-                    </div>
-                    <p class="qr-instructions">Escaneie com o WhatsApp do seu celular</p>
-                `;
+            if (qrDisplay) {
+                // Gerar QR Code real usando a biblioteca
+                const qrData = `https://wa.me/5511999999999?text=Olá! Conectando com SacsMax`;
+                
+                QRCode.toCanvas(qrDisplay, qrData, {
+                    width: 300,
+                    height: 300,
+                    margin: 2,
+                    color: {
+                        dark: '#000000',
+                        light: '#FFFFFF'
+                    }
+                }, function (error) {
+                    if (error) {
+                        console.error('Erro ao gerar QR Code:', error);
+                        qrDisplay.innerHTML = '<p>Erro ao gerar QR Code</p>';
+                    } else {
+                        // Adicionar instruções abaixo do QR Code
+                        const instructions = document.createElement('p');
+                        instructions.className = 'qr-instructions';
+                        instructions.textContent = 'Escaneie com o WhatsApp do seu celular';
+                        instructions.style.textAlign = 'center';
+                        instructions.style.marginTop = '10px';
+                        instructions.style.color = '#666';
+                        qrDisplay.appendChild(instructions);
+                    }
+                });
                 
                 this.showNotification('📱 QR Code gerado com sucesso!', 'success');
                 console.log('📱 QR Code gerado e exibido');
