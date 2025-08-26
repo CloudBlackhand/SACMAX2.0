@@ -2,7 +2,7 @@
 """
 SacsMax - Sistema de Gestão de SAC
 Script de inicialização otimizado para Railway
-Versão 2.1 - Backend + Frontend + WhatsApp Server Automático
+Versão 2.2 - Backend + Frontend (WhatsApp apenas em desenvolvimento)
 """
 
 import os
@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 # Configurações do Railway
 PORT = int(os.environ.get('PORT', 5000))
 RAILWAY_ENVIRONMENT = os.environ.get('RAILWAY_ENVIRONMENT', 'development')
+
+# Verificar se estamos no Railway
+IS_RAILWAY = os.environ.get('RAILWAY_ENVIRONMENT') is not None or os.environ.get('PORT') is not None
 
 def check_dependencies():
     """Verificar dependências Python e Node.js"""
@@ -88,7 +91,7 @@ def start_backend():
         logger.info("🚀 Iniciando servidor backend FastAPI...")
         
         # Verificar se estamos no Railway
-        if RAILWAY_ENVIRONMENT == 'production':
+        if IS_RAILWAY:
             # No Railway, usar uvicorn diretamente
             backend_process = subprocess.Popen([
                 sys.executable, '-m', 'uvicorn', 
@@ -124,7 +127,13 @@ def start_backend():
         return None
 
 def start_whatsapp_server():
-    """Iniciar servidor WhatsApp automaticamente"""
+    """Iniciar servidor WhatsApp automaticamente (apenas em desenvolvimento)"""
+    # No Railway, não iniciar WhatsApp server automaticamente
+    if IS_RAILWAY:
+        logger.info("ℹ️ WhatsApp server não será iniciado automaticamente no Railway")
+        logger.info("💡 Para usar WhatsApp, inicie manualmente via Settings ou localmente")
+        return None
+    
     try:
         logger.info("📱 Verificando servidor WhatsApp...")
         
@@ -214,8 +223,11 @@ def main():
         logger.error("❌ Dependências não atendidas")
         return False
     
-    # Verificar banco de dados
-    check_database_connection()
+    # Verificar banco de dados (opcional no Railway)
+    if not IS_RAILWAY:
+        check_database_connection()
+    else:
+        logger.info("ℹ️ Verificação de banco de dados pulada no Railway")
     
     # Configurar frontend
     serve_frontend()
@@ -234,6 +246,8 @@ def main():
     logger.info(f"🔧 Backend API: http://localhost:{PORT}/docs")
     if whatsapp_process:
         logger.info(f"📱 WhatsApp: http://localhost:3002 (iniciado automaticamente)")
+    elif IS_RAILWAY:
+        logger.info(f"📱 WhatsApp: Disponível via Settings (não iniciado no Railway)")
     else:
         logger.info(f"📱 WhatsApp: http://localhost:3002 (inicie manualmente via Settings)")
     

@@ -865,6 +865,17 @@ async def start_whatsapp_server(request: WhatsAppStartRequest):
         import os
         from pathlib import Path
         
+        # Verificar se estamos no Railway
+        is_railway = os.environ.get('RAILWAY_ENVIRONMENT') is not None or os.environ.get('PORT') is not None
+        
+        if is_railway:
+            return {
+                "success": False,
+                "message": "WhatsApp server não pode ser iniciado no Railway. Use o sistema localmente para funcionalidade completa do WhatsApp.",
+                "status": "railway_unsupported",
+                "railway": True
+            }
+        
         # Obter porta do request
         port = request.port
         

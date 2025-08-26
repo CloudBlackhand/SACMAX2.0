@@ -38,6 +38,9 @@ class SettingsModule {
         this.startingServer = false;
         this.backendUrl = 'http://localhost:5000';
         this.whatsappServerRunning = false;
+        
+        // Adicionar estilos para Railway
+        this.addRailwayStyles();
     }
 
     render() {
@@ -150,9 +153,27 @@ class SettingsModule {
     }
 
     renderWhatsAppSettings() {
+        // Verificar se estamos no Railway
+        const isRailway = window.location.hostname.includes('railway.app') || window.location.hostname.includes('up.railway.app');
+        
         return `
             <div class="settings-section">
                 <h3>📱 Controle do WhatsApp Server</h3>
+                
+                ${isRailway ? `
+                <div class="railway-notice">
+                    <div class="notice-icon">ℹ️</div>
+                    <div class="notice-content">
+                        <h4>WhatsApp no Railway</h4>
+                        <p>O WhatsApp server não pode ser iniciado no Railway devido a limitações da plataforma. Para usar a funcionalidade completa do WhatsApp, execute o sistema localmente.</p>
+                        <div class="notice-actions">
+                            <button class="notice-btn" onclick="settingsModule.showLocalInstructions()">
+                                📋 Ver Instruções Locais
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
                 
                 <div class="whatsapp-control">
                     <div class="control-card">
@@ -521,6 +542,10 @@ class SettingsModule {
                 
                 this.showNotification(`✅ WhatsApp Server iniciado na porta ${result.port}!`, 'success');
                 console.log(`🚀 WhatsApp Server iniciado na porta ${result.port}`);
+            } else if (result.railway) {
+                // Caso especial para Railway
+                this.showNotification('ℹ️ WhatsApp não disponível no Railway. Use o sistema localmente para funcionalidade completa.', 'info');
+                console.log('ℹ️ WhatsApp não disponível no Railway');
             } else {
                 // 4. Se não, aguardar e detectar automaticamente
                 this.showNotification('⏳ Aguardando servidor inicializar...', 'info');
@@ -575,6 +600,98 @@ class SettingsModule {
         } catch (error) {
             console.error('❌ Erro ao reiniciar WhatsApp Server:', error);
             this.showNotification('❌ Erro ao reiniciar WhatsApp Server', 'error');
+        }
+    }
+
+    showLocalInstructions() {
+        const instructions = `
+            <div class="local-instructions">
+                <h3>🚀 Como executar o SacsMax localmente</h3>
+                <ol>
+                    <li><strong>Clone o repositório:</strong><br>
+                        <code>git clone [URL_DO_REPOSITORIO]</code></li>
+                    <li><strong>Instale as dependências Python:</strong><br>
+                        <code>pip install -r requirements.txt</code></li>
+                    <li><strong>Instale o Node.js:</strong><br>
+                        <code>sudo apt install nodejs npm</code> (Linux)<br>
+                        <code>brew install node</code> (macOS)</li>
+                    <li><strong>Instale as dependências Node.js:</strong><br>
+                        <code>npm install</code></li>
+                    <li><strong>Execute o sistema:</strong><br>
+                        <code>python railway_startup.py</code></li>
+                    <li><strong>Acesse:</strong><br>
+                        <code>http://localhost:5000</code></li>
+                    <li><strong>No Settings, clique em "Iniciar Servidor" para o WhatsApp</strong></li>
+                </ol>
+                <p><strong>Nota:</strong> O WhatsApp precisa de interface gráfica para funcionar corretamente.</p>
+            </div>
+        `;
+        
+        this.showModal('Instruções para Execução Local', instructions);
+    }
+
+    // Adicionar CSS para a notificação do Railway
+    addRailwayStyles() {
+        if (!document.getElementById('railway-styles')) {
+            const style = document.createElement('style');
+            style.id = 'railway-styles';
+            style.textContent = `
+                .railway-notice {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    border-radius: 12px;
+                    padding: 20px;
+                    margin-bottom: 20px;
+                    color: white;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                }
+                .railway-notice .notice-icon {
+                    font-size: 24px;
+                    margin-bottom: 10px;
+                }
+                .railway-notice h4 {
+                    margin: 0 0 10px 0;
+                    font-size: 18px;
+                }
+                .railway-notice p {
+                    margin: 0 0 15px 0;
+                    line-height: 1.5;
+                }
+                .notice-actions {
+                    display: flex;
+                    gap: 10px;
+                }
+                .notice-btn {
+                    background: rgba(255,255,255,0.2);
+                    border: 1px solid rgba(255,255,255,0.3);
+                    color: white;
+                    padding: 8px 16px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                }
+                .notice-btn:hover {
+                    background: rgba(255,255,255,0.3);
+                    transform: translateY(-1px);
+                }
+                .local-instructions {
+                    max-width: 600px;
+                    line-height: 1.6;
+                }
+                .local-instructions ol {
+                    margin: 15px 0;
+                    padding-left: 20px;
+                }
+                .local-instructions li {
+                    margin-bottom: 15px;
+                }
+                .local-instructions code {
+                    background: #f4f4f4;
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                    font-family: monospace;
+                }
+            `;
+            document.head.appendChild(style);
         }
     }
 
