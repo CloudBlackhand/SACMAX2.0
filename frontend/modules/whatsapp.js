@@ -21,9 +21,9 @@ class WhatsAppModule {
         this.wsReconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
         
-        // Porta do WhatsApp (será detectada automaticamente)
+        // Configuração para Railway - usar a mesma URL do frontend
         this.whatsappPort = 3002;
-        this.whatsappUrl = `http://localhost:${this.whatsappPort}`;
+        this.whatsappUrl = window.location.origin.replace(':8080', ':3002');
         
         // Inicializar WhatsApp
         this.initWhatsApp();
@@ -53,29 +53,26 @@ class WhatsAppModule {
         try {
             console.log('🔍 Detectando porta do WhatsApp...');
             
-            // Tentar portas comuns
-            const ports = [3001, 3002, 3003, 3004, 3005];
+            // No Railway, usar a URL base com porta 3002
+            const baseUrl = window.location.origin;
+            const whatsappUrl = baseUrl.replace(':8080', ':3002');
             
-            for (const port of ports) {
-                try {
-                    const response = await fetch(`http://localhost:${port}/api/status`, {
-                        method: 'GET',
-                        signal: AbortSignal.timeout(2000)
-                    });
-                    
-                    if (response.ok) {
-                        this.whatsappPort = port;
-                        this.whatsappUrl = `http://localhost:${port}`;
-                        console.log(`✅ WhatsApp detectado na porta ${port}`);
-                        return;
-                    }
-                } catch (error) {
-                    // Porta não disponível, tentar próxima
-                    continue;
+            try {
+                const response = await fetch(`${whatsappUrl}/api/status`, {
+                    method: 'GET',
+                    signal: AbortSignal.timeout(5000)
+                });
+                
+                if (response.ok) {
+                    this.whatsappUrl = whatsappUrl;
+                    console.log(`✅ WhatsApp detectado em ${whatsappUrl}`);
+                    return;
                 }
+            } catch (error) {
+                console.log('⚠️ WhatsApp não respondeu, usando configuração padrão');
             }
             
-            console.log('⚠️ WhatsApp não detectado, usando porta padrão 3001');
+            console.log('⚠️ WhatsApp não detectado, usando porta padrão 3002');
         } catch (error) {
             console.error('Erro ao detectar porta do WhatsApp:', error);
         }
@@ -88,8 +85,9 @@ class WhatsAppModule {
                 this.ws.close();
             }
             
-            // Conectar ao WebSocket do servidor WhatsApp
-            this.ws = new WebSocket(`ws://localhost:${this.whatsappPort}`);
+            // Conectar ao WebSocket do servidor WhatsApp usando a URL correta
+            const wsUrl = this.whatsappUrl.replace('http://', 'ws://').replace('https://', 'wss://');
+            this.ws = new WebSocket(wsUrl);
             
             this.ws.onopen = () => {
                 console.log(`🔌 WebSocket conectado ao servidor WhatsApp na porta ${this.whatsappPort}`);
