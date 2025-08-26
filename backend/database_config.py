@@ -12,7 +12,21 @@ logger = logging.getLogger(__name__)
 def get_db_connection():
     """Obter conexão com banco PostgreSQL do Railway"""
     try:
-        # Parâmetros de conexão do Railway
+        # Priorizar DATABASE_URL do Railway (conexão interna)
+        database_url = os.environ.get('DATABASE_URL')
+        if database_url:
+            conn = psycopg2.connect(database_url)
+            logger.info("✅ Conectado ao banco PostgreSQL do Railway via DATABASE_URL")
+            return conn
+        
+        # Fallback para DATABASE_PUBLIC_URL (conexão externa)
+        database_public_url = os.environ.get('DATABASE_PUBLIC_URL')
+        if database_public_url:
+            conn = psycopg2.connect(database_public_url)
+            logger.info("✅ Conectado ao banco PostgreSQL do Railway via DATABASE_PUBLIC_URL")
+            return conn
+        
+        # Fallback para parâmetros individuais
         connection_params = {
             'host': os.environ.get('PGHOST', 'localhost'),
             'port': os.environ.get('PGPORT', '5432'),
@@ -22,9 +36,8 @@ def get_db_connection():
             'sslmode': 'require' if os.environ.get('RAILWAY_ENVIRONMENT') else 'disable'
         }
         
-        # Criar conexão
         conn = psycopg2.connect(**connection_params)
-        logger.info("✅ Conectado ao banco PostgreSQL do Railway")
+        logger.info("✅ Conectado ao banco PostgreSQL via parâmetros individuais")
         return conn
         
     except Exception as e:

@@ -33,12 +33,22 @@ class DatabasePool:
             self.connection_params = connection_params
             
             # Criar pool de conexões
-            self.pool = psycopg2.pool.ThreadedConnectionPool(
-                minconn=self.min_connections,
-                maxconn=self.max_connections,
-                **connection_params,
-                cursor_factory=RealDictCursor
-            )
+            if 'dsn' in connection_params:
+                # Usar DSN (DATABASE_URL ou DATABASE_PUBLIC_URL)
+                self.pool = psycopg2.pool.ThreadedConnectionPool(
+                    minconn=self.min_connections,
+                    maxconn=self.max_connections,
+                    dsn=connection_params['dsn'],
+                    cursor_factory=RealDictCursor
+                )
+            else:
+                # Usar parâmetros individuais
+                self.pool = psycopg2.pool.ThreadedConnectionPool(
+                    minconn=self.min_connections,
+                    maxconn=self.max_connections,
+                    **connection_params,
+                    cursor_factory=RealDictCursor
+                )
             
             logger.info(f"✅ Pool de conexões PostgreSQL inicializado ({self.min_connections}-{self.max_connections} conexões)")
             return True
@@ -49,8 +59,21 @@ class DatabasePool:
     
     def get_connection_params(self):
         """Obter parâmetros de conexão do Railway"""
-        # Verificar se estamos no Railway
+        # Priorizar DATABASE_URL do Railway (conexão interna)
+        database_url = os.environ.get('DATABASE_URL')
+        if database_url:
+            logger.info("🔗 Usando DATABASE_URL para conexão interna")
+            return {'dsn': database_url}
+        
+        # Fallback para DATABASE_PUBLIC_URL (conexão externa)
+        database_public_url = os.environ.get('DATABASE_PUBLIC_URL')
+        if database_public_url:
+            logger.info("🔗 Usando DATABASE_PUBLIC_URL para conexão externa")
+            return {'dsn': database_public_url}
+        
+        # Fallback para parâmetros individuais
         if os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('PGHOST'):
+            logger.info("🔗 Usando parâmetros individuais do Railway")
             return {
                 'host': os.environ.get('PGHOST', 'localhost'),
                 'port': os.environ.get('PGPORT', '5432'),
@@ -61,6 +84,7 @@ class DatabasePool:
             }
         else:
             # Fallback para desenvolvimento local
+            logger.info("🔗 Usando parâmetros locais")
             return {
                 'host': 'localhost',
                 'port': '5432',
@@ -128,12 +152,22 @@ class DatabasePool:
                     self.connection_params = self.get_connection_params()
                 
                 # Recriar pool
-                self.pool = psycopg2.pool.ThreadedConnectionPool(
-                    minconn=self.min_connections,
-                    maxconn=self.max_connections,
-                    **self.connection_params,
-                    cursor_factory=RealDictCursor
-                )
+                if 'dsn' in self.connection_params:
+                    # Usar DSN (DATABASE_URL ou DATABASE_PUBLIC_URL)
+                    self.pool = psycopg2.pool.ThreadedConnectionPool(
+                        minconn=self.min_connections,
+                        maxconn=self.max_connections,
+                        dsn=self.connection_params['dsn'],
+                        cursor_factory=RealDictCursor
+                    )
+                else:
+                    # Usar parâmetros individuais
+                    self.pool = psycopg2.pool.ThreadedConnectionPool(
+                        minconn=self.min_connections,
+                        maxconn=self.max_connections,
+                        **self.connection_params,
+                        cursor_factory=RealDictCursor
+                    )
                 
                 logger.info("✅ Pool de conexões reconectado com sucesso")
                 
