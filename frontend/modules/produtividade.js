@@ -179,6 +179,56 @@ class ProdutividadeModule {
         `).join('');
     }
 
+    // NOVO: Abrir WhatsApp para cliente específico
+    openWhatsApp(phone, clientName) {
+        if (!phone || phone === 'N/A') {
+            this.addLog('error', '❌ Telefone não disponível para este cliente');
+            return;
+        }
+
+        // Limpar telefone (remover caracteres especiais)
+        const cleanPhone = phone.replace(/\D/g, '');
+        
+        // Verificar se é um telefone válido
+        if (cleanPhone.length < 10) {
+            this.addLog('error', '❌ Telefone inválido');
+            return;
+        }
+
+        // Formatar telefone para WhatsApp (adicionar código do país se necessário)
+        let whatsappPhone = cleanPhone;
+        if (cleanPhone.length === 11 && cleanPhone.startsWith('0')) {
+            whatsappPhone = '55' + cleanPhone.substring(1); // Brasil
+        } else if (cleanPhone.length === 10) {
+            whatsappPhone = '55' + cleanPhone; // Brasil
+        }
+
+        // Criar mensagem padrão
+        const defaultMessage = `Olá ${clientName}! Tudo bem? Aqui é da equipe técnica.`;
+        
+        // URL do WhatsApp Web
+        const whatsappUrl = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(defaultMessage)}`;
+        
+        // Abrir em nova aba
+        window.open(whatsappUrl, '_blank');
+        
+        // Log da ação
+        this.addLog('success', `✅ WhatsApp aberto para ${clientName} (${phone})`);
+        
+        // Opcional: Mudar para aba WhatsApp se existir
+        this.switchToWhatsAppTab();
+    }
+
+    // NOVO: Mudar para aba WhatsApp
+    switchToWhatsAppTab() {
+        // Tentar encontrar e ativar a aba WhatsApp
+        const whatsappTab = document.querySelector('[data-module="whatsapp"]');
+        if (whatsappTab) {
+            whatsappTab.click();
+            this.addLog('info', '🔄 Mudando para aba WhatsApp...');
+        }
+    }
+
     renderSystemLogs() {
         return `
             <div class="log-entry success">

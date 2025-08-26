@@ -480,6 +480,69 @@ class SacsMaxApp {
                 background: #138496;
                 transform: translateY(-2px);
             }
+
+            .btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            }
+
+            /* NOVO: Botão WhatsApp */
+            .btn-whatsapp {
+                background: linear-gradient(135deg, #25d366, #128c7e);
+                color: white;
+                border: none;
+                padding: 0.6rem 1rem;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                font-weight: 600;
+                font-size: 0.9rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                box-shadow: 0 2px 8px rgba(37, 211, 102, 0.3);
+                min-width: 140px;
+                justify-content: center;
+            }
+
+            .btn-whatsapp:hover {
+                background: linear-gradient(135deg, #128c7e, #0d6b5f);
+                transform: translateY(-2px);
+                box-shadow: 0 4px 16px rgba(37, 211, 102, 0.4);
+            }
+
+            .btn-whatsapp .btn-icon {
+                font-size: 1.1rem;
+            }
+
+            .btn-whatsapp .btn-text {
+                font-size: 0.85rem;
+            }
+
+            /* Ações dos contatos */
+            .contact-actions {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0.5rem;
+                min-width: 150px;
+            }
+
+            /* Responsivo para mobile */
+            @media (max-width: 768px) {
+                .btn-whatsapp {
+                    min-width: 120px;
+                    padding: 0.5rem 0.8rem;
+                }
+                
+                .btn-whatsapp .btn-text {
+                    font-size: 0.8rem;
+                }
+                
+                .contact-actions {
+                    min-width: 120px;
+                }
+            }
         `;
         document.head.appendChild(style);
     }
