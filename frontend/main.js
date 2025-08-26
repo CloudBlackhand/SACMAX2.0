@@ -862,12 +862,83 @@ const cacheStyles = `
     overflow: hidden;
     transition: all 0.3s ease;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    background: white;
 }
 
 .contact-item:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     border-color: #007bff;
+}
+
+/* Estrutura do item de contato */
+.contact-header {
+    background: #f8f9fa;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.contact-sa {
+    font-weight: 600;
+    color: #495057;
+}
+
+.contact-status {
+    display: flex;
+    align-items: center;
+}
+
+.contact-body {
+    padding: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.contact-info, .contact-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.info-row, .detail-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.info-label, .detail-label {
+    font-weight: 600;
+    color: #495057;
+    min-width: 80px;
+    flex-shrink: 0;
+}
+
+.info-value, .detail-value {
+    color: #212529;
+    flex: 1;
+    word-break: break-word;
+    line-height: 1.4;
+}
+
+/* Números de telefone específicos */
+.phone-number {
+    font-family: 'Courier New', monospace;
+    background: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+    word-break: break-all;
+    white-space: pre-wrap;
+}
+
+/* Item de largura total */
+.detail-item.full-width {
+    grid-column: 1 / -1;
 }
 
 /* Status badges melhorados */
@@ -877,19 +948,20 @@ const cacheStyles = `
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.status-badge.ativo {
+.status-badge.ativo, .status-badge.finalizado {
     background: #28a745;
     color: white;
 }
 
-.status-badge.concluido {
+.status-badge.concluido, .status-badge.finalizado {
     background: #17a2b8;
     color: white;
 }
 
-.status-badge.pendente {
+.status-badge.pendente, .status-badge.reagendado {
     background: #ffc107;
     color: #212529;
 }
@@ -897,6 +969,29 @@ const cacheStyles = `
 .status-badge.cancelado {
     background: #dc3545;
     color: white;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .contact-body {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .contact-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .info-row, .detail-item {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .info-label, .detail-label {
+        min-width: auto;
+    }
 }
 
 /* Loading melhorado */
