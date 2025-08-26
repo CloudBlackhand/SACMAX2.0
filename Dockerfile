@@ -1,4 +1,4 @@
-# Dockerfile alternativo para SacsMax - Usando imagem Python oficial
+# Dockerfile para SacsMax - Usando imagem Python oficial
 FROM python:3.11-slim
 
 # Instalar Node.js
@@ -35,14 +35,6 @@ COPY . .
 
 # Criar diretórios necessários
 RUN mkdir -p uploads logs whatsapp_sessions frontend/dist
-
-# Instalar dependências do frontend
-WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm ci --only=production
-
-# Voltar para o diretório raiz
-WORKDIR /app
 
 # Expor porta
 EXPOSE 8000
