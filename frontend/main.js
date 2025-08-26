@@ -69,7 +69,6 @@ class SacsMaxApp {
         header.innerHTML = `
             <div class="logo">
                 <h1>📞 SacsMax</h1>
-                <span>Sistema de Gestão de SAC - Desktop</span>
             </div>
             <nav class="main-nav">
                 <button class="nav-btn active" data-module="excel">
@@ -157,47 +156,48 @@ class SacsMaxApp {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                padding: 0.75rem 1.5rem;
+                padding: 1rem 2rem;
                 background: linear-gradient(90deg, #2c3e50, #3498db);
                 color: white;
                 box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                min-height: 4rem;
-                max-height: 5rem;
+                min-height: 5rem;
+                max-height: 6rem;
             }
 
             .logo h1 {
-                font-size: 1.5rem;
-                margin-bottom: 0.1rem;
-                line-height: 1.2;
-            }
-
-            .logo span {
-                font-size: 0.8rem;
-                opacity: 0.8;
-                line-height: 1.1;
+                font-size: 1.8rem;
+                margin: 0;
+                line-height: 1;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
             }
 
             .main-nav {
                 display: flex;
-                gap: 0.4rem;
+                gap: 0.6rem;
                 flex-wrap: wrap;
                 justify-content: center;
+                align-items: center;
+                flex: 1;
+                margin: 0 2rem;
             }
 
             .nav-btn {
                 display: flex;
                 align-items: center;
-                gap: 0.4rem;
-                padding: 0.6rem 1rem;
+                gap: 0.5rem;
+                padding: 0.8rem 1.2rem;
                 border: none;
                 background: rgba(255,255,255,0.1);
                 color: white;
-                border-radius: 6px;
+                border-radius: 8px;
                 cursor: pointer;
                 transition: all 0.3s ease;
-                font-size: 0.8rem;
+                font-size: 0.9rem;
                 white-space: nowrap;
                 min-width: fit-content;
+                height: fit-content;
             }
 
             .nav-btn:hover {
@@ -211,7 +211,7 @@ class SacsMaxApp {
             }
 
             .nav-btn .icon {
-                font-size: 1rem;
+                font-size: 1.1rem;
             }
 
             .user-info {
@@ -242,7 +242,7 @@ class SacsMaxApp {
 
             .app-main {
                 flex: 1;
-                padding: 1.5rem;
+                padding: 1.2rem;
                 overflow-y: auto;
                 background: #f8f9fa;
             }
@@ -309,31 +309,33 @@ class SacsMaxApp {
             /* Responsividade para telas menores */
             @media (max-width: 1200px) {
                 .app-header {
-                    padding: 0.6rem 1rem;
+                    padding: 0.8rem 1.5rem;
+                    min-height: 4.5rem;
                 }
                 
                 .logo h1 {
-                    font-size: 1.3rem;
+                    font-size: 1.5rem;
                 }
                 
-                .logo span {
-                    font-size: 0.7rem;
+                .main-nav {
+                    margin: 0 1rem;
+                    gap: 0.5rem;
                 }
                 
                 .nav-btn {
-                    padding: 0.5rem 0.8rem;
-                    font-size: 0.75rem;
+                    padding: 0.7rem 1rem;
+                    font-size: 0.8rem;
                 }
                 
                 .nav-btn .icon {
-                    font-size: 0.9rem;
+                    font-size: 1rem;
                 }
             }
 
             @media (max-width: 768px) {
                 .app-header {
                     flex-direction: column;
-                    padding: 0.5rem;
+                    padding: 0.6rem;
                     min-height: auto;
                     max-height: none;
                 }
@@ -343,25 +345,26 @@ class SacsMaxApp {
                 }
                 
                 .logo h1 {
-                    font-size: 1.2rem;
+                    font-size: 1.4rem;
                 }
                 
                 .main-nav {
-                    gap: 0.3rem;
+                    gap: 0.4rem;
                     width: 100%;
                     justify-content: center;
+                    margin: 0.5rem 0;
                 }
                 
                 .nav-btn {
-                    padding: 0.4rem 0.6rem;
-                    font-size: 0.7rem;
+                    padding: 0.6rem 0.8rem;
+                    font-size: 0.8rem;
                     flex: 1;
                     min-width: auto;
-                    max-width: 120px;
+                    max-width: 130px;
                 }
                 
                 .nav-btn .icon {
-                    font-size: 0.8rem;
+                    font-size: 0.9rem;
                 }
                 
                 .user-info {
