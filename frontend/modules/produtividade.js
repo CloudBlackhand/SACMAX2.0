@@ -169,55 +169,35 @@ class ProdutividadeModule {
 
         return this.filteredContacts.map(contact => `
             <div class="contact-item ${contact.status?.toLowerCase()}">
-                <div class="contact-header">
+                <div class="contact-row">
                     <div class="contact-sa">
-                        <strong>SA: ${contact.sa || 'N/A'}</strong>
+                        <strong>${contact.sa || 'N/A'}</strong>
                     </div>
                     <div class="contact-status">
                         <span class="status-badge ${contact.status?.toLowerCase()}">${contact.status || 'Pendente'}</span>
                     </div>
-                </div>
-                
-                <div class="contact-body">
                     <div class="contact-info">
-                        <div class="info-row">
-                            <span class="info-label">Cliente:</span>
-                            <span class="info-value">${contact.nome_cliente || 'N/A'}</span>
+                        <div class="info-main">
+                            <span class="client-name">${contact.nome_cliente || 'N/A'}</span>
+                            <span class="service-type">${contact.servico || 'N/A'}</span>
                         </div>
-                        <div class="info-row">
-                            <span class="info-label">Técnico:</span>
-                            <span class="info-value">${contact.tecnico || 'N/A'}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Serviço:</span>
-                            <span class="info-value">${contact.servico || 'N/A'}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Telefone:</span>
-                            <span class="info-value">${contact.telefone1 || contact.telefone2 || 'N/A'}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Endereço:</span>
-                            <span class="info-value">${contact.endereco || 'N/A'}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Plano:</span>
-                            <span class="info-value">${contact.plano || 'N/A'}</span>
+                        <div class="info-secondary">
+                            <span class="technician">👨‍🔧 ${contact.tecnico || 'N/A'}</span>
+                            <span class="phone">📞 ${contact.telefone1 || contact.telefone2 || 'N/A'}</span>
                         </div>
                     </div>
-                    
                     <div class="contact-details">
-                        <div class="detail-item">
+                        <div class="detail-row">
                             <span class="detail-label">Data:</span>
                             <span class="detail-value">${contact.data || 'N/A'}</span>
                         </div>
-                        <div class="detail-item">
-                            <span class="info-label">Documento:</span>
-                            <span class="info-value">${contact.documento || 'N/A'}</span>
+                        <div class="detail-row">
+                            <span class="detail-label">Endereço:</span>
+                            <span class="detail-value">${contact.endereco || 'N/A'}</span>
                         </div>
                         ${contact.obs ? `
-                            <div class="detail-item full-width">
-                                <span class="detail-label">Observações:</span>
+                            <div class="detail-row">
+                                <span class="detail-label">Obs:</span>
                                 <span class="detail-value">${contact.obs}</span>
                             </div>
                         ` : ''}
@@ -626,16 +606,21 @@ const productivityStyles = `
         border-left: 4px solid #ffc107;
     }
 
-    .contact-header {
+    .contact-row {
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        margin-bottom: 1rem;
+        gap: 1rem;
+        padding: 0.5rem 0;
     }
 
     .contact-sa {
         font-size: 1.1rem;
         color: #2c3e50;
+        flex-shrink: 0;
+    }
+
+    .contact-status {
+        flex-shrink: 0;
     }
 
     .status-badge {
@@ -661,31 +646,46 @@ const productivityStyles = `
         color: #856404;
     }
 
-    .contact-body {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 2rem;
-    }
-
     .contact-info {
+        flex: 1;
         display: flex;
         flex-direction: column;
-        gap: 0.5rem;
+        gap: 0.25rem;
     }
 
-    .info-row {
+    .info-main {
         display: flex;
         gap: 0.5rem;
     }
 
-    .info-label {
+    .client-name {
+        font-size: 1.1rem;
         font-weight: 600;
-        color: #6c757d;
-        min-width: 80px;
+        color: #2c3e50;
     }
 
-    .info-value {
-        color: #2c3e50;
+    .service-type {
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+
+    .info-secondary {
+        display: flex;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+
+    .technician {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .phone {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
     }
 
     .contact-details {
@@ -694,13 +694,9 @@ const productivityStyles = `
         gap: 0.5rem;
     }
 
-    .detail-item {
+    .detail-row {
         display: flex;
         gap: 0.5rem;
-    }
-
-    .detail-item.full-width {
-        grid-column: 1 / -1;
     }
 
     .detail-label {
@@ -819,9 +815,38 @@ const productivityStyles = `
             align-items: stretch;
         }
 
-        .contact-body {
-            grid-template-columns: 1fr;
-            gap: 1rem;
+        .contact-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .contact-sa, .contact-status {
+            width: 100%;
+            text-align: left;
+        }
+
+        .contact-info {
+            width: 100%;
+        }
+
+        .info-main, .info-secondary {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .client-name, .service-type {
+            width: 100%;
+            text-align: left;
+        }
+
+        .technician, .phone {
+            width: 100%;
+            justify-content: flex-start;
+        }
+
+        .contact-details {
+            grid-column: 1 / -1;
         }
     }
 `;

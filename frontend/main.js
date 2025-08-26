@@ -881,94 +881,112 @@ const cacheStyles = `
     align-items: center;
 }
 
-.contact-sa {
-    font-weight: 600;
-    color: #495057;
-}
-
-.contact-status {
-    display: flex;
+/* Layout horizontal compacto */
+.contact-row {
+    display: grid;
+    grid-template-columns: 120px 100px 1fr 200px;
+    gap: 16px;
     align-items: center;
 }
 
-.contact-body {
-    padding: 16px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-}
-
-.contact-info, .contact-details {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.info-row, .detail-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 4px 0;
-}
-
-.info-label, .detail-label {
+/* SA - Compacto */
+.contact-sa {
     font-weight: 600;
     color: #495057;
-    min-width: 80px;
+    font-size: 14px;
+    text-align: center;
+    padding: 4px 8px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}
+
+/* Status - Compacto */
+.contact-status {
+    display: flex;
+    justify-content: center;
+}
+
+/* Informações principais - Horizontal */
+.contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.info-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.client-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+    line-height: 1.2;
+}
+
+.service-type {
+    font-size: 14px;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.info-secondary {
+    display: flex;
+    gap: 16px;
+    font-size: 13px;
+    color: #6c757d;
+}
+
+.technician, .phone {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+}
+
+/* Detalhes - Compacto */
+.contact-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+}
+
+.detail-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.detail-label {
+    font-weight: 600;
+    color: #495057;
+    min-width: 50px;
     flex-shrink: 0;
 }
 
-.info-value, .detail-value {
+.detail-value {
     color: #212529;
     flex: 1;
     word-break: break-word;
-    line-height: 1.4;
+    line-height: 1.3;
 }
 
-/* Números de telefone específicos */
-.phone-number {
-    font-family: 'Courier New', monospace;
-    background: #f8f9fa;
-    padding: 2px 6px;
-    border-radius: 4px;
-    border: 1px solid #dee2e6;
-    word-break: break-all;
-    white-space: pre-wrap;
-}
-
-/* Item de largura total */
-.detail-item.full-width {
-    grid-column: 1 / -1;
-}
-
-/* Status badges melhorados */
+/* Status badges compactos */
 .status-badge {
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.status-badge.ativo, .status-badge.finalizado {
-    background: #28a745;
-    color: white;
-}
-
-.status-badge.concluido, .status-badge.finalizado {
-    background: #17a2b8;
-    color: white;
-}
-
-.status-badge.pendente, .status-badge.reagendado {
-    background: #ffc107;
-    color: #212529;
-}
-
-.status-badge.cancelado {
-    background: #dc3545;
-    color: white;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
 }
 
 /* Responsividade */
@@ -1030,6 +1048,35 @@ const cacheStyles = `
     display: block;
     font-size: 32px;
     margin-bottom: 16px;
+}
+
+/* Responsividade para mobile */
+@media (max-width: 1024px) {
+    .contact-row {
+        grid-template-columns: 100px 80px 1fr 150px;
+        gap: 12px;
+    }
+}
+
+@media (max-width: 768px) {
+    .contact-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    
+    .contact-info, .contact-details {
+        grid-column: 1 / -1;
+    }
+    
+    .contact-sa, .contact-status {
+        text-align: left;
+        justify-content: flex-start;
+    }
+    
+    .info-secondary {
+        flex-direction: column;
+        gap: 8px;
+    }
 }
 </style>
 `;
