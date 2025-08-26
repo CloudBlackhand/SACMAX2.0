@@ -884,50 +884,28 @@ class SettingsModule {
 
     async testWhatsAppConnection() {
         try {
-            this.showNotification('🔍 Procurando WhatsApp Server...', 'info');
+            this.showNotification('🔍 Testando conexão com WhatsApp...', 'info');
             
-            // Usar a mesma lógica de detecção automática
-            const ports = [3001, 3002, 3003, 3004, 3005];
-            let foundPort = null;
-            let foundData = null;
+            // Usar proxy do backend
+            const response = await fetch(`${window.location.origin}/api/whatsapp/status`, {
+                method: 'GET',
+                signal: AbortSignal.timeout(5000)
+            });
             
-            for (const port of ports) {
-                try {
-                    this.showNotification(`🔍 Testando porta ${port}...`, 'info');
-                    const response = await fetch(`http://localhost:${port}/api/status`, {
-                        method: 'GET',
-                        signal: AbortSignal.timeout(2000)
-                    });
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.success && data.status === 'running') {
-                            foundPort = port;
-                            foundData = data;
-                            break;
-                        }
-                    }
-                } catch (error) {
-                    console.log(`❌ Porta ${port} não respondeu`);
-                }
-            }
-            
-            if (foundPort && foundData) {
-                // Atualizar configurações
-                this.settings.whatsapp.url = `http://localhost:${foundPort}`;
-                this.settings.whatsapp.port = foundPort;
+            if (response.ok) {
+                const data = await response.json();
                 this.whatsappServerRunning = true;
                 this.updateSettingsDisplay();
                 this.updateWhatsAppStatus();
                 
-                this.showNotification(`✅ WhatsApp Server encontrado na porta ${foundPort}!`, 'success');
-                console.log('📊 Status WhatsApp:', foundData);
+                this.showNotification('✅ WhatsApp Server conectado via proxy!', 'success');
+                console.log('📊 Status WhatsApp:', data);
             } else {
-                this.showNotification('❌ WhatsApp Server não encontrado em nenhuma porta', 'error');
+                this.showNotification('❌ WhatsApp Server não respondeu', 'error');
             }
         } catch (error) {
             console.error('❌ Erro ao testar WhatsApp Server:', error);
-            this.showNotification(`❌ Erro ao procurar WhatsApp Server: ${error.message}`, 'error');
+            this.showNotification(`❌ Erro ao conectar com WhatsApp: ${error.message}`, 'error');
         }
     }
 

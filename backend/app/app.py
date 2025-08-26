@@ -54,6 +54,34 @@ PORT = int(os.environ.get('BACKEND_PORT', 5000))
 FRONTEND_DIR = Path(__file__).parent.parent.parent / 'frontend'
 WHATSAPP_API_URL = "http://localhost:3002"
 
+# Proxy para WhatsApp
+@app.get("/api/whatsapp/status")
+async def whatsapp_status():
+    """Proxy para status do WhatsApp"""
+    try:
+        response = requests.get(f"{WHATSAPP_API_URL}/api/status", timeout=5)
+        return JSONResponse(content=response.json(), status_code=response.status_code)
+    except requests.RequestException as e:
+        return JSONResponse(content={"error": "WhatsApp server não disponível"}, status_code=503)
+
+@app.post("/api/whatsapp/send-message")
+async def whatsapp_send_message(request: dict):
+    """Proxy para envio de mensagens WhatsApp"""
+    try:
+        response = requests.post(f"{WHATSAPP_API_URL}/api/send-message", json=request, timeout=10)
+        return JSONResponse(content=response.json(), status_code=response.status_code)
+    except requests.RequestException as e:
+        return JSONResponse(content={"error": "Erro ao enviar mensagem"}, status_code=503)
+
+@app.get("/api/whatsapp/health")
+async def whatsapp_health():
+    """Proxy para health check do WhatsApp"""
+    try:
+        response = requests.get(f"{WHATSAPP_API_URL}/health", timeout=5)
+        return JSONResponse(content=response.json(), status_code=response.status_code)
+    except requests.RequestException as e:
+        return JSONResponse(content={"error": "WhatsApp server não disponível"}, status_code=503)
+
 # Criar aplicação FastAPI
 app = FastAPI(
     title="SacsMax API",

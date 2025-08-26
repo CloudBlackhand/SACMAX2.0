@@ -21,9 +21,9 @@ class WhatsAppModule {
         this.wsReconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
         
-        // Configuração para Railway - usar a mesma URL do frontend
+        // Configuração para Railway - usar proxy do backend
         this.whatsappPort = 3002;
-        this.whatsappUrl = window.location.origin.replace(':8080', ':3002');
+        this.whatsappUrl = window.location.origin; // Usar o mesmo domínio do frontend
         
         // Inicializar WhatsApp
         this.initWhatsApp();
@@ -53,26 +53,24 @@ class WhatsAppModule {
         try {
             console.log('🔍 Detectando porta do WhatsApp...');
             
-            // No Railway, usar a URL base com porta 3002
+            // Usar proxy do backend
             const baseUrl = window.location.origin;
-            const whatsappUrl = baseUrl.replace(':8080', ':3002');
             
             try {
-                const response = await fetch(`${whatsappUrl}/api/status`, {
+                const response = await fetch(`${baseUrl}/api/whatsapp/status`, {
                     method: 'GET',
                     signal: AbortSignal.timeout(5000)
                 });
                 
                 if (response.ok) {
-                    this.whatsappUrl = whatsappUrl;
-                    console.log(`✅ WhatsApp detectado em ${whatsappUrl}`);
+                    console.log(`✅ WhatsApp detectado via proxy em ${baseUrl}`);
                     return;
                 }
             } catch (error) {
-                console.log('⚠️ WhatsApp não respondeu, usando configuração padrão');
+                console.log('⚠️ WhatsApp não respondeu via proxy');
             }
             
-            console.log('⚠️ WhatsApp não detectado, usando porta padrão 3002');
+            console.log('⚠️ WhatsApp não detectado');
         } catch (error) {
             console.error('Erro ao detectar porta do WhatsApp:', error);
         }
@@ -85,7 +83,7 @@ class WhatsAppModule {
                 this.ws.close();
             }
             
-            // Conectar ao WebSocket do servidor WhatsApp usando a URL correta
+            // Conectar ao WebSocket do servidor WhatsApp via proxy
             const wsUrl = this.whatsappUrl.replace('http://', 'ws://').replace('https://', 'wss://');
             this.ws = new WebSocket(wsUrl);
             
