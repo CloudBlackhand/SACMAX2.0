@@ -736,8 +736,8 @@ class SettingsModule {
                 // Limpar o display primeiro
                 qrDisplay.innerHTML = '';
                 
-                // Gerar QR Code real usando a biblioteca
-                const qrData = `https://wa.me/5511999999999?text=Olá! Conectando com SacsMax`;
+                // Gerar QR Code real usando a biblioteca (texto mais curto para evitar overflow)
+                const qrData = `https://wa.me/5511999999999`;
                 
                 // Criar novo QR Code
                 new QRCode(qrDisplay, {
