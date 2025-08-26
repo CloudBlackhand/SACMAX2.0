@@ -1,19 +1,22 @@
-# Dockerfile para SacsMax - Sistema com Node.js e Python
-FROM node:18-alpine
+# Dockerfile alternativo para SacsMax - Usando imagem Python oficial
+FROM python:3.11-slim
 
-# Instalar Python e dependências do sistema
-RUN apk add --no-cache \
-    python3 \
-    py3-pip \
-    gcc \
-    musl-dev \
-    postgresql-dev \
-    python3-dev \
+# Instalar Node.js
+RUN apt-get update && apt-get install -y \
     curl \
-    libffi-dev \
-    openssl-dev \
-    cargo \
-    && ln -sf python3 /usr/bin/python
+    gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalar dependências do sistema
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libpq-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Definir diretório de trabalho
 WORKDIR /app
@@ -24,8 +27,8 @@ RUN npm ci --only=production
 
 # Copiar requirements.txt e instalar dependências Python
 COPY requirements.txt ./
-RUN pip3 install --upgrade pip setuptools wheel
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip setuptools wheel
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copiar todo o código
 COPY . .
