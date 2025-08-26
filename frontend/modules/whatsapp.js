@@ -83,8 +83,8 @@ class WhatsAppModule {
                 this.ws.close();
             }
             
-            // Conectar ao WebSocket do servidor WhatsApp via proxy
-            const wsUrl = this.whatsappUrl.replace('http://', 'ws://').replace('https://', 'wss://');
+            // Conectar ao WebSocket via proxy do backend
+            const wsUrl = this.whatsappUrl.replace('http://', 'ws://').replace('https://', 'wss://') + '/ws/whatsapp';
             this.ws = new WebSocket(wsUrl);
             
             this.ws.onopen = () => {

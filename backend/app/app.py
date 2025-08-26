@@ -118,6 +118,33 @@ async def whatsapp_health():
     except requests.RequestException as e:
         return JSONResponse(content={"error": "WhatsApp server não disponível"}, status_code=503)
 
+@app.websocket("/ws/whatsapp")
+async def websocket_whatsapp(websocket: WebSocket):
+    """Proxy WebSocket para WhatsApp"""
+    await websocket.accept()
+    try:
+        # Conectar ao WebSocket do servidor WhatsApp
+        import websockets
+        async with websockets.connect(f"ws://localhost:3002") as ws:
+            # Bidirecional proxy
+            async def forward_to_whatsapp():
+                async for message in websocket.iter_text():
+                    await ws.send(message)
+            
+            async def forward_to_client():
+                async for message in ws:
+                    await websocket.send_text(message)
+            
+            # Executar ambas as direções
+            import asyncio
+            await asyncio.gather(
+                forward_to_whatsapp(),
+                forward_to_client()
+            )
+    except Exception as e:
+        logger.error(f"Erro no WebSocket proxy: {e}")
+        await websocket.close()
+
 @app.get("/", response_class=HTMLResponse)
 async def index():
     """Serve o frontend"""
