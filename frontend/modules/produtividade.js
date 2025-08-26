@@ -45,14 +45,6 @@ class ProdutividadeModule {
                     </div>
                 </div>
 
-                <!-- Status de Conexão -->
-                <div class="connection-status">
-                    <div class="status-indicator ${this.loading ? 'loading' : 'connected'}">
-                        <span class="status-dot"></span>
-                        <span class="status-text">${this.getConnectionStatusText()}</span>
-                    </div>
-                </div>
-
                 <!-- Controles -->
                 <div class="controls-section">
                     <div class="search-box">
@@ -241,7 +233,7 @@ class ProdutividadeModule {
 
     async loadContacts() {
         this.loading = true;
-        this.updateConnectionStatus();
+        // this.updateConnectionStatus(); // REMOVIDO
 
         try {
             // Usar endpoint otimizado com pool de conexões
@@ -274,7 +266,7 @@ class ProdutividadeModule {
             this.filteredContacts = [];
         } finally {
             this.loading = false;
-            this.updateConnectionStatus();
+            // this.updateConnectionStatus(); // REMOVIDO
         }
     }
 
@@ -324,16 +316,16 @@ class ProdutividadeModule {
         }
     }
 
-    updateConnectionStatus() {
-        const statusIndicator = document.querySelector('.connection-status .status-indicator');
-        if (statusIndicator) {
-            statusIndicator.className = `status-indicator ${this.loading ? 'loading' : 'connected'}`;
-            const statusText = statusIndicator.querySelector('.status-text');
-            if (statusText) {
-                statusText.textContent = this.getConnectionStatusText();
-            }
-        }
-    }
+    // updateConnectionStatus() { // REMOVIDO
+    //     const statusIndicator = document.querySelector('.connection-status .status-indicator');
+    //     if (statusIndicator) {
+    //         statusIndicator.className = `status-indicator ${this.loading ? 'loading' : 'connected'}`;
+    //         const statusText = statusIndicator.querySelector('.status-text');
+    //         if (statusText) {
+    //             statusText.textContent = this.getConnectionStatusText();
+    //         }
+    //     }
+    // }
 
     updateContactsDisplay() {
         const contactsList = document.getElementById('contacts-list');
