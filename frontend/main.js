@@ -503,6 +503,7 @@ class SacsMaxApp {
                 box-shadow: 0 2px 8px rgba(37, 211, 102, 0.3);
                 min-width: 140px;
                 justify-content: center;
+                white-space: nowrap;
             }
 
             .btn-whatsapp:hover {
@@ -526,6 +527,36 @@ class SacsMaxApp {
                 justify-content: center;
                 padding: 0.5rem;
                 min-width: 150px;
+                flex-shrink: 0;
+            }
+
+            /* Garantir que o botão seja visível */
+            .contact-row {
+                display: grid;
+                grid-template-columns: auto auto 1fr auto auto;
+                gap: 1rem;
+                align-items: start;
+                width: 100%;
+            }
+
+            .contact-sa {
+                min-width: 120px;
+                flex-shrink: 0;
+            }
+
+            .contact-status {
+                min-width: 100px;
+                flex-shrink: 0;
+            }
+
+            .contact-info {
+                flex: 1;
+                min-width: 200px;
+            }
+
+            .contact-details {
+                min-width: 250px;
+                flex-shrink: 0;
             }
 
             /* Responsivo para mobile */
@@ -541,6 +572,15 @@ class SacsMaxApp {
                 
                 .contact-actions {
                     min-width: 120px;
+                }
+                
+                .contact-row {
+                    grid-template-columns: 1fr;
+                    gap: 0.5rem;
+                }
+                
+                .contact-sa, .contact-status, .contact-info, .contact-details, .contact-actions {
+                    min-width: auto;
                 }
             }
         `;

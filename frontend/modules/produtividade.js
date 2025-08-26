@@ -174,6 +174,12 @@ class ProdutividadeModule {
                             </div>
                         ` : ''}
                     </div>
+                    <div class="contact-actions">
+                        <button class="btn-whatsapp" onclick="produtividadeModule.openWhatsApp('${contact.telefone1 || contact.telefone2 || ''}', '${contact.nome_cliente || 'Cliente'}')" title="Falar com cliente via WhatsApp">
+                            <span class="btn-icon">💬</span>
+                            <span class="btn-text">WhatsApp</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         `).join('');
