@@ -165,36 +165,36 @@ class SacsMaxApp {
             }
 
             .logo h1 {
-                font-size: 1.8rem;
+                font-size: 1.4rem;
                 margin: 0;
                 line-height: 1;
                 display: flex;
                 align-items: center;
-                gap: 0.5rem;
+                gap: 0.4rem;
             }
 
             .main-nav {
                 display: flex;
-                gap: 0.6rem;
+                gap: 0.4rem;
                 flex-wrap: wrap;
                 justify-content: center;
                 align-items: center;
                 flex: 1;
-                margin: 0 2rem;
+                margin: 0 1.5rem;
             }
 
             .nav-btn {
                 display: flex;
                 align-items: center;
-                gap: 0.5rem;
-                padding: 0.8rem 1.2rem;
+                gap: 0.4rem;
+                padding: 0.7rem 1rem;
                 border: none;
                 background: rgba(255,255,255,0.1);
                 color: white;
                 border-radius: 8px;
                 cursor: pointer;
                 transition: all 0.3s ease;
-                font-size: 0.9rem;
+                font-size: 0.85rem;
                 white-space: nowrap;
                 min-width: fit-content;
                 height: fit-content;
@@ -211,7 +211,7 @@ class SacsMaxApp {
             }
 
             .nav-btn .icon {
-                font-size: 1.1rem;
+                font-size: 1rem;
             }
 
             .user-info {
@@ -314,21 +314,21 @@ class SacsMaxApp {
                 }
                 
                 .logo h1 {
-                    font-size: 1.5rem;
+                    font-size: 1.3rem;
                 }
                 
                 .main-nav {
                     margin: 0 1rem;
-                    gap: 0.5rem;
+                    gap: 0.4rem;
                 }
                 
                 .nav-btn {
-                    padding: 0.7rem 1rem;
+                    padding: 0.6rem 0.9rem;
                     font-size: 0.8rem;
                 }
                 
                 .nav-btn .icon {
-                    font-size: 1rem;
+                    font-size: 0.9rem;
                 }
             }
 
