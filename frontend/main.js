@@ -840,18 +840,59 @@ const cacheStyles = `
     font-weight: bold;
 }
 
-/* Status de cache no header */
+/* Status de cache no header - mais elegante */
+.cache-status {
+    display: inline-flex;
+    align-items: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 11px;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    margin-left: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+/* Header dos contatos organizado */
 .contacts-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
 }
 
 .contacts-header h3 {
     margin: 0;
     display: flex;
     align-items: center;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+/* Responsividade para header */
+@media (max-width: 768px) {
+    .contacts-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .contacts-header h3 {
+        font-size: 1.3rem;
+    }
+    
+    .cache-status {
+        align-self: flex-start;
+        margin-left: 0;
+    }
 }
 
 /* Melhorias na lista de contatos */
