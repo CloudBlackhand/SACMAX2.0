@@ -118,6 +118,24 @@ async def whatsapp_health():
     except requests.RequestException as e:
         return JSONResponse(content={"error": "WhatsApp server não disponível"}, status_code=503)
 
+@app.post("/api/sessions/add")
+async def add_whatsapp_session(request: dict):
+    """Proxy para adicionar sessão WhatsApp"""
+    try:
+        response = requests.post(f"{WHATSAPP_API_URL}/api/sessions/add", json=request, timeout=10)
+        return JSONResponse(content=response.json(), status_code=response.status_code)
+    except requests.RequestException as e:
+        return JSONResponse(content={"error": "Erro ao criar sessão WhatsApp"}, status_code=503)
+
+@app.delete("/api/sessions/remove")
+async def remove_whatsapp_session(request: dict):
+    """Proxy para remover sessão WhatsApp"""
+    try:
+        response = requests.delete(f"{WHATSAPP_API_URL}/api/sessions/remove", json=request, timeout=10)
+        return JSONResponse(content=response.json(), status_code=response.status_code)
+    except requests.RequestException as e:
+        return JSONResponse(content={"error": "Erro ao remover sessão WhatsApp"}, status_code=503)
+
 @app.websocket("/ws/whatsapp")
 async def websocket_whatsapp(websocket: WebSocket):
     """Proxy WebSocket para WhatsApp"""

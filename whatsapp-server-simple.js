@@ -119,6 +119,67 @@ app.get('/api/connections', (req, res) => {
     });
 });
 
+// Endpoint para adicionar sessão WhatsApp
+app.post('/api/sessions/add', (req, res) => {
+    try {
+        const { sessionName } = req.body;
+        
+        // Simular criação de sessão WhatsApp
+        const response = {
+            success: true,
+            message: 'Sessão WhatsApp criada com sucesso',
+            data: {
+                sessionName: sessionName || 'sacmax',
+                qrCode: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', // QR code placeholder
+                status: 'qr_ready',
+                timestamp: new Date().toISOString()
+            }
+        };
+
+        // Broadcast via WebSocket
+        connections.forEach((connection) => {
+            if (connection.readyState === WebSocket.OPEN) {
+                connection.send(JSON.stringify({
+                    type: 'session_created',
+                    data: response.data
+                }));
+            }
+        });
+
+        res.json(response);
+    } catch (error) {
+        console.error('❌ Erro ao criar sessão:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Erro interno do servidor'
+        });
+    }
+});
+
+// Endpoint para remover sessão
+app.delete('/api/sessions/remove', (req, res) => {
+    try {
+        const { sessionName } = req.body;
+        
+        const response = {
+            success: true,
+            message: 'Sessão WhatsApp removida com sucesso',
+            data: {
+                sessionName: sessionName || 'sacmax',
+                timestamp: new Date().toISOString()
+            }
+        };
+
+        res.json(response);
+    } catch (error) {
+        console.error('❌ Erro ao remover sessão:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Erro interno do servidor'
+        });
+    }
+});
+
 // Iniciar servidor
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 WhatsApp Server rodando na porta ${PORT}`);
