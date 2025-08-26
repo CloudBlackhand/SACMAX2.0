@@ -1437,65 +1437,65 @@ async def search_productivity_contacts(
         # Usar conexão direta
         conn = get_db_connection()
         cursor = conn.cursor()
-            
-            # Construir query dinamicamente
-            query = """
-                SELECT 
-                    sa, data, tecnico, servico, nome_cliente, 
-                    endereco, telefone1, telefone2, plano, status, obs,
-                    created_at, updated_at
-                FROM produtividade 
-                WHERE 1=1
-            """
-            params = []
-            
-            if q:
-                query += """ AND (
-                    nome_cliente ILIKE %s OR 
-                    tecnico ILIKE %s OR 
-                    sa ILIKE %s OR 
-                    servico ILIKE %s OR
-                    telefone1 ILIKE %s OR
-                    telefone2 ILIKE %s
-                )"""
-                search_term = f"%{q}%"
-                params.extend([search_term] * 6)
-            
-            if status:
-                query += " AND status ILIKE %s"
-                params.append(f"%{status}%")
-            
-            if tecnico:
-                query += " AND tecnico ILIKE %s"
-                params.append(f"%{tecnico}%")
-            
-            if servico:
-                query += " AND servico ILIKE %s"
-                params.append(f"%{servico}%")
-            
-            query += " ORDER BY data DESC, created_at DESC LIMIT %s"
-            params.append(limit)
-            
-            cursor.execute(query, params)
-            rows = cursor.fetchall()
-            
-            contacts = []
-            for row in rows:
-                contacts.append({
-                    "sa": row[0],
-                    "data": row[1].isoformat() if row[1] else None,
-                    "tecnico": row[2],
-                    "servico": row[3],
-                    "nome_cliente": row[4],
-                    "endereco": row[5],
-                    "telefone1": row[6],
-                    "telefone2": row[7],
-                    "plano": row[8],
-                    "status": row[9],
-                    "obs": row[10],
-                    "created_at": row[11].isoformat() if row[11] else None,
-                    "updated_at": row[12].isoformat() if row[12] else None
-                })
+        
+        # Construir query dinamicamente
+        query = """
+            SELECT 
+                sa, data, tecnico, servico, nome_cliente, 
+                endereco, telefone1, telefone2, plano, status, obs,
+                created_at, updated_at
+            FROM produtividade 
+            WHERE 1=1
+        """
+        params = []
+        
+        if q:
+            query += """ AND (
+                nome_cliente ILIKE %s OR 
+                tecnico ILIKE %s OR 
+                sa ILIKE %s OR 
+                servico ILIKE %s OR
+                telefone1 ILIKE %s OR
+                telefone2 ILIKE %s
+            )"""
+            search_term = f"%{q}%"
+            params.extend([search_term] * 6)
+        
+        if status:
+            query += " AND status ILIKE %s"
+            params.append(f"%{status}%")
+        
+        if tecnico:
+            query += " AND tecnico ILIKE %s"
+            params.append(f"%{tecnico}%")
+        
+        if servico:
+            query += " AND servico ILIKE %s"
+            params.append(f"%{servico}%")
+        
+        query += " ORDER BY data DESC, created_at DESC LIMIT %s"
+        params.append(limit)
+        
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        
+        contacts = []
+        for row in rows:
+            contacts.append({
+                "sa": row[0],
+                "data": row[1].isoformat() if row[1] else None,
+                "tecnico": row[2],
+                "servico": row[3],
+                "nome_cliente": row[4],
+                "endereco": row[5],
+                "telefone1": row[6],
+                "telefone2": row[7],
+                "plano": row[8],
+                "status": row[9],
+                "obs": row[10],
+                "created_at": row[11].isoformat() if row[11] else None,
+                "updated_at": row[12].isoformat() if row[12] else None
+            })
         
         return {
             "success": True,
