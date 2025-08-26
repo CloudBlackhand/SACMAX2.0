@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Script de inicialização para SacsMax
 # Gerencia backend Python e servidor WhatsApp Node.js
@@ -84,8 +84,8 @@ cleanup() {
     exit 0
 }
 
-# Configurar trap para limpeza
-trap cleanup SIGTERM SIGINT
+# Configurar trap para limpeza (usando bash)
+trap cleanup SIGTERM SIGINT EXIT
 
 # Iniciar serviços
 start_whatsapp_server

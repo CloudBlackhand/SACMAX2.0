@@ -1,10 +1,11 @@
 # Dockerfile para SacsMax - Usando imagem Python oficial
 FROM python:3.11-slim
 
-# Instalar Node.js
+# Instalar Node.js e bash
 RUN apt-get update && apt-get install -y \
     curl \
     gnupg \
+    bash \
     && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
     && apt-get install -y nodejs \
     && apt-get clean \
