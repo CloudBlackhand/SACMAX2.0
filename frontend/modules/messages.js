@@ -18,6 +18,19 @@ class MessagesModule {
             failed: 0,
             current: null
         };
+        this.cache = {
+            data: null,
+            lastUpdate: null,
+            cacheTimeout: 300000, // 5 minutos
+            isInitialized: false
+        };
+        this.connectionHealth = {
+            isConnected: false,
+            autoReconnect: true,
+            reconnectAttempts: 0,
+            maxAttempts: 5,
+            timeout: 10000 // 10 segundos
+        };
     }
 
     render() {
@@ -321,10 +334,125 @@ class MessagesModule {
         `).join('');
     }
 
-    init() {
-        this.loadContacts();
+    async init() {
         this.setupEventListeners();
-        this.addLog('info', 'Módulo Disparo de Mensagens inicializado');
+        
+        // NOVO: Verificar conectividade antes de carregar dados
+        await this.checkConnectionAndLoad();
+        
+        // IMPORTANTE: Forçar atualização da interface após inicialização
+        setTimeout(() => {
+            this.updateContactsDisplay();
+            this.updateLogsDisplay();
+        }, 100);
+        
+        this.addLog('info', 'Módulo Disparo de Mensagens inicializado com cache');
+    }
+
+    // NOVO: Verificar conectividade e carregar dados
+    async checkConnectionAndLoad() {
+        try {
+            console.log('🔌 Verificando conectividade (Messages)...');
+            
+            // Health check simples
+            const response = await fetch(`${this.backendUrl}/api/health`, {
+                method: 'GET',
+                signal: AbortSignal.timeout(5000)
+            });
+            
+            if (response.ok) {
+                console.log('✅ Conectado ao servidor (Messages), carregando dados...');
+                await this.initializeCache();
+            } else {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+        } catch (error) {
+            console.error('❌ Erro de conectividade (Messages):', error.message);
+            
+            // Tentar novamente em 3 segundos
+            setTimeout(() => {
+                this.checkConnectionAndLoad();
+            }, 3000);
+        }
+    }
+
+    // NOVO: Sistema de cache inteligente
+    async initializeCache() {
+        // Verificar conectividade primeiro
+        if (!this.connectionHealth.isConnected) {
+            console.log('🔌 Aguardando conexão (Messages)...');
+            await this.performHealthCheck();
+            
+            if (!this.connectionHealth.isConnected) {
+                console.error('❌ Sem conexão, não é possível carregar dados (Messages)');
+                this.showConnectionError();
+                return;
+            }
+        }
+
+        if (this.cache.isInitialized && this.isCacheValid()) {
+            console.log('💾 Usando dados do cache (Messages)');
+            this.contacts = this.cache.data;
+            this.filteredContacts = [...this.contacts];
+            this.updateFilters();
+            this.updateContactsDisplay();
+            this.addLog('info', `💾 ${this.contacts.length} registros carregados do cache (Messages)`);
+            return;
+        }
+
+        await this.loadContacts();
+    }
+
+    isCacheValid() {
+        if (!this.cache.data || !this.cache.lastUpdate) return false;
+        const now = Date.now();
+        return (now - this.cache.lastUpdate) < this.cache.cacheTimeout;
+    }
+
+    updateCache(data) {
+        this.cache.data = data;
+        this.cache.lastUpdate = Date.now();
+        this.cache.isInitialized = true;
+        console.log('💾 Cache atualizado (Messages):', this.cache);
+    }
+
+    // NOVO: Forçar atualização (ignora cache)
+    async forceRefresh() {
+        this.cache.isInitialized = false;
+        this.cache.data = null;
+        this.cache.lastUpdate = null;
+        await this.loadContacts();
+    }
+
+    // NOVO: Mostrar erro de conexão
+    showConnectionError() {
+        const contactsList = document.querySelector('.contacts-list');
+        if (contactsList) {
+            contactsList.innerHTML = `
+                <div class="connection-error">
+                    <div class="error-icon">🔌</div>
+                    <div class="error-title">Sem conexão com o servidor</div>
+                    <div class="error-message">Verificando conexão automaticamente...</div>
+                    <button class="btn btn-retry" onclick="messagesModule.forceReconnect()">
+                        🔄 Tentar Reconectar
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    // NOVO: Forçar reconexão
+    async forceReconnect() {
+        console.log('🔄 Forçando reconexão (Messages)...');
+        this.connectionHealth.reconnectAttempts = 0;
+        this.connectionHealth.autoReconnect = true;
+        
+        await this.performHealthCheck();
+        
+        if (this.connectionHealth.isConnected) {
+            await this.initializeCache();
+        }
     }
 
     setupEventListeners() {
@@ -399,6 +527,7 @@ class MessagesModule {
                 }));
                 this.filteredContacts = [...this.contacts];
                 this.updateFilters();
+                this.updateCache(this.contacts); // Atualiza cache
                 this.addLog('success', `${this.contacts.length} contatos carregados do PostgreSQL`);
             } else {
                     throw new Error(data.message || 'Erro na resposta do servidor');
