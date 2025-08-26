@@ -25,7 +25,19 @@ except ImportError:
     POOL_AVAILABLE = False
     print("⚠️ Pool de conexões não disponível, usando conexão direta")
 
-from database_config import get_db_connection
+try:
+    import sys
+    import os
+    # Adicionar o diretório backend ao path
+    backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if backend_dir not in sys.path:
+        sys.path.append(backend_dir)
+    
+    from database_config import get_db_connection
+    DB_CONFIG_AVAILABLE = True
+except ImportError as e:
+    DB_CONFIG_AVAILABLE = False
+    print(f"⚠️ Database config não disponível: {e}")
 
 # Configuração de logging
 logging.basicConfig(level=logging.INFO)
@@ -932,6 +944,16 @@ async def get_productivity_metrics():
 async def get_productivity_contacts(optimized: bool = False):
     """Obter lista de contatos da tabela PRODUTIVIDADE"""
     try:
+        if not DB_CONFIG_AVAILABLE:
+            return {
+                "success": False,
+                "contacts": [],
+                "total": 0,
+                "error": "Database config não disponível",
+                "optimized": optimized,
+                "connection_status": "unavailable"
+            }
+        
         # Usar conexão direta otimizada
         conn = get_db_connection()
         cursor = conn.cursor()
