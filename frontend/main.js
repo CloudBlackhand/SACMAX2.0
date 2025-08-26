@@ -156,48 +156,49 @@ class SacsMaxApp {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                padding: 1rem 2rem;
+                padding: 0.8rem 1.5rem;
                 background: linear-gradient(90deg, #2c3e50, #3498db);
                 color: white;
                 box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                min-height: 5rem;
-                max-height: 6rem;
+                min-height: 4.5rem;
+                max-height: 5.5rem;
             }
 
             .logo h1 {
-                font-size: 1.4rem;
+                font-size: 1.2rem;
                 margin: 0;
                 line-height: 1;
                 display: flex;
                 align-items: center;
-                gap: 0.4rem;
+                gap: 0.3rem;
             }
 
             .main-nav {
                 display: flex;
-                gap: 0.4rem;
-                flex-wrap: wrap;
+                gap: 0.3rem;
+                flex-wrap: nowrap;
                 justify-content: center;
                 align-items: center;
                 flex: 1;
-                margin: 0 1.5rem;
+                margin: 0 1rem;
             }
 
             .nav-btn {
                 display: flex;
                 align-items: center;
-                gap: 0.4rem;
-                padding: 0.7rem 1rem;
+                gap: 0.3rem;
+                padding: 0.6rem 0.8rem;
                 border: none;
                 background: rgba(255,255,255,0.1);
                 color: white;
-                border-radius: 8px;
+                border-radius: 6px;
                 cursor: pointer;
                 transition: all 0.3s ease;
-                font-size: 0.85rem;
+                font-size: 0.8rem;
                 white-space: nowrap;
                 min-width: fit-content;
                 height: fit-content;
+                flex-shrink: 0;
             }
 
             .nav-btn:hover {
@@ -211,13 +212,14 @@ class SacsMaxApp {
             }
 
             .nav-btn .icon {
-                font-size: 1rem;
+                font-size: 0.9rem;
             }
 
             .user-info {
                 display: flex;
                 align-items: center;
-                gap: 1rem;
+                gap: 0.8rem;
+                flex-shrink: 0;
             }
 
             .user-name {
