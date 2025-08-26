@@ -3,7 +3,7 @@
 
 class ProdutividadeModule {
     constructor() {
-        this.backendUrl = 'http://localhost:5000';
+        this.backendUrl = window.location.origin;
         this.contacts = [];
         this.filteredContacts = [];
         this.searchTerm = '';

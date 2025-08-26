@@ -3,7 +3,7 @@
 
 class MessagesModule {
     constructor() {
-        this.backendUrl = 'http://localhost:5000';
+        this.backendUrl = window.location.origin;
         this.whatsappUrl = 'http://localhost:3001';
         this.contacts = [];
         this.filteredContacts = [];

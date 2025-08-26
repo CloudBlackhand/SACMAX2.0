@@ -14,7 +14,7 @@ class BotModule {
         
         // URLs dos serviços - Detecta automaticamente as portas
         this.whatsappUrl = this.detectWhatsAppUrl();
-        this.backendUrl = 'http://localhost:5000';
+        this.backendUrl = window.location.origin;
         
         // Status de conexão
         this.whatsappConnected = false;

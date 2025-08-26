@@ -9,7 +9,7 @@ class FeedbackModule {
         this.stats = { positive: 0, negative: 0, neutral: 0, total: 0 };
         
         // URLs do backend
-        this.backendUrl = 'http://localhost:5000';
+        this.backendUrl = window.location.origin;
     }
 
     render() {
