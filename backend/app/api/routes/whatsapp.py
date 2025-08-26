@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 from pydantic import BaseModel
+from datetime import datetime
+import os
 
 # Importação condicional
 try:
@@ -208,4 +210,14 @@ async def get_whatsapp_sessions(db: Session = Depends(get_db) if get_db else Non
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/health")
+async def health_check():
+    """Endpoint de verificação de saúde para Railway"""
+    return {
+        "status": "healthy",
+        "service": "sacsmax-backend",
+        "timestamp": datetime.now().isoformat(),
+        "environment": os.environ.get("RAILWAY_ENVIRONMENT", "development")
+    }
 

@@ -4,8 +4,8 @@
   "description": "Sistema de Gestão de SAC com WhatsApp em tempo real",
   "main": "whatsapp-server-simple.js",
   "scripts": {
-    "start": "echo 'WhatsApp server - use apenas em desenvolvimento local'",
-    "dev": "echo 'WhatsApp server - use apenas em desenvolvimento local'",
+    "start": "node whatsapp-server-simple.js",
+    "dev": "node whatsapp-server-simple.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
@@ -20,6 +20,5 @@
     "websocket"
   ],
   "author": "SacsMax Team",
-  "license": "MIT",
-  "_comment": "Este arquivo é usado apenas para desenvolvimento local. No Railway, use apenas Python."
+  "license": "MIT"
 }

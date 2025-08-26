@@ -124,8 +124,13 @@ async def serve_main_js():
 
 @app.get("/health")
 async def health_check():
-    """Verificação de saúde da API"""
-    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+    """Endpoint de verificação de saúde para Railway"""
+    return {
+        "status": "healthy",
+        "service": "sacsmax-backend",
+        "timestamp": datetime.now().isoformat(),
+        "environment": os.environ.get("RAILWAY_ENVIRONMENT", "development")
+    }
 
 @app.get("/api/health")
 async def health():

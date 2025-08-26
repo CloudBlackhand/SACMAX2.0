@@ -14,10 +14,14 @@ __pycache__/
 env/
 venv/
 .venv/
+sacsmax_env/
 
 # Logs
 logs
 *.log
+backend.log
+frontend.log
+whatsapp.log
 
 # Arquivos temporários
 temp_*
@@ -35,6 +39,7 @@ uploads/*
 # Documentação
 *.md
 docs/
+README*.md
 
 # Testes
 test/
@@ -63,3 +68,18 @@ Thumbs.db
 # Build
 dist/
 build/
+
+# Docker
+Dockerfile.backend
+docker-compose*.yml
+
+# Ambiente local
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Arquivos de backup
+*.bak
+*.backup
