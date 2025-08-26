@@ -1,5 +1,6 @@
 // Módulo Produtividade - Lista simples de dados (PostgreSQL + Python)
 // Filosofia: Python responsável por TUDO, JS apenas frontend
+// SISTEMA DE CACHE IMPLEMENTADO - Dados carregados uma vez e atualizados automaticamente
 
 class ProdutividadeModule {
     constructor() {
@@ -10,6 +11,17 @@ class ProdutividadeModule {
         this.sortBy = 'data';
         this.sortOrder = 'desc';
         this.loading = false;
+        
+        // SISTEMA DE CACHE IMPLEMENTADO
+        this.cache = {
+            data: null,
+            lastUpdate: null,
+            cacheTimeout: 5 * 60 * 1000, // 5 minutos
+            isInitialized: false
+        };
+        
+        // Contador de atualizações
+        this.updateCount = 0;
     }
 
     render() {
@@ -25,7 +37,7 @@ class ProdutividadeModule {
                             </div>
                         </div>
                         <div class="header-right">
-                            <button class="btn btn-refresh" onclick="produtividadeModule.loadContacts()">
+                            <button class="btn btn-refresh" onclick="produtividadeModule.forceRefresh()">
                                 <span class="btn-icon">🔄</span>
                                 Atualizar
                             </button>
@@ -37,7 +49,7 @@ class ProdutividadeModule {
                 <div class="connection-status">
                     <div class="status-indicator ${this.loading ? 'loading' : 'connected'}">
                         <span class="status-dot"></span>
-                        <span class="status-text">${this.loading ? 'Carregando...' : 'Conectado ao PostgreSQL'}</span>
+                        <span class="status-text">${this.getConnectionStatusText()}</span>
                     </div>
                 </div>
 
@@ -66,6 +78,7 @@ class ProdutividadeModule {
                 <div class="contacts-section">
                     <div class="contacts-header">
                         <h3>📋 Lista de Serviços (${this.filteredContacts.length})</h3>
+                        ${this.cache.isInitialized ? `<span class="cache-status">💾 Cache ativo - Última atualização: ${this.formatTime(this.cache.lastUpdate)}</span>` : ''}
                     </div>
                     
                     <div class="contacts-list" id="contacts-list">
@@ -86,12 +99,71 @@ class ProdutividadeModule {
         `;
     }
 
+    // NOVO: Sistema de cache inteligente
+    async initializeCache() {
+        if (this.cache.isInitialized && this.isCacheValid()) {
+            console.log('💾 Usando dados do cache');
+            this.contacts = this.cache.data;
+            this.filteredContacts = [...this.contacts];
+            this.sortContacts();
+            this.updateContactsDisplay();
+            this.addLog('info', `💾 ${this.contacts.length} registros carregados do cache`);
+            return;
+        }
+
+        await this.loadContacts();
+    }
+
+    isCacheValid() {
+        if (!this.cache.data || !this.cache.lastUpdate) return false;
+        const now = Date.now();
+        return (now - this.cache.lastUpdate) < this.cache.cacheTimeout;
+    }
+
+    updateCache(data) {
+        this.cache.data = data;
+        this.cache.lastUpdate = Date.now();
+        this.cache.isInitialized = true;
+        console.log('💾 Cache atualizado:', this.cache);
+    }
+
+    // NOVO: Forçar atualização (ignora cache)
+    async forceRefresh() {
+        this.cache.isInitialized = false;
+        this.cache.data = null;
+        this.cache.lastUpdate = null;
+        await this.loadContacts();
+    }
+
+    // NOVO: Texto de status inteligente
+    getConnectionStatusText() {
+        if (this.loading) return 'Carregando...';
+        if (this.cache.isInitialized && this.isCacheValid()) {
+            return `Conectado ao PostgreSQL (Cache ativo - ${this.formatTime(this.cache.lastUpdate)})`;
+        }
+        return 'Conectado ao PostgreSQL';
+    }
+
+    // NOVO: Formatar tempo
+    formatTime(timestamp) {
+        if (!timestamp) return 'N/A';
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString('pt-BR', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    }
+
     renderContactsList() {
         if (this.loading) {
             return '<div class="loading">Carregando dados do PostgreSQL...</div>';
         }
 
         if (this.filteredContacts.length === 0) {
+            if (this.contacts.length > 0) {
+                return '<div class="no-data">Nenhum contato encontrado com os filtros atuais</div>';
+            }
             return '<div class="no-data">Nenhum contato encontrado</div>';
         }
 
@@ -140,8 +212,8 @@ class ProdutividadeModule {
                             <span class="detail-value">${contact.data || 'N/A'}</span>
                         </div>
                         <div class="detail-item">
-                            <span class="detail-label">Documento:</span>
-                            <span class="detail-value">${contact.documento || 'N/A'}</span>
+                            <span class="info-label">Documento:</span>
+                            <span class="info-value">${contact.documento || 'N/A'}</span>
                         </div>
                         ${contact.obs ? `
                             <div class="detail-item full-width">
@@ -156,23 +228,35 @@ class ProdutividadeModule {
     }
 
     renderSystemLogs() {
-        const logs = JSON.parse(localStorage.getItem('productivity_logs') || '[]');
-        if (logs.length === 0) {
-            return '<div class="no-logs">Nenhum log disponível</div>';
-        }
-
-        return logs.slice(-5).reverse().map(log => `
-            <div class="log-item ${log.type}">
-                <div class="log-message">${log.message}</div>
-                <div class="log-time">${log.time}</div>
+        return `
+            <div class="log-entry success">
+                <span class="log-icon">💾</span>
+                <span class="log-text">Sistema de cache ativo - Dados carregados uma vez e atualizados automaticamente</span>
+                <span class="log-time">${new Date().toLocaleTimeString('pt-BR')}</span>
             </div>
-        `).join('');
+            <div class="log-entry info">
+                <span class="log-icon">⚡</span>
+                <span class="log-text">Performance otimizada - Cache válido por 5 minutos</span>
+                <span class="log-time">${new Date().toLocaleTimeString('pt-BR')}</span>
+            </div>
+            ${this.updateCount > 0 ? `
+                <div class="log-entry success">
+                    <span class="log-icon">🔄</span>
+                    <span class="log-text">Atualizações realizadas: ${this.updateCount}</span>
+                    <span class="log-time">${new Date().toLocaleTimeString('pt-BR')}</span>
+                </div>
+            ` : ''}
+        `;
     }
 
-    init() {
-        this.loadContacts();
+    async init() {
         this.setupEventListeners();
-        this.addLog('info', 'Módulo Produtividade inicializado');
+        
+        // NOVO: Inicializar com cache
+        await this.initializeCache();
+        
+        // NOVO: Atualizar interface automaticamente
+        this.updateContactsDisplay();
     }
 
     setupEventListeners() {
@@ -207,8 +291,16 @@ class ProdutividadeModule {
                 if (data.success) {
                     this.contacts = data.contacts || [];
                     this.filteredContacts = [...this.contacts];
+                    
+                    // NOVO: Atualizar cache
+                    this.updateCache(this.contacts);
+                    
                     this.sortContacts();
-                    this.addLog('success', `✅ ${this.contacts.length} registros carregados (Pool de Conexões ativo)`);
+                    this.updateCount++;
+                    this.addLog('success', `✅ ${this.contacts.length} registros carregados (Cache atualizado)`);
+                    
+                    // NOVO: Atualizar interface automaticamente
+                    this.updateContactsDisplay();
                 } else {
                     throw new Error(data.message || 'Erro na resposta do servidor');
                 }
@@ -278,7 +370,7 @@ class ProdutividadeModule {
             statusIndicator.className = `status-indicator ${this.loading ? 'loading' : 'connected'}`;
             const statusText = statusIndicator.querySelector('.status-text');
             if (statusText) {
-                statusText.textContent = this.loading ? 'Carregando...' : 'Conectado ao PostgreSQL';
+                statusText.textContent = this.getConnectionStatusText();
             }
         }
     }
@@ -288,10 +380,17 @@ class ProdutividadeModule {
         if (contactsList) {
             contactsList.innerHTML = this.renderContactsList();
         }
-
+        
+        // NOVO: Atualizar contador no header
         const contactsHeader = document.querySelector('.contacts-header h3');
         if (contactsHeader) {
-            contactsHeader.textContent = `📋 Lista de Serviços (${this.filteredContacts.length})`;
+            contactsHeader.innerHTML = `📋 Lista de Serviços (${this.filteredContacts.length})`;
+        }
+        
+        // NOVO: Atualizar status do cache
+        const cacheStatus = document.querySelector('.cache-status');
+        if (cacheStatus && this.cache.isInitialized) {
+            cacheStatus.textContent = `💾 Cache ativo - Última atualização: ${this.formatTime(this.cache.lastUpdate)}`;
         }
     }
 

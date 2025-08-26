@@ -702,3 +702,242 @@ const app = new SacsMaxApp();
 
 // Exporta para uso global
 window.SacsMaxApp = app;
+
+// Estilos CSS para o sistema de cache
+const cacheStyles = `
+<style>
+/* Sistema de Cache - Estilos */
+.cache-status {
+    display: inline-block;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    margin-left: 15px;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+/* Logs do sistema com cache */
+.log-entry {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    margin: 8px 0;
+    border-radius: 8px;
+    background: #f8f9fa;
+    border-left: 4px solid #28a745;
+    transition: all 0.3s ease;
+}
+
+.log-entry.success {
+    border-left-color: #28a745;
+    background: #d4edda;
+    color: #155724;
+}
+
+.log-entry.info {
+    border-left-color: #17a2b8;
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.log-entry.error {
+    border-left-color: #dc3545;
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.log-icon {
+    font-size: 18px;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.log-text {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.log-time {
+    font-size: 12px;
+    color: #6c757d;
+    margin-left: 12px;
+    flex-shrink: 0;
+}
+
+/* Indicador de status de conexão melhorado */
+.status-indicator {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.status-indicator.connected {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.status-indicator.loading {
+    background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+    color: white;
+    animation: pulse 1.5s infinite;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 8px;
+    background: currentColor;
+}
+
+/* Animação de pulse para loading */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+/* Botão de atualização com cache */
+.btn-refresh {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.btn-refresh:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
+}
+
+.btn-refresh:active {
+    transform: translateY(0);
+}
+
+/* Contador de atualizações */
+.update-counter {
+    display: inline-block;
+    background: #6f42c1;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    margin-left: 8px;
+    font-weight: bold;
+}
+
+/* Status de cache no header */
+.contacts-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.contacts-header h3 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
+
+/* Melhorias na lista de contatos */
+.contact-item {
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.contact-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-color: #007bff;
+}
+
+/* Status badges melhorados */
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-badge.ativo {
+    background: #28a745;
+    color: white;
+}
+
+.status-badge.concluido {
+    background: #17a2b8;
+    color: white;
+}
+
+.status-badge.pendente {
+    background: #ffc107;
+    color: #212529;
+}
+
+.status-badge.cancelado {
+    background: #dc3545;
+    color: white;
+}
+
+/* Loading melhorado */
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #6c757d;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.loading::before {
+    content: "⏳";
+    display: block;
+    font-size: 32px;
+    margin-bottom: 16px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Mensagem de dados não encontrados */
+.no-data {
+    text-align: center;
+    padding: 40px;
+    color: #6c757d;
+    font-size: 16px;
+    font-style: italic;
+}
+
+.no-data::before {
+    content: "📭";
+    display: block;
+    font-size: 32px;
+    margin-bottom: 16px;
+}
+</style>
+`;
+
+// Inserir estilos no head
+document.head.insertAdjacentHTML('beforeend', cacheStyles);
