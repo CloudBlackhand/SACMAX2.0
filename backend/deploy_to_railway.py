@@ -52,19 +52,9 @@ def corrigir_caracteres_especiais(texto):
 def conectar_railway_postgres():
     """Conecta ao PostgreSQL do Railway usando variáveis de ambiente"""
     try:
-        # Usar a URL pública do Railway
-        database_url = os.getenv('DATABASE_PUBLIC_URL')
-        if database_url:
-            conn = psycopg2.connect(database_url)
-        else:
-            # Fallback para variáveis individuais
-            conn = psycopg2.connect(
-                host=os.getenv('PGHOST', 'postgres.railway.internal'),
-                port=os.getenv('PGPORT', '5432'),
-                database=os.getenv('PGDATABASE', 'railway'),
-                user=os.getenv('PGUSER', 'postgres'),
-                password=os.getenv('PGPASSWORD', '')
-            )
+        # Usar a URL pública do Railway diretamente
+        database_url = "postgresql://postgres:MbVOkkTYrVOlJXGTKiVHGVOfCjaixYdv@nozomi.proxy.rlwy.net:49949/railway"
+        conn = psycopg2.connect(database_url)
         print("✅ Conectado ao PostgreSQL do Railway com sucesso!")
         return conn
     except Exception as e:

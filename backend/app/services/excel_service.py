@@ -69,7 +69,7 @@ class ExcelService:
             raise HTTPException(status_code=500, detail="Erro ao salvar arquivo")
     
     def read_excel_file(self, file_path: str) -> Dict[str, Any]:
-        """Ler arquivo Excel usando pandas"""
+        """Ler arquivo Excel usando pandas - Especializado para planilhas OPERAÇÕES VION"""
         try:
             logger.info(f"Processando arquivo: {file_path}")
             
@@ -111,9 +111,15 @@ class ExcelService:
                         }
                         
                         if has_data:
-                            # Extrair contatos da planilha
-                            contacts = self._extract_contacts_from_dataframe(df, sheet_name)
-                            all_contacts.extend(contacts)
+                            # Para planilhas OPERAÇÕES VION, focar na aba PRODUTIVIDADE
+                            if sheet_name.upper() == 'PRODUTIVIDADE':
+                                logger.info(f"Processando aba PRODUTIVIDADE: {len(df)} registros")
+                                contacts = self._extract_produtividade_contacts(df, sheet_name)
+                                all_contacts.extend(contacts)
+                            else:
+                                # Para outras abas, usar método genérico
+                                contacts = self._extract_contacts_from_dataframe(df, sheet_name)
+                                all_contacts.extend(contacts)
                             
                     except Exception as e:
                         logger.warning(f"Erro ao processar planilha {sheet_name}: {e}")
@@ -140,8 +146,78 @@ class ExcelService:
                 'file_path': file_path
             }
     
+    def _extract_produtividade_contacts(self, df: pd.DataFrame, sheet_name: str) -> List[Dict[str, Any]]:
+        """Extrair contatos da aba PRODUTIVIDADE - Estrutura OPERAÇÕES VION"""
+        contacts = []
+        
+        try:
+            logger.info(f"Processando aba PRODUTIVIDADE com {len(df)} registros")
+            
+            # Limpar dados
+            df = df.dropna(how='all')  # Remover linhas vazias
+            df = df.fillna('')  # Preencher valores NaN
+            
+            # Mapeamento específico para a estrutura OPERAÇÕES VION
+            column_mapping = {
+                'data': ['data', 'DATA'],
+                'tecnico': ['tecnico', 'TECNICO', 'técnico'],
+                'servico': ['serviço', 'SERVIÇO', 'servico'],
+                'sa': ['s.a', 'S.A', 'sa'],
+                'documento': ['documento', 'DOCUMENTO', 'cpf', 'cnpj'],
+                'nome_cliente': ['nome cliente', 'NOME CLIENTE', 'nome_cliente', 'cliente'],
+                'endereco': ['endereço', 'ENDEREÇO', 'endereco'],
+                'telefone1': ['telefone1', 'TELEFONE1', 'telefone'],
+                'telefone2': ['telefone2', 'TELEFONE2'],
+                'plano': ['plano', 'PLANO'],
+                'status': ['status', 'STATUS'],
+                'obs': ['obs', 'OBS', 'observações', 'observacoes'],
+                'prazo_ca': ['prazo ca', 'PRAZO CA', 'prazo_ca']
+            }
+            
+            # Encontrar colunas correspondentes
+            found_columns = {}
+            for field, possible_names in column_mapping.items():
+                for col in df.columns:
+                    if any(name.lower() in str(col).lower() for name in possible_names):
+                        found_columns[field] = col
+                        logger.info(f"Mapeamento: {field} -> {col}")
+                        break
+            
+            logger.info(f"Colunas encontradas: {list(found_columns.keys())}")
+            
+            # Processar cada linha
+            for index, row in df.iterrows():
+                try:
+                    contact = {
+                        'id': index + 1,
+                        'sheet_name': sheet_name,
+                        'row_number': index + 2,
+                        'processed_at': datetime.now().isoformat()
+                    }
+                    
+                    # Extrair dados baseado no mapeamento específico
+                    for field, col_name in found_columns.items():
+                        value = row[col_name]
+                        if pd.notna(value) and str(value).strip():
+                            contact[field] = str(value).strip()
+                    
+                    # Validar se tem dados essenciais (nome do cliente ou telefone)
+                    if contact.get('nome_cliente') or contact.get('telefone1') or contact.get('telefone2'):
+                        contacts.append(contact)
+                        
+                except Exception as e:
+                    logger.warning(f"Erro ao processar linha {index}: {e}")
+                    continue
+            
+            logger.info(f"Extraídos {len(contacts)} contatos válidos da aba PRODUTIVIDADE")
+            
+        except Exception as e:
+            logger.error(f"Erro ao extrair contatos da aba PRODUTIVIDADE: {e}")
+        
+        return contacts
+
     def _extract_contacts_from_dataframe(self, df: pd.DataFrame, sheet_name: str) -> List[Dict[str, Any]]:
-        """Extrair contatos de um DataFrame"""
+        """Extrair contatos de um DataFrame genérico"""
         contacts = []
         
         try:

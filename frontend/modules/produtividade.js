@@ -200,18 +200,24 @@ class ProdutividadeModule {
         this.updateConnectionStatus();
 
         try {
-            const response = await fetch(`${this.backendUrl}/api/productivity/contacts`);
+            // Usar endpoint otimizado com pool de conexões
+            const response = await fetch(`${this.backendUrl}/api/productivity/contacts?optimized=true`);
             if (response.ok) {
                 const data = await response.json();
-                this.contacts = data.contacts || [];
-                this.filteredContacts = [...this.contacts];
-                this.sortContacts();
-                this.addLog('success', `${this.contacts.length} contatos carregados do PostgreSQL`);
+                if (data.success) {
+                    this.contacts = data.contacts || [];
+                    this.filteredContacts = [...this.contacts];
+                    this.sortContacts();
+                    this.addLog('success', `✅ ${this.contacts.length} registros carregados (Pool de Conexões ativo)`);
+                } else {
+                    throw new Error(data.message || 'Erro na resposta do servidor');
+                }
             } else {
-                throw new Error('Erro ao carregar contatos');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || 'Erro ao carregar contatos');
             }
         } catch (error) {
-            this.addLog('error', `Erro: ${error.message}`);
+            this.addLog('error', `❌ Erro: ${error.message}`);
             this.contacts = [];
             this.filteredContacts = [];
         } finally {

@@ -331,8 +331,12 @@ class MessagesModule {
         setTimeout(() => {
             const searchInput = document.getElementById('search-contacts');
             if (searchInput) {
+                let searchTimeout;
                 searchInput.addEventListener('input', (e) => {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(() => {
                     this.applyFilters();
+                    }, 500); // Debounce de 500ms
                 });
             }
 
@@ -342,6 +346,28 @@ class MessagesModule {
                     this.messageText = e.target.value;
                     this.updateCharCount();
                     this.setupCharCounter();
+                });
+            }
+
+            // Adicionar listeners para filtros
+            const statusFilter = document.getElementById('status-filter');
+            if (statusFilter) {
+                statusFilter.addEventListener('change', () => {
+                    this.applyFilters();
+                });
+            }
+
+            const technicianFilter = document.getElementById('technician-filter');
+            if (technicianFilter) {
+                technicianFilter.addEventListener('change', () => {
+                    this.applyFilters();
+                });
+            }
+
+            const serviceFilter = document.getElementById('service-filter');
+            if (serviceFilter) {
+                serviceFilter.addEventListener('change', () => {
+                    this.applyFilters();
                 });
             }
         }, 100);
@@ -366,6 +392,7 @@ class MessagesModule {
             const response = await fetch(`${this.backendUrl}/api/productivity/contacts`);
             if (response.ok) {
                 const data = await response.json();
+                if (data.success) {
                 this.contacts = (data.contacts || []).map((contact, index) => ({
                     ...contact,
                     id: `contact_${index}`
@@ -374,7 +401,11 @@ class MessagesModule {
                 this.updateFilters();
                 this.addLog('success', `${this.contacts.length} contatos carregados do PostgreSQL`);
             } else {
-                throw new Error('Erro ao carregar contatos');
+                    throw new Error(data.message || 'Erro na resposta do servidor');
+                }
+            } else {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || 'Erro ao carregar contatos');
             }
         } catch (error) {
             this.addLog('error', `Erro: ${error.message}`);
@@ -404,7 +435,45 @@ class MessagesModule {
         }
     }
 
-    applyFilters() {
+    async applyFilters() {
+        const searchTerm = document.getElementById('search-contacts')?.value || '';
+        const statusFilter = document.getElementById('status-filter')?.value || '';
+        const technicianFilter = document.getElementById('technician-filter')?.value || '';
+        const serviceFilter = document.getElementById('service-filter')?.value || '';
+
+        // Construir URL com parâmetros
+        const params = new URLSearchParams();
+        if (searchTerm) params.append('q', searchTerm);
+        if (statusFilter) params.append('status', statusFilter);
+        if (technicianFilter) params.append('tecnico', technicianFilter);
+        if (serviceFilter) params.append('servico', serviceFilter);
+        params.append('limit', '1000');
+
+        try {
+            const response = await fetch(`${this.backendUrl}/api/productivity/search?${params}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    this.filteredContacts = (data.contacts || []).map((contact, index) => ({
+                        ...contact,
+                        id: `contact_${index}`
+                    }));
+                    this.updateContactsDisplay();
+                    this.addLog('info', `Filtros aplicados: ${this.filteredContacts.length} contatos encontrados`);
+                } else {
+                    throw new Error(data.message || 'Erro na busca');
+                }
+            } else {
+                throw new Error('Erro na requisição de busca');
+            }
+        } catch (error) {
+            this.addLog('error', `Erro na busca: ${error.message}`);
+            // Fallback para filtro local
+            this.applyLocalFilters();
+        }
+    }
+
+    applyLocalFilters() {
         const searchTerm = document.getElementById('search-contacts')?.value.toLowerCase() || '';
         const statusFilter = document.getElementById('status-filter')?.value || '';
         const technicianFilter = document.getElementById('technician-filter')?.value || '';
@@ -425,17 +494,17 @@ class MessagesModule {
         });
 
         this.updateContactsDisplay();
-        this.addLog('info', `Filtros aplicados: ${this.filteredContacts.length} contatos encontrados`);
+        this.addLog('info', `Filtros locais aplicados: ${this.filteredContacts.length} contatos encontrados`);
     }
 
-    clearFilters() {
+    async clearFilters() {
         document.getElementById('search-contacts').value = '';
         document.getElementById('status-filter').value = '';
         document.getElementById('technician-filter').value = '';
         document.getElementById('service-filter').value = '';
         
-        this.filteredContacts = [...this.contacts];
-        this.updateContactsDisplay();
+        // Recarregar todos os contatos
+        await this.loadContacts();
         this.addLog('info', 'Filtros limpos');
     }
 

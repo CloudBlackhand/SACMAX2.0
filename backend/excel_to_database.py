@@ -1,27 +1,27 @@
 import pandas as pd
-import sqlite3
+import psycopg2
 import os
 from typing import Dict, List, Any
 import re
 from datetime import datetime
 import logging
+from database_config import get_db_connection
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 class ExcelToDatabaseConverter:
-    def __init__(self, excel_file_path: str, database_path: str = None):
+    def __init__(self, excel_file_path: str):
         self.excel_file_path = excel_file_path
-        self.database_path = database_path or 'sacmax_database.db'
         self.connection = None
         self.sheet_data = {}
         
     def connect_database(self):
-        """Conecta ao banco de dados SQLite"""
+        """Conecta ao banco de dados PostgreSQL do Railway"""
         try:
-            self.connection = sqlite3.connect(self.database_path)
-            logger.info(f"Conectado ao banco de dados: {self.database_path}")
+            self.connection = get_db_connection()
+            logger.info("Conectado ao banco de dados PostgreSQL do Railway")
             return True
         except Exception as e:
             logger.error(f"Erro ao conectar ao banco de dados: {e}")
@@ -312,6 +312,118 @@ class ExcelToDatabaseConverter:
         
         return summary
     
+    def process_produtividade_sheet(self, excel_file) -> Dict[str, Any]:
+        """Processa especificamente a aba PRODUTIVIDADE da planilha OPERAÇÕES VION.xlsx"""
+        try:
+            logger.info("Processando aba PRODUTIVIDADE")
+            
+            # Ler a aba PRODUTIVIDADE
+            df = pd.read_excel(excel_file, sheet_name='PRODUTIVIDADE')
+            logger.info(f"Aba PRODUTIVIDADE carregada com {len(df)} registros")
+            
+            # Limpar dados
+            df = df.dropna(how='all')  # Remover linhas vazias
+            df = df.fillna('')  # Preencher valores NaN
+            
+            # Mapear colunas da planilha para a tabela
+            column_mapping = {
+                'DATA': 'data',
+                'TECNICO': 'tecnico',
+                'SERVIÇO': 'servico',
+                'S.A': 'sa',
+                'DOCUMENTO': 'documento',
+                'NOME CLIENTE': 'nome_cliente',
+                'ENDEREÇO': 'endereco',
+                'TELEFONE1': 'telefone1',
+                'TELEFONE2': 'telefone2',
+                'PLANO': 'plano',
+                'STATUS': 'status',
+                'OBS': 'obs'
+            }
+            
+            # Renomear colunas
+            df_renamed = df.rename(columns=column_mapping)
+            
+            # Selecionar apenas as colunas que existem na tabela
+            table_columns = ['data', 'tecnico', 'servico', 'sa', 'documento', 'nome_cliente', 
+                           'endereco', 'telefone1', 'telefone2', 'plano', 'status', 'obs']
+            
+            # Filtrar apenas colunas que existem
+            available_columns = [col for col in table_columns if col in df_renamed.columns]
+            df_final = df_renamed[available_columns]
+            
+            # Inserir/Atualizar dados na tabela produtividade usando SA como chave
+            cursor = self.connection.cursor()
+            
+            # Preparar query de UPSERT (INSERT ou UPDATE)
+            columns_str = ', '.join(available_columns)
+            placeholders = ', '.join(['%s'] * len(available_columns))
+            
+            # Query para PostgreSQL usando ON CONFLICT
+            upsert_query = f"""
+                INSERT INTO produtividade ({columns_str}, updated_at) 
+                VALUES ({placeholders}, CURRENT_TIMESTAMP)
+                ON CONFLICT (sa) DO UPDATE SET
+                    data = EXCLUDED.data,
+                    tecnico = EXCLUDED.tecnico,
+                    servico = EXCLUDED.servico,
+                    documento = EXCLUDED.documento,
+                    nome_cliente = EXCLUDED.nome_cliente,
+                    endereco = EXCLUDED.endereco,
+                    telefone1 = EXCLUDED.telefone1,
+                    telefone2 = EXCLUDED.telefone2,
+                    plano = EXCLUDED.plano,
+                    status = EXCLUDED.status,
+                    obs = EXCLUDED.obs,
+                    updated_at = CURRENT_TIMESTAMP
+            """
+            
+            # Converter DataFrame para lista de tuplas
+            records = df_final.to_dict('records')
+            records_to_upsert = []
+            
+            for record in records:
+                row = []
+                for col in available_columns:
+                    value = record.get(col, '')
+                    # Converter data se necessário
+                    if col == 'data' and value:
+                        try:
+                            if isinstance(value, str):
+                                value = pd.to_datetime(value).date()
+                            elif hasattr(value, 'date'):
+                                value = value.date()
+                        except:
+                            value = None
+                    row.append(value)
+                records_to_upsert.append(tuple(row))
+            
+            # Executar UPSERT
+            cursor.executemany(upsert_query, records_to_upsert)
+            self.connection.commit()
+            
+            records_processed = len(records_to_upsert)
+            logger.info(f"✅ {records_processed} registros processados (INSERT/UPDATE) na tabela produtividade")
+            
+            cursor.close()
+            
+            return {
+                "sheet_name": "PRODUTIVIDADE",
+                "records_processed": records_processed,
+                "columns_mapped": available_columns,
+                "operation": "UPSERT",
+                "primary_key": "sa",
+                "success": True
+            }
+            
+        except Exception as e:
+            logger.error(f"Erro ao processar aba PRODUTIVIDADE: {e}")
+            return {
+                "sheet_name": "PRODUTIVIDADE",
+                "error": str(e),
+                "success": False
+            }
+    
     def process_excel_to_database(self) -> bool:
         """Processo completo: Excel -> Banco de Dados"""
         logger.info("Iniciando conversão Excel para Banco de Dados")
@@ -343,8 +455,7 @@ class ExcelToDatabaseConverter:
 
 def main():
     # Configurações
-    excel_file = r"C:\Users\Claudio\Desktop\sacmax2.0\SACMAX2.0\excel test\OPERAÇÕES VION.xlsx"
-    database_file = "sacmax_complete_database.db"
+    excel_file = "../excel test/OPERAÇÕES VION.xlsx"
     
     # Verificar se o arquivo Excel existe
     if not os.path.exists(excel_file):
@@ -352,39 +463,35 @@ def main():
         return
     
     # Criar conversor
-    converter = ExcelToDatabaseConverter(excel_file, database_file)
+    converter = ExcelToDatabaseConverter(excel_file)
     
     try:
-        # Processar Excel para banco de dados
-        if converter.process_excel_to_database():
-            # Gerar script SQL
-            sql_script_file = converter.generate_sql_script("operacoes_vion_complete.sql")
-            
-            # Mostrar resumo
-            summary = converter.get_database_summary()
-            
+        # Conectar ao banco de dados
+        if not converter.connect_database():
+            print("❌ Erro ao conectar ao banco de dados")
+            return
+        
+        # Ler o arquivo Excel
+        excel_file_obj = pd.ExcelFile(excel_file)
+        
+        # Processar a aba PRODUTIVIDADE
+        result = converter.process_produtividade_sheet(excel_file_obj)
+        
+        if result["success"]:
             print("\n" + "="*60)
-            print("🎉 CONVERSÃO CONCLUÍDA COM SUCESSO!")
+            print("🎉 IMPORTAÇÃO CONCLUÍDA COM SUCESSO!")
             print("="*60)
             print(f"📁 Arquivo Excel: {os.path.basename(excel_file)}")
-            print(f"🗄️  Banco de dados: {database_file}")
-            print(f"📄 Script SQL: {sql_script_file}")
-            print(f"📊 Total de tabelas: {summary['total_tables']}")
-            print("\n📋 TABELAS CRIADAS:")
-            
-            for table_name, info in summary['tables'].items():
-                print(f"  • {info['original_name']} -> {table_name}")
-                print(f"    📏 {info['rows']} linhas, {info['columns']} colunas")
-                print(f"    🏷️  Colunas: {', '.join(info['column_names'][:5])}{'...' if len(info['column_names']) > 5 else ''}")
-                print()
-            
-            print("✅ Todas as abas do Excel foram convertidas em tabelas SQL!")
-            print("✅ Nomes de colunas foram limpos e padronizados!")
-            print("✅ Tipos de dados foram detectados automaticamente!")
-            print("✅ Banco de dados SQLite criado com sucesso!")
+            print(f"📋 Aba processada: {result['sheet_name']}")
+            print(f"📊 Registros processados: {result['records_processed']}")
+            print(f"🔑 Chave primária: {result['primary_key']}")
+            print(f"🔄 Operação: {result['operation']}")
+            print(f"🏷️  Colunas mapeadas: {', '.join(result['columns_mapped'])}")
+            print("\n✅ Dados da planilha OPERAÇÕES VION.xlsx processados (INSERT/UPDATE)!")
+            print("✅ Tabela produtividade atualizada com sucesso!")
             
         else:
-            print("❌ Erro durante a conversão")
+            print(f"❌ Erro durante a importação: {result.get('error', 'Erro desconhecido')}")
             
     except Exception as e:
         logger.error(f"Erro geral: {e}")

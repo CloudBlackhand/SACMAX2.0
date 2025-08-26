@@ -3,7 +3,7 @@
 SacsMax Backend - API completa com FastAPI e integração de banco de dados PostgreSQL
 """
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, BackgroundTasks, WebSocket
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, BackgroundTasks, WebSocket, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -17,6 +17,15 @@ import threading
 import time
 from pathlib import Path
 import logging
+import pandas as pd
+try:
+    from database_pool import get_db_pool, init_database_pool, close_database_pool
+    POOL_AVAILABLE = True
+except ImportError:
+    POOL_AVAILABLE = False
+    print("⚠️ Pool de conexões não disponível, usando conexão direta")
+
+from database_config import get_db_connection
 
 # Configuração de logging
 logging.basicConfig(level=logging.INFO)
@@ -153,6 +162,99 @@ async def get_whatsapp_session_status(session_name: str):
         return JSONResponse(content=response.json(), status_code=response.status_code)
     except requests.RequestException as e:
         return JSONResponse(content={"error": "Erro ao verificar status da sessão WhatsApp"}, status_code=503)
+
+# Endpoints para persistência de sessão
+@app.get("/api/whatsapp/sessions")
+async def get_all_whatsapp_sessions():
+    """Obter todas as sessões WhatsApp salvas"""
+    try:
+        if whatsapp_service:
+            sessions = whatsapp_service.get_all_sessions()
+            return JSONResponse(content={"sessions": sessions})
+        return JSONResponse(content={"sessions": []})
+    except Exception as e:
+        logger.error(f"Erro ao obter sessões: {e}")
+        return JSONResponse(content={"error": "Erro ao obter sessões"}, status_code=500)
+
+@app.get("/api/whatsapp/sessions/{session_name}")
+async def get_whatsapp_session(session_name: str):
+    """Obter status de uma sessão específica"""
+    try:
+        if whatsapp_service:
+            session = whatsapp_service.get_session_status(session_name)
+            if session:
+                return JSONResponse(content=session)
+            return JSONResponse(content={"error": "Sessão não encontrada"}, status_code=404)
+        return JSONResponse(content={"error": "Serviço WhatsApp não disponível"}, status_code=503)
+    except Exception as e:
+        logger.error(f"Erro ao obter sessão {session_name}: {e}")
+        return JSONResponse(content={"error": "Erro ao obter sessão"}, status_code=500)
+
+@app.post("/api/whatsapp/sessions/{session_name}/start")
+async def start_whatsapp_session(session_name: str):
+    """Iniciar sessão WhatsApp com persistência"""
+    try:
+        if whatsapp_service:
+            success = await whatsapp_service.start_session(session_name)
+            if success:
+                return JSONResponse(content={"message": f"Sessão {session_name} iniciada com sucesso"})
+            return JSONResponse(content={"error": "Erro ao iniciar sessão"}, status_code=500)
+        return JSONResponse(content={"error": "Serviço WhatsApp não disponível"}, status_code=503)
+    except Exception as e:
+        logger.error(f"Erro ao iniciar sessão {session_name}: {e}")
+        return JSONResponse(content={"error": "Erro ao iniciar sessão"}, status_code=500)
+
+@app.post("/api/whatsapp/sessions/{session_name}/stop")
+async def stop_whatsapp_session(session_name: str):
+    """Parar sessão WhatsApp"""
+    try:
+        if whatsapp_service:
+            success = await whatsapp_service.stop_session(session_name)
+            if success:
+                return JSONResponse(content={"message": f"Sessão {session_name} parada com sucesso"})
+            return JSONResponse(content={"error": "Erro ao parar sessão"}, status_code=500)
+        return JSONResponse(content={"error": "Serviço WhatsApp não disponível"}, status_code=503)
+    except Exception as e:
+        logger.error(f"Erro ao parar sessão {session_name}: {e}")
+        return JSONResponse(content={"error": "Erro ao parar sessão"}, status_code=500)
+
+@app.post("/api/whatsapp/sessions/{session_name}/restore")
+async def restore_whatsapp_session(session_name: str):
+    """Restaurar sessão WhatsApp automaticamente"""
+    try:
+        if whatsapp_service:
+            await whatsapp_service.restore_sessions()
+            return JSONResponse(content={"message": "Sessões restauradas com sucesso"})
+        return JSONResponse(content={"error": "Serviço WhatsApp não disponível"}, status_code=503)
+    except Exception as e:
+        logger.error(f"Erro ao restaurar sessões: {e}")
+        return JSONResponse(content={"error": "Erro ao restaurar sessões"}, status_code=500)
+
+@app.post("/api/whatsapp/sessions/{session_name}")
+async def update_whatsapp_session_status(session_name: str, request: dict):
+    """Atualizar status de uma sessão WhatsApp"""
+    try:
+        if whatsapp_service:
+            status = request.get('status', 'unknown')
+            auto_restore = request.get('auto_restore', True)
+            whatsapp_service.save_session_status(session_name, status, auto_restore)
+            return JSONResponse(content={"message": f"Status da sessão {session_name} atualizado"})
+        return JSONResponse(content={"error": "Serviço WhatsApp não disponível"}, status_code=503)
+    except Exception as e:
+        logger.error(f"Erro ao atualizar status da sessão {session_name}: {e}")
+        return JSONResponse(content={"error": "Erro ao atualizar status da sessão"}, status_code=500)
+
+@app.get("/api/whatsapp/messages/{session_name}")
+async def get_whatsapp_messages(session_name: str, limit: int = 100):
+    """Obter histórico de mensagens de uma sessão"""
+    try:
+        if whatsapp_service:
+            # Implementar busca de mensagens no banco
+            return JSONResponse(content={"messages": [], "session": session_name})
+        return JSONResponse(content={"error": "Serviço WhatsApp não disponível"}, status_code=503)
+    except Exception as e:
+        logger.error(f"Erro ao obter mensagens: {e}")
+        return JSONResponse(content={"error": "Erro ao obter mensagens"}, status_code=500)
 
 @app.websocket("/ws/whatsapp")
 async def websocket_whatsapp(websocket: WebSocket):
@@ -648,10 +750,9 @@ async def upload_excel(file: UploadFile = File(...)):
             content = await file.read()
             buffer.write(content)
         
-        # Processar arquivo
-        if ExcelToDatabaseConverter:
-            converter = ExcelToDatabaseConverter(str(file_path))
-            result = converter.process_excel()
+        # Processar arquivo usando ExcelService
+        if excel_service:
+            result = excel_service.read_excel_file(str(file_path))
             
             return {
                 "success": True,
@@ -661,11 +762,89 @@ async def upload_excel(file: UploadFile = File(...)):
         else:
             return {
                 "success": False,
-                "message": "Processador de Excel não disponível"
+                "message": "Serviço de Excel não disponível"
             }
             
     except Exception as e:
         logger.error(f"Erro no upload de Excel: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/excel/import")
+async def import_excel_data(request: dict):
+    """Importar dados do Excel para o banco de dados"""
+    try:
+        file_path = request.get("file_path")
+        sheet_name = request.get("sheet_name", "PRODUTIVIDADE")
+        
+        if not file_path or not Path(file_path).exists():
+            raise HTTPException(status_code=400, detail="Arquivo não encontrado")
+        
+        # Usar ExcelToDatabaseConverter para importar
+        if ExcelToDatabaseConverter:
+            converter = ExcelToDatabaseConverter(file_path)
+            
+            # Ler apenas a aba especificada
+            excel_file = pd.ExcelFile(file_path)
+            if sheet_name not in excel_file.sheet_names:
+                raise HTTPException(status_code=400, detail=f"Aba {sheet_name} não encontrada")
+            
+            # Ler a aba PRODUTIVIDADE
+            df = pd.read_excel(file_path, sheet_name=sheet_name)
+            
+            # Usar pool de conexões
+            db_pool = get_db_pool()
+            with db_pool.get_connection() as conn:
+                cursor = conn.cursor()
+            
+            # Limpar tabela existente (opcional - comentar se quiser manter dados)
+            # cursor.execute("DELETE FROM produtividade")
+            
+            # Inserir dados na tabela produtividade
+            imported_count = 0
+            for index, row in df.iterrows():
+                try:
+                    # Mapear colunas da planilha para a tabela
+                    cursor.execute("""
+                        INSERT INTO produtividade (
+                            data, tecnico, servico, sa, documento, nome_cliente, 
+                            endereco, telefone1, telefone2, plano, status, obs, prazo_ca
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        row.get('DATA', None),
+                        row.get('TECNICO', None),
+                        row.get('SERVIÇO', None),
+                        row.get('S.A', None),
+                        row.get('DOCUMENTO', None),
+                        row.get('NOME CLIENTE', None),
+                        row.get('ENDEREÇO', None),
+                        row.get('TELEFONE1', None),
+                        row.get('TELEFONE2', None),
+                        row.get('PLANO', None),
+                        row.get('STATUS', None),
+                        row.get('OBS', None),
+                        row.get('PRAZO CA', None)
+                    ))
+                    imported_count += 1
+                except Exception as e:
+                    logger.warning(f"Erro ao inserir linha {index}: {e}")
+                    continue
+            
+                conn.commit()
+            
+            return {
+                "success": True,
+                "message": f"Importação concluída com sucesso",
+                "imported_records": imported_count,
+                "total_records": len(df)
+            }
+        else:
+            return {
+                "success": False,
+                "message": "Processador de Excel não disponível"
+            }
+            
+    except Exception as e:
+        logger.error(f"Erro na importação: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Endpoints do Bot
@@ -685,53 +864,49 @@ async def update_bot_config(config: dict):
 async def get_productivity_metrics():
     """Obter métricas de produtividade do PostgreSQL"""
     try:
-        # Conecta ao banco PostgreSQL
-        from database_config import get_db_connection
-        
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Métricas principais
-        cursor.execute("""
-            SELECT 
-                COUNT(*) as total_contacts,
-                COUNT(CASE WHEN status = 'ativo' THEN 1 END) as active_contacts,
-                COUNT(CASE WHEN status = 'concluido' THEN 1 END) as completed_services,
-                COUNT(CASE WHEN status = 'pendente' THEN 1 END) as pending_services
-            FROM produtividade
-        """)
-        
-        metrics = cursor.fetchone()
-        
-        # Produtividade por técnico
-        cursor.execute("""
-            SELECT tecnico, COUNT(*) as services
-            FROM produtividade 
-            WHERE tecnico IS NOT NULL 
-            GROUP BY tecnico 
-            ORDER BY services DESC
-        """)
-        
-        technicians = cursor.fetchall()
-        productivity_by_technician = {
-            tech[0]: {"services": tech[1], "percentage": 0} 
-            for tech in technicians
-        }
-        
-        # Tipos de serviço
-        cursor.execute("""
-            SELECT servico, COUNT(*) as count
-            FROM produtividade 
-            WHERE servico IS NOT NULL 
-            GROUP BY servico 
-            ORDER BY count DESC
-        """)
-        
-        services = cursor.fetchall()
-        services_by_type = {service[0]: service[1] for service in services}
-        
-        cursor.close()
-        conn.close()
+        # Usar pool de conexões
+        db_pool = get_db_pool()
+        with db_pool.get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Métricas principais
+            cursor.execute("""
+                SELECT 
+                    COUNT(*) as total_contacts,
+                    COUNT(CASE WHEN status = 'ativo' THEN 1 END) as active_contacts,
+                    COUNT(CASE WHEN status = 'concluido' THEN 1 END) as completed_services,
+                    COUNT(CASE WHEN status = 'pendente' THEN 1 END) as pending_services
+                FROM produtividade
+            """)
+            
+            metrics = cursor.fetchone()
+            
+            # Produtividade por técnico
+            cursor.execute("""
+                SELECT tecnico, COUNT(*) as services
+                FROM produtividade 
+                WHERE tecnico IS NOT NULL 
+                GROUP BY tecnico 
+                ORDER BY services DESC
+            """)
+            
+            technicians = cursor.fetchall()
+            productivity_by_technician = {
+                tech[0]: {"services": tech[1], "percentage": 0} 
+                for tech in technicians
+            }
+            
+            # Tipos de serviço
+            cursor.execute("""
+                SELECT servico, COUNT(*) as count
+                FROM produtividade 
+                WHERE servico IS NOT NULL 
+                GROUP BY servico 
+                ORDER BY count DESC
+            """)
+            
+            services = cursor.fetchall()
+            services_by_type = {service[0]: service[1] for service in services}
         
         return {
             "totalContacts": metrics[0] or 0,
@@ -754,17 +929,15 @@ async def get_productivity_metrics():
         }
 
 @app.get("/api/productivity/contacts")
-async def get_productivity_contacts():
+async def get_productivity_contacts(optimized: bool = False):
     """Obter lista de contatos da tabela PRODUTIVIDADE"""
     try:
-        # Conecta ao banco PostgreSQL
-        from database_config import get_db_connection
-        
+        # Usar conexão direta otimizada
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Busca todos os contatos da tabela PRODUTIVIDADE
-        cursor.execute("""
+        # Query otimizada
+        query = """
             SELECT 
                 data,
                 tecnico,
@@ -780,15 +953,19 @@ async def get_productivity_contacts():
                 obs
             FROM produtividade 
             ORDER BY data DESC
-        """)
+        """
         
+        if not optimized:
+            query += " LIMIT 1000"  # Limitar para performance
+        
+        cursor.execute(query)
         contacts = cursor.fetchall()
         
         # Converte para lista de dicionários
         contacts_list = []
         for contact in contacts:
             contacts_list.append({
-                "data": contact[0],
+                "data": contact[0].isoformat() if contact[0] else None,
                 "tecnico": contact[1],
                 "servico": contact[2],
                 "sa": contact[3],
@@ -808,7 +985,9 @@ async def get_productivity_contacts():
         return {
             "success": True,
             "contacts": contacts_list,
-            "total": len(contacts_list)
+            "total": len(contacts_list),
+            "optimized": optimized,
+            "connection_status": "direct"
         }
         
     except Exception as e:
@@ -817,7 +996,9 @@ async def get_productivity_contacts():
             "success": False,
             "contacts": [],
             "total": 0,
-            "error": str(e)
+            "error": str(e),
+            "optimized": optimized,
+            "connection_status": "error"
         }
 
 @app.put("/api/bot/config")
@@ -1118,6 +1299,203 @@ async def get_whatsapp_server_status():
             "status": "stopped",
             "message": "Servidor não acessível"
         }
+
+# Endpoints da Produtividade
+@app.get("/api/productivity/contacts")
+async def get_productivity_contacts():
+    """Buscar todos os contatos da tabela produtividade"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT 
+                sa, data, tecnico, servico, nome_cliente, 
+                endereco, telefone1, telefone2, plano, status, obs,
+                created_at, updated_at
+            FROM produtividade 
+            ORDER BY data DESC, created_at DESC
+        """)
+        
+        rows = cursor.fetchall()
+        contacts = []
+        
+        for row in rows:
+            contacts.append({
+                "sa": row[0],
+                "data": row[1].isoformat() if row[1] else None,
+                "tecnico": row[2],
+                "servico": row[3],
+                "nome_cliente": row[4],
+                "endereco": row[5],
+                "telefone1": row[6],
+                "telefone2": row[7],
+                "plano": row[8],
+                "status": row[9],
+                "obs": row[10],
+                "created_at": row[11].isoformat() if row[11] else None,
+                "updated_at": row[12].isoformat() if row[12] else None
+            })
+        
+        cursor.close()
+        conn.close()
+        
+        return {
+            "success": True,
+            "contacts": contacts,
+            "total": len(contacts)
+        }
+        
+    except Exception as e:
+        logger.error(f"Erro ao buscar contatos: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar contatos: {str(e)}")
+
+@app.get("/api/productivity/stats")
+async def get_productivity_stats():
+    """Buscar estatísticas da produtividade"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Total de registros
+        cursor.execute("SELECT COUNT(*) FROM produtividade")
+        total_records = cursor.fetchone()[0]
+        
+        # Registros por status
+        cursor.execute("""
+            SELECT status, COUNT(*) 
+            FROM produtividade 
+            GROUP BY status 
+            ORDER BY COUNT(*) DESC
+        """)
+        status_stats = dict(cursor.fetchall())
+        
+        # Registros por técnico
+        cursor.execute("""
+            SELECT tecnico, COUNT(*) 
+            FROM produtividade 
+            GROUP BY tecnico 
+            ORDER BY COUNT(*) DESC 
+            LIMIT 10
+        """)
+        technician_stats = dict(cursor.fetchall())
+        
+        # Registros por serviço
+        cursor.execute("""
+            SELECT servico, COUNT(*) 
+            FROM produtividade 
+            GROUP BY servico 
+            ORDER BY COUNT(*) DESC 
+            LIMIT 10
+        """)
+        service_stats = dict(cursor.fetchall())
+        
+        cursor.close()
+        conn.close()
+        
+        return {
+            "success": True,
+            "stats": {
+                "total_records": total_records,
+                "status_stats": status_stats,
+                "technician_stats": technician_stats,
+                "service_stats": service_stats
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Erro ao buscar estatísticas: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar estatísticas: {str(e)}")
+
+@app.get("/api/productivity/search")
+async def search_productivity_contacts(
+    q: str = Query(None, description="Termo de busca"),
+    status: str = Query(None, description="Filtrar por status"),
+    tecnico: str = Query(None, description="Filtrar por técnico"),
+    servico: str = Query(None, description="Filtrar por serviço"),
+    limit: int = Query(100, description="Limite de resultados")
+):
+    """Buscar contatos com filtros"""
+    try:
+        # Usar pool de conexões
+        db_pool = get_db_pool()
+        with db_pool.get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Construir query dinamicamente
+            query = """
+                SELECT 
+                    sa, data, tecnico, servico, nome_cliente, 
+                    endereco, telefone1, telefone2, plano, status, obs,
+                    created_at, updated_at
+                FROM produtividade 
+                WHERE 1=1
+            """
+            params = []
+            
+            if q:
+                query += """ AND (
+                    nome_cliente ILIKE %s OR 
+                    tecnico ILIKE %s OR 
+                    sa ILIKE %s OR 
+                    servico ILIKE %s OR
+                    telefone1 ILIKE %s OR
+                    telefone2 ILIKE %s
+                )"""
+                search_term = f"%{q}%"
+                params.extend([search_term] * 6)
+            
+            if status:
+                query += " AND status ILIKE %s"
+                params.append(f"%{status}%")
+            
+            if tecnico:
+                query += " AND tecnico ILIKE %s"
+                params.append(f"%{tecnico}%")
+            
+            if servico:
+                query += " AND servico ILIKE %s"
+                params.append(f"%{servico}%")
+            
+            query += " ORDER BY data DESC, created_at DESC LIMIT %s"
+            params.append(limit)
+            
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+            
+            contacts = []
+            for row in rows:
+                contacts.append({
+                    "sa": row[0],
+                    "data": row[1].isoformat() if row[1] else None,
+                    "tecnico": row[2],
+                    "servico": row[3],
+                    "nome_cliente": row[4],
+                    "endereco": row[5],
+                    "telefone1": row[6],
+                    "telefone2": row[7],
+                    "plano": row[8],
+                    "status": row[9],
+                    "obs": row[10],
+                    "created_at": row[11].isoformat() if row[11] else None,
+                    "updated_at": row[12].isoformat() if row[12] else None
+                })
+        
+        return {
+            "success": True,
+            "contacts": contacts,
+            "total": len(contacts),
+            "filters": {
+                "search": q,
+                "status": status,
+                "tecnico": tecnico,
+                "servico": servico
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Erro na busca: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro na busca: {str(e)}")
 
 # Eventos de inicialização e finalização
 @app.on_event("startup")

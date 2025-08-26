@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # URL do banco PostgreSQL do Railway (atualizada com as credenciais corretas)
-DATABASE_URL = "postgresql://postgres:bXfdibthIWkrloSOMTSBBJRRSMiWzEwO@mainline.proxy.rlwy.net:12348/railway"
+DATABASE_URL = "postgresql://postgres:MbVOkkTYrVOlJXGTKiVHGVOfCjaixYdv@nozomi.proxy.rlwy.net:49949/railway"
 
 class DatabaseManager:
     def __init__(self):
