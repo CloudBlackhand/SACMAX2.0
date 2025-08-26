@@ -210,28 +210,41 @@ class ProdutividadeModule {
 
     // NOVO: Abrir conversa no WhatsApp interno
     openWhatsAppConversation(phone, clientName) {
+        console.log(`🎯 Iniciando abertura de conversa para ${clientName} (${phone})`);
+        
         // Primeiro, mudar para a aba WhatsApp
         const whatsappTab = document.querySelector('[data-module="whatsapp"]');
         if (whatsappTab) {
+            console.log('✅ Aba WhatsApp encontrada, clicando...');
             whatsappTab.click();
             
             // Aguardar um pouco para a aba carregar
             setTimeout(() => {
+                console.log('🔄 Verificando módulo WhatsApp...');
+                console.log('window.whatsappModule:', window.whatsappModule);
+                
                 // Tentar encontrar e ativar o módulo WhatsApp
-                if (window.whatsappModule) {
+                if (window.whatsappModule && typeof window.whatsappModule.openConversationWithContact === 'function') {
+                    console.log('✅ Módulo WhatsApp encontrado, abrindo conversa...');
                     // Abrir conversa com o cliente
                     window.whatsappModule.openConversationWithContact(phone, clientName);
                 } else {
+                    console.log('⚠️ Módulo WhatsApp não encontrado ou método não existe');
                     // Fallback: mostrar mensagem
                     this.addLog('info', '🔄 Módulo WhatsApp carregando...');
                     setTimeout(() => {
-                        if (window.whatsappModule) {
+                        if (window.whatsappModule && typeof window.whatsappModule.openConversationWithContact === 'function') {
+                            console.log('✅ Módulo WhatsApp encontrado no retry, abrindo conversa...');
                             window.whatsappModule.openConversationWithContact(phone, clientName);
+                        } else {
+                            console.error('❌ Módulo WhatsApp ainda não disponível');
+                            this.addLog('error', '❌ Não foi possível abrir conversa no WhatsApp');
                         }
                     }, 1000);
                 }
             }, 500);
         } else {
+            console.error('❌ Aba WhatsApp não encontrada');
             this.addLog('error', '❌ Aba WhatsApp não encontrada');
         }
     }
