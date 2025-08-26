@@ -3,7 +3,7 @@
 SacsMax Backend - API completa com FastAPI e integração de banco de dados PostgreSQL
 """
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, BackgroundTasks
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, BackgroundTasks, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
