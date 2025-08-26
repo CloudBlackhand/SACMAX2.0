@@ -2,7 +2,7 @@
 """
 SacsMax - Sistema de Gestão de SAC
 Script de inicialização otimizado para Railway
-Versão 2.2 - Arquitetura Multi-Processo Otimizada
+Versão 2.3 - Instalação automática de dependências
 """
 
 import os
@@ -59,6 +59,36 @@ def signal_handler(signum, frame):
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
 
+def install_nodejs():
+    """Instalar Node.js se não estiver disponível"""
+    try:
+        # Verificar se o Node.js já está instalado
+        result = subprocess.run(['node', '--version'], 
+                              capture_output=True, text=True)
+        if result.returncode == 0:
+            logger.info(f"✅ Node.js {result.stdout.strip()} já instalado")
+            return True
+    except:
+        pass
+    
+    logger.info("📦 Instalando Node.js...")
+    try:
+        # Instalar Node.js via curl
+        subprocess.run([
+            'curl', '-fsSL', 'https://deb.nodesource.com/setup_18.x', 
+            '|', 'bash', '-'
+        ], shell=True, check=True)
+        
+        subprocess.run([
+            'apt-get', 'install', '-y', 'nodejs'
+        ], check=True)
+        
+        logger.info("✅ Node.js instalado com sucesso")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Erro ao instalar Node.js: {e}")
+        return False
+
 def check_dependencies():
     """Verificar dependências Python"""
     required_packages = ['fastapi', 'uvicorn', 'requests']
@@ -80,10 +110,9 @@ def check_dependencies():
 def check_node_dependencies():
     """Verificar dependências Node.js"""
     try:
-        # Verificar se o Node.js está disponível
-        result = subprocess.run(['node', '--version'], 
-                              capture_output=True, text=True, check=True)
-        logger.info(f"✅ Node.js {result.stdout.strip()} disponível")
+        # Tentar instalar Node.js se não estiver disponível
+        if not install_nodejs():
+            return False
         
         # Verificar se o npm está disponível
         result = subprocess.run(['npm', '--version'], 
