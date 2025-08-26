@@ -732,10 +732,11 @@ class SettingsModule {
             const data = await response.json();
             
             const qrDisplay = document.getElementById('qr-code-display');
-            if (qrDisplay && data.qr) {
+            if (qrDisplay && (data.qr || data.data?.qrCode)) {
+                const qrCode = data.qr || data.data?.qrCode;
                 qrDisplay.innerHTML = `
                     <div class="qr-code">
-                        <img src="${data.qr}" alt="QR Code WhatsApp" style="width: 300px; height: 300px;">
+                        <img src="${qrCode}" alt="QR Code WhatsApp" style="width: 300px; height: 300px;">
                     </div>
                     <p class="qr-instructions">Escaneie com o WhatsApp do seu celular</p>
                 `;
