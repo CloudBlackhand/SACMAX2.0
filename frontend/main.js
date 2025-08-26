@@ -157,53 +157,61 @@ class SacsMaxApp {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                padding: 1rem 2rem;
+                padding: 0.75rem 1.5rem;
                 background: linear-gradient(90deg, #2c3e50, #3498db);
                 color: white;
                 box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                min-height: 4rem;
+                max-height: 5rem;
             }
 
             .logo h1 {
-                font-size: 1.8rem;
-                margin-bottom: 0.2rem;
+                font-size: 1.5rem;
+                margin-bottom: 0.1rem;
+                line-height: 1.2;
             }
 
             .logo span {
-                font-size: 0.9rem;
+                font-size: 0.8rem;
                 opacity: 0.8;
+                line-height: 1.1;
             }
 
             .main-nav {
                 display: flex;
-                gap: 0.5rem;
+                gap: 0.4rem;
+                flex-wrap: wrap;
+                justify-content: center;
             }
 
             .nav-btn {
                 display: flex;
                 align-items: center;
-                gap: 0.5rem;
-                padding: 0.75rem 1.5rem;
+                gap: 0.4rem;
+                padding: 0.6rem 1rem;
                 border: none;
                 background: rgba(255,255,255,0.1);
                 color: white;
-                border-radius: 8px;
+                border-radius: 6px;
                 cursor: pointer;
                 transition: all 0.3s ease;
-                font-size: 0.9rem;
+                font-size: 0.8rem;
+                white-space: nowrap;
+                min-width: fit-content;
             }
 
             .nav-btn:hover {
                 background: rgba(255,255,255,0.2);
-                transform: translateY(-2px);
+                transform: translateY(-1px);
             }
 
             .nav-btn.active {
                 background: rgba(255,255,255,0.3);
-                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
             }
 
             .nav-btn .icon {
-                font-size: 1.2rem;
+                font-size: 1rem;
             }
 
             .user-info {
@@ -234,7 +242,7 @@ class SacsMaxApp {
 
             .app-main {
                 flex: 1;
-                padding: 2rem;
+                padding: 1.5rem;
                 overflow-y: auto;
                 background: #f8f9fa;
             }
@@ -296,6 +304,101 @@ class SacsMaxApp {
             @keyframes fadeIn {
                 from { opacity: 0; transform: translateY(20px); }
                 to { opacity: 1; transform: translateY(0); }
+            }
+
+            /* Responsividade para telas menores */
+            @media (max-width: 1200px) {
+                .app-header {
+                    padding: 0.6rem 1rem;
+                }
+                
+                .logo h1 {
+                    font-size: 1.3rem;
+                }
+                
+                .logo span {
+                    font-size: 0.7rem;
+                }
+                
+                .nav-btn {
+                    padding: 0.5rem 0.8rem;
+                    font-size: 0.75rem;
+                }
+                
+                .nav-btn .icon {
+                    font-size: 0.9rem;
+                }
+            }
+
+            @media (max-width: 768px) {
+                .app-header {
+                    flex-direction: column;
+                    padding: 0.5rem;
+                    min-height: auto;
+                    max-height: none;
+                }
+                
+                .logo {
+                    margin-bottom: 0.5rem;
+                }
+                
+                .logo h1 {
+                    font-size: 1.2rem;
+                }
+                
+                .main-nav {
+                    gap: 0.3rem;
+                    width: 100%;
+                    justify-content: center;
+                }
+                
+                .nav-btn {
+                    padding: 0.4rem 0.6rem;
+                    font-size: 0.7rem;
+                    flex: 1;
+                    min-width: auto;
+                    max-width: 120px;
+                }
+                
+                .nav-btn .icon {
+                    font-size: 0.8rem;
+                }
+                
+                .user-info {
+                    margin-top: 0.5rem;
+                }
+                
+                .app-main {
+                    padding: 1rem;
+                }
+            }
+
+            @media (max-width: 480px) {
+                .app-header {
+                    padding: 0.4rem;
+                }
+                
+                .logo h1 {
+                    font-size: 1.1rem;
+                }
+                
+                .logo span {
+                    font-size: 0.6rem;
+                }
+                
+                .main-nav {
+                    gap: 0.2rem;
+                }
+                
+                .nav-btn {
+                    padding: 0.3rem 0.5rem;
+                    font-size: 0.65rem;
+                    max-width: 100px;
+                }
+                
+                .nav-btn .icon {
+                    font-size: 0.7rem;
+                }
             }
 
             .alert {

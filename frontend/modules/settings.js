@@ -1102,7 +1102,7 @@ const settingsStyles = `
     }
 
     .settings-content {
-        padding: 1rem;
+        padding: 0.8rem;
     }
 
     .loading-container {
@@ -1110,18 +1110,18 @@ const settingsStyles = `
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 3rem;
+        padding: 2rem;
         color: #666;
     }
 
     .spinner {
-        width: 40px;
-        height: 40px;
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #dc3545;
+        width: 2.5rem;
+        height: 2.5rem;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #dc3545;
         border-radius: 50%;
         animation: spin 1s linear infinite;
-        margin-bottom: 1rem;
+        margin-bottom: 0.8rem;
     }
 
     @keyframes spin {
@@ -1137,19 +1137,19 @@ const settingsStyles = `
 
     .tab-buttons {
         display: flex;
-        gap: 0.5rem;
-        margin-bottom: 1rem;
+        gap: 0.4rem;
+        margin-bottom: 0.8rem;
         border-bottom: 1px solid #e9ecef;
-        padding-bottom: 1rem;
+        padding-bottom: 0.8rem;
     }
 
     .tab-btn {
-        padding: 0.75rem 1.5rem;
+        padding: 0.6rem 1.2rem;
         border: none;
         background: #f8f9fa;
-        border-radius: 8px;
+        border-radius: 6px;
         cursor: pointer;
-        font-size: 0.9rem;
+        font-size: 0.8rem;
         transition: all 0.2s ease;
     }
 
@@ -1175,13 +1175,13 @@ const settingsStyles = `
     }
 
     .settings-section {
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
     }
 
     .settings-section h3 {
-        margin-bottom: 1rem;
+        margin-bottom: 0.8rem;
         color: #333;
-        font-size: 1.2rem;
+        font-size: 1.1rem;
     }
 
     .connection-status {
@@ -1478,12 +1478,12 @@ const settingsStyles = `
         background: white;
         border: 1px solid #e9ecef;
         border-radius: 8px;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
+        padding: 1.2rem;
+        margin-bottom: 0.8rem;
     }
 
     .form-group {
-        margin-bottom: 1rem;
+        margin-bottom: 0.8rem;
     }
 
     .form-group label {
@@ -1529,13 +1529,13 @@ const settingsStyles = `
     }
 
     .action-btn {
-        padding: 0.75rem 1.5rem;
+        padding: 0.6rem 1.2rem;
         background: #6c757d;
         color: white;
         border: none;
         border-radius: 4px;
         cursor: pointer;
-        font-size: 0.9rem;
+        font-size: 0.8rem;
         transition: background 0.2s ease;
     }
 
@@ -1604,10 +1604,52 @@ const settingsStyles = `
         
         .tab-buttons {
             flex-wrap: wrap;
+            gap: 0.3rem;
+        }
+        
+        .tab-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
         }
         
         .control-actions {
             flex-direction: column;
+        }
+        
+        .settings-content {
+            padding: 0.6rem;
+        }
+        
+        .settings-form {
+            padding: 1rem;
+        }
+        
+        .settings-section h3 {
+            font-size: 1rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .tab-buttons {
+            gap: 0.2rem;
+        }
+        
+        .tab-btn {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.7rem;
+        }
+        
+        .settings-content {
+            padding: 0.5rem;
+        }
+        
+        .settings-form {
+            padding: 0.8rem;
+        }
+        
+        .action-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
         }
     }
 `;
