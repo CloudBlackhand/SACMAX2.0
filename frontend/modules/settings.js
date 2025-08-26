@@ -514,51 +514,58 @@ class SettingsModule {
             }
             
             this.startingServer = true;
-            this.showNotification('🚀 Iniciando WhatsApp Server...', 'info');
             
-            // 1. Iniciar servidor via backend (backend vai detectar porta livre)
-            console.log('🚀 Iniciando WhatsApp Server...');
-            const response = await fetch(`${this.settings.backend.url}/api/whatsapp-server/start`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ port: 3001 }) // Porta sugerida, mas backend vai detectar a livre
-            });
+            // Verificar se estamos no Railway
+            const isRailway = window.location.hostname.includes('railway.app') || window.location.hostname.includes('up.railway.app');
             
-            if (!response.ok) {
-                throw new Error('Erro ao iniciar servidor via backend');
-            }
-            
-            const result = await response.json();
-            console.log('📊 Resposta do backend:', result);
-            
-            // 3. Se o backend retornou a porta, usar ela
-            if (result.success && result.port) {
-                this.settings.whatsapp.url = `http://localhost:${result.port}`;
-                this.settings.whatsapp.port = result.port;
-                this.whatsappServerRunning = true;
-                this.updateSettingsDisplay();
+            if (isRailway) {
+                // No Railway, apenas testar a conexão
+                this.showNotification('🔍 Testando conexão com WhatsApp Server...', 'info');
                 
-                this.showNotification(`✅ WhatsApp Server iniciado na porta ${result.port}!`, 'success');
-                console.log(`🚀 WhatsApp Server iniciado na porta ${result.port}`);
-            } else if (result.railway) {
-                // Caso especial para Railway
-                this.showNotification('ℹ️ WhatsApp não disponível no Railway. Use o sistema localmente para funcionalidade completa.', 'info');
-                console.log('ℹ️ WhatsApp não disponível no Railway');
-            } else {
-                // 4. Se não, aguardar e detectar automaticamente
-                this.showNotification('⏳ Aguardando servidor inicializar...', 'info');
-                await new Promise(resolve => setTimeout(resolve, 5000));
+                const response = await fetch(`${window.location.origin}/api/whatsapp/status`, {
+                    method: 'GET',
+                    signal: AbortSignal.timeout(5000)
+                });
                 
-                await this.checkWhatsAppServerStatus();
-            }
-            
-            if (this.whatsappServerRunning) {
-                this.showNotification(`✅ WhatsApp Server iniciado na porta ${this.settings.whatsapp.port}!`, 'success');
-                console.log(`🚀 WhatsApp Server iniciado na porta ${this.settings.whatsapp.port}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    this.whatsappServerRunning = true;
+                    this.updateSettingsDisplay();
+                    this.updateWhatsAppStatus();
+                    
+                    this.showNotification('✅ WhatsApp Server conectado no Railway!', 'success');
+                    console.log('✅ WhatsApp Server conectado no Railway');
+                } else {
+                    throw new Error('WhatsApp Server não respondeu no Railway');
+                }
             } else {
-                throw new Error('Servidor não respondeu após inicialização');
+                // Localmente, tentar iniciar o servidor
+                this.showNotification('🚀 Iniciando WhatsApp Server...', 'info');
+                
+                const response = await fetch(`${this.settings.backend.url}/api/whatsapp-server/start`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ port: 3001 })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Erro ao iniciar servidor via backend');
+                }
+                
+                const result = await response.json();
+                
+                if (result.success && result.port) {
+                    this.settings.whatsapp.url = `http://localhost:${result.port}`;
+                    this.settings.whatsapp.port = result.port;
+                    this.whatsappServerRunning = true;
+                    this.updateSettingsDisplay();
+                    
+                    this.showNotification(`✅ WhatsApp Server iniciado na porta ${result.port}!`, 'success');
+                } else {
+                    throw new Error('Servidor não respondeu após inicialização');
+                }
             }
         } catch (error) {
             console.error('❌ Erro ao iniciar WhatsApp Server:', error);
