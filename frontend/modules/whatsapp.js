@@ -1058,26 +1058,50 @@ class WhatsAppModule {
             this.messages[contact.id] = [];
         }
 
-        // SOLUÇÃO: Usar o método que já funciona (selectContact)
-        console.log('🎯 Usando selectContact que já funciona...');
-        this.selectContact(contact.id);
+        // FORÇAR A ABERTURA DO CHAT
+        console.log('🎯 FORÇANDO abertura do chat...');
         
-        // FORÇAR ATUALIZAÇÃO ADICIONAL
+        // 1. Definir o chat atual
+        this.currentChat = contact;
+        console.log('✅ currentChat definido:', this.currentChat);
+        
+        // 2. Marcar como lido
+        this.markAsRead(contact.id);
+        
+        // 3. Carregar mensagens se não existirem
+        if (!this.messages[contact.id] || this.messages[contact.id].length === 0) {
+            console.log('📝 Inicializando mensagens para o contato...');
+            this.messages[contact.id] = [{
+                id: `msg_${Date.now()}`,
+                text: `Olá! Sou o assistente do SacsMax. Como posso ajudar você hoje?`,
+                time: formatTime(new Date()),
+                isOutgoing: false,
+                timestamp: Date.now()
+            }];
+        }
+        
+        // 4. ATUALIZAR A INTERFACE FORÇADAMENTE
+        console.log('🔄 ATUALIZANDO INTERFACE FORÇADAMENTE...');
+        
+        // Atualizar lista de contatos
+        this.updateContactsList();
+        
+        // FORÇAR atualização da área de chat
+        const chatArea = document.querySelector('.wa-chat-area');
+        if (chatArea) {
+            console.log('✅ Área de chat encontrada, forçando atualização...');
+            chatArea.innerHTML = this.renderChatArea();
+            console.log('✅ Chat renderizado forçadamente');
+        } else {
+            console.log('❌ Área de chat não encontrada!');
+        }
+        
+        // 5. Configurar input de mensagem
         setTimeout(() => {
-            console.log('🔄 FORÇANDO atualização adicional...');
-            
-            // Atualizar lista de contatos
-            this.updateContactsList();
-            
-            // Atualizar área de chat
-            this.updateChatArea();
-            
-            // Rolar para baixo
+            this.setupMessageInput();
             this.scrollToBottom();
             
-            console.log(`✅ Conversa aberta com ${clientName} (${whatsappPhone})`);
-            
-            // Focar no input de mensagem
+            // Focar no input
             const messageInput = document.getElementById('message-input');
             if (messageInput) {
                 messageInput.focus();
@@ -1086,6 +1110,8 @@ class WhatsAppModule {
                 console.log('⚠️ Input de mensagem não encontrado');
             }
         }, 100);
+        
+        console.log(`✅ Chat FORÇADO aberto com ${clientName} (${whatsappPhone})`);
     }
 }
 
