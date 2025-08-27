@@ -1010,9 +1010,12 @@ class WhatsAppModule {
     // NOVO: Abrir conversa com contato por telefone
     openConversationWithContact(phone, clientName) {
         console.log(`🎯 Tentando abrir conversa com ${clientName} (${phone})`);
+        console.log('📱 Telefone recebido:', phone);
+        console.log('👤 Nome do cliente:', clientName);
         
         // Limpar telefone (remover caracteres especiais)
         const cleanPhone = phone.replace(/\D/g, '');
+        console.log('🧹 Telefone limpo:', cleanPhone);
         
         // Verificar se é um telefone válido
         if (cleanPhone.length < 10) {
@@ -1027,11 +1030,17 @@ class WhatsAppModule {
         } else if (cleanPhone.length === 10) {
             whatsappPhone = '55' + cleanPhone; // Brasil
         }
+        console.log('📞 Telefone formatado para WhatsApp:', whatsappPhone);
 
+        // Verificar contatos existentes
+        console.log('📋 Contatos existentes:', this.contacts);
+        
         // Procurar contato existente por telefone
         let contact = this.contacts.find(c => c.phone === whatsappPhone);
+        console.log('🔍 Contato encontrado:', contact);
         
         if (!contact) {
+            console.log('🆕 Criando novo contato...');
             // Criar novo contato se não existir
             contact = {
                 id: `contact_${Date.now()}`,
@@ -1042,13 +1051,15 @@ class WhatsAppModule {
                 online: false
             };
             this.contacts.push(contact);
-            console.log(`✅ Novo contato criado: ${clientName}`);
+            console.log(`✅ Novo contato criado:`, contact);
         }
 
         // Selecionar o contato
+        console.log('🎯 Selecionando contato:', contact.id);
         this.selectContact(contact.id);
         
         // Atualizar interface
+        console.log('🔄 Atualizando interface...');
         this.updateContactsList();
         this.updateChatArea();
         
@@ -1059,6 +1070,9 @@ class WhatsAppModule {
             const messageInput = document.getElementById('message-input');
             if (messageInput) {
                 messageInput.focus();
+                console.log('✅ Input de mensagem focado');
+            } else {
+                console.log('⚠️ Input de mensagem não encontrado');
             }
         }, 100);
     }

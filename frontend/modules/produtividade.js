@@ -235,19 +235,6 @@ class ProdutividadeModule {
                     console.log('✅ Módulo WhatsApp encontrado via app.modules');
                     whatsappModule = window.app.modules.whatsapp;
                 }
-                // 3. Tentar criar novo módulo
-                else {
-                    console.log('⚠️ Tentando criar novo módulo WhatsApp...');
-                    try {
-                        if (typeof WhatsAppModule !== 'undefined') {
-                            whatsappModule = new WhatsAppModule();
-                            window.whatsappModule = whatsappModule;
-                            console.log('✅ Novo módulo WhatsApp criado');
-                        }
-                    } catch (error) {
-                        console.error('❌ Erro ao criar módulo WhatsApp:', error);
-                    }
-                }
                 
                 // Se encontrou o módulo, tentar abrir a conversa
                 if (whatsappModule && typeof whatsappModule.openConversationWithContact === 'function') {
@@ -267,7 +254,7 @@ class ProdutividadeModule {
                     // Fallback: tentar abrir manualmente
                     this.tryManualChatOpen(phone, clientName);
                 }
-            }, 1500); // Aumentei para 1.5 segundos
+            }, 2000); // Aumentei para 2 segundos
         } else {
             console.error('❌ Aba WhatsApp não encontrada');
             this.addLog('error', '❌ Aba WhatsApp não encontrada');
