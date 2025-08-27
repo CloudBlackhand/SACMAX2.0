@@ -27,6 +27,10 @@ class WhatsAppModule {
         
         // Inicializar WhatsApp
         this.initWhatsApp();
+
+        // NOVO: Estado controlado
+        this.whatsappStatus = 'paused';
+        this.isWhatsAppEnabled = false;
     }
 
     async initWhatsApp() {
@@ -512,37 +516,57 @@ class WhatsAppModule {
                     <span class="module-icon">💬</span>
                     <h2 class="module-title">WhatsApp</h2>
                     <div class="connection-status">
-                        <span class="status-indicator ${this.isConnected ? 'connected' : 'disconnected'}"></span>
-                        <span class="status-text">${this.isConnected ? 'Conectado' : 'Desconectado'}</span>
+                        <span class="status-indicator ${this.whatsappStatus === 'ready' ? 'connected' : 'disconnected'}"></span>
+                        <span class="status-text">${this.getStatusText()}</span>
                     </div>
                 </div>
                 
-                <div class="wa-main-container">
-                    <!-- Sidebar com Lista de Contatos -->
-                    <div class="wa-sidebar">
-                        <!-- Search Bar -->
-                        <div class="wa-search-container">
-                            <div class="wa-search-box">
-                                <div class="wa-search-icon">🔍</div>
-                                <input type="text" 
-                                       class="wa-search-input" 
-                                       id="contact-search"
-                                       placeholder="Pesquisar ou começar uma nova conversa"
-                                       value="${this.searchTerm}" />
-                            </div>
-                        </div>
-                        
-                        <!-- Lista de Contatos -->
-                        <div class="wa-chats-list" id="contacts-list">
-                            ${this.renderContactsList()}
-                        </div>
+                <!-- NOVO: Painel de controle -->
+                <div class="whatsapp-control-panel">
+                    <div class="control-info">
+                        <p><strong>Status:</strong> ${this.getStatusText()}</p>
+                        <p><strong>WhatsApp:</strong> ${this.isWhatsAppEnabled ? 'Ativado' : 'Desativado'}</p>
                     </div>
                     
-                    <!-- Área de Chat -->
-                    <div class="wa-chat-area">
-                        ${this.currentChat ? this.renderChatArea() : this.renderWelcomeScreen()}
+                    <div class="control-buttons">
+                        ${!this.isWhatsAppEnabled ? `
+                            <div class="warning-message">
+                                <span class="warning-icon">⚠️</span>
+                                <span>WhatsApp não está ativado. Vá para Settings para ativar.</span>
+                            </div>
+                        ` : `
+                            <button class="btn btn-primary" onclick="whatsappModule.generateQRCode()" id="generate-qr-btn" ${this.whatsappStatus === 'ready' ? 'disabled' : ''}>
+                                <span class="btn-icon">📱</span>
+                                Gerar QR Code
+                            </button>
+                        `}
                     </div>
                 </div>
+
+                <!-- QR Code Container -->
+                <div class="qr-container" id="qr-container" style="display: ${this.whatsappStatus === 'qr_ready' ? 'block' : 'none'};">
+                    <div class="qr-header">
+                        <h3>📱 Escaneie o QR Code</h3>
+                        <p>Abra o WhatsApp no seu celular e escaneie o código abaixo</p>
+                    </div>
+                    <div class="qr-code" id="qr-code">
+                        <!-- QR Code será inserido aqui -->
+                    </div>
+                    <div class="qr-instructions">
+                        <p><strong>Como escanear:</strong></p>
+                        <ol>
+                            <li>Abra o WhatsApp no seu celular</li>
+                            <li>Vá em Configurações > Aparelhos conectados</li>
+                            <li>Toque em "Conectar um aparelho"</li>
+                            <li>Aponte a câmera para o QR Code</li>
+                        </ol>
+                        <p><strong>Importante:</strong> Após escanear, o sistema ficará conectado 24/7!</p>
+                    </div>
+                </div>
+
+                <!-- Interface de chat (quando conectado) -->
+                ${this.whatsappStatus === 'ready' ? this.renderChatInterface() : ''}
+
             </div>
         `;
     }
@@ -1044,6 +1068,100 @@ class WhatsAppModule {
                 notification.remove();
             }
         }, 5000);
+    }
+
+    // NOVO: Obter texto do status
+    getStatusText() {
+        if (!this.isWhatsAppEnabled) {
+            return 'Desativado (Ative via Settings)';
+        }
+        
+        switch (this.whatsappStatus) {
+            case 'paused': return 'Pausado';
+            case 'starting': return 'Iniciando...';
+            case 'qr_ready': return 'QR Code Pronto';
+            case 'ready': return 'Conectado 24/7';
+            case 'loading': return 'Carregando...';
+            case 'authenticated': return 'Autenticado';
+            case 'disconnected': return 'Desconectado';
+            case 'error': return 'Erro';
+            default: return 'Desconhecido';
+        }
+    }
+
+    // NOVO: Gerar QR Code
+    async generateQRCode() {
+        try {
+            if (!this.isWhatsAppEnabled) {
+                this.showError('WhatsApp não está ativado. Ative primeiro via Settings.');
+                return;
+            }
+
+            const generateBtn = document.getElementById('generate-qr-btn');
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<span class="btn-icon">⏳</span> Gerando...';
+
+            // Primeiro, solicitar geração do QR Code
+            const response = await fetch(`${this.whatsappUrl}/api/whatsapp/generate-qr`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Aguardar um pouco e verificar se o QR Code foi gerado
+                setTimeout(async () => {
+                    await this.checkQRCode();
+                }, 3000);
+            } else {
+                throw new Error(data.message);
+            }
+        } catch (error) {
+            console.error('❌ Erro ao gerar QR Code:', error);
+            this.showError(`Erro ao gerar QR Code: ${error.message}`);
+        } finally {
+            const generateBtn = document.getElementById('generate-qr-btn');
+            generateBtn.disabled = this.whatsappStatus === 'ready';
+            generateBtn.innerHTML = '<span class="btn-icon">📱</span> Gerar QR Code';
+        }
+    }
+
+    // NOVO: Verificar QR Code
+    async checkQRCode() {
+        try {
+            const response = await fetch(`${this.whatsappUrl}/api/whatsapp/qr`);
+            const data = await response.json();
+
+            if (data.success) {
+                const qrContainer = document.getElementById('qr-container');
+                qrContainer.style.display = 'block';
+                document.getElementById('qr-code').innerHTML = `<img src="${data.qr}" alt="QR Code WhatsApp" />`;
+                
+                this.whatsappStatus = 'qr_ready';
+                this.updateStatus();
+                
+                console.log('✅ QR Code exibido');
+            }
+        } catch (error) {
+            console.error('❌ Erro ao verificar QR Code:', error);
+        }
+    }
+
+    // NOVO: Atualizar status
+    updateStatus() {
+        const statusText = document.querySelector('.connection-status .status-text');
+        const statusIndicator = document.querySelector('.connection-status .status-indicator');
+        
+        if (statusText) {
+            statusText.textContent = this.getStatusText();
+        }
+        
+        if (statusIndicator) {
+            statusIndicator.className = `status-indicator ${this.whatsappStatus === 'ready' ? 'connected' : 'disconnected'}`;
+        }
     }
 }
 
@@ -1600,6 +1718,119 @@ const whatsappStyles = `
         border-radius: 6px;
         cursor: pointer;
         font-size: 1rem;
+    }
+
+    .whatsapp-control-panel {
+        background: #f8f9fa;
+        padding: 15px 20px;
+        border-bottom: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .control-info {
+        flex: 1;
+        font-size: 0.9rem;
+        color: #666;
+    }
+
+    .control-buttons {
+        display: flex;
+        gap: 10px;
+    }
+
+    .warning-message {
+        background: #fff3cd;
+        color: #856404;
+        padding: 10px 15px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9rem;
+    }
+
+    .warning-icon {
+        color: #ffeeba;
+        background: #856404;
+        padding: 5px;
+        border-radius: 50%;
+        font-size: 1.1rem;
+    }
+
+    .qr-container {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        margin: 15px;
+        display: none; /* Ocultar por padrão */
+    }
+
+    .qr-header h3 {
+        color: #333;
+        margin-bottom: 10px;
+    }
+
+    .qr-code img {
+        max-width: 100%;
+        height: auto;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+
+    .qr-instructions {
+        font-size: 0.8rem;
+        color: #666;
+        line-height: 1.5;
+    }
+
+    .qr-instructions p {
+        margin-bottom: 10px;
+    }
+
+    .qr-instructions ol {
+        padding-left: 20px;
+    }
+
+    .qr-instructions li {
+        margin-bottom: 5px;
+    }
+
+    .status-value.paused {
+        color: #6c757d;
+    }
+
+    .status-value.starting {
+        color: #ffc107;
+    }
+
+    .status-value.qr_ready {
+        color: #17a2b8;
+    }
+
+    .status-value.ready {
+        color: #28a745;
+    }
+
+    .status-value.loading {
+        color: #ffc107;
+    }
+
+    .status-value.authenticated {
+        color: #17a2b8;
+    }
+
+    .status-value.disconnected {
+        color: #dc3545;
+    }
+
+    .status-value.error {
+        color: #dc3545;
     }
 `;
 

@@ -39,6 +39,10 @@ class SettingsModule {
         this.backendUrl = 'http://localhost:5000';
         this.whatsappServerRunning = false;
         
+        // NOVO: Estado do WhatsApp
+        this.whatsappStatus = 'paused';
+        this.isWhatsAppEnabled = false;
+        
         // Adicionar estilos para Railway
         this.addRailwayStyles();
     }
@@ -1024,6 +1028,106 @@ class SettingsModule {
                 notification.remove();
             }
         }, 5000);
+    }
+
+    // NOVO: Obter texto do status WhatsApp
+    getWhatsAppStatusText() {
+        switch (this.whatsappStatus) {
+            case 'paused': return 'Pausado';
+            case 'starting': return 'Iniciando...';
+            case 'qr_ready': return 'QR Code Pronto';
+            case 'ready': return 'Conectado';
+            case 'loading': return 'Carregando...';
+            case 'authenticated': return 'Autenticado';
+            case 'disconnected': return 'Desconectado';
+            case 'error': return 'Erro';
+            default: return 'Desconhecido';
+        }
+    }
+
+    // NOVO: Ativar WhatsApp
+    async enableWhatsApp() {
+        try {
+            const enableBtn = document.getElementById('enable-whatsapp-btn');
+            enableBtn.disabled = true;
+            enableBtn.innerHTML = '<span class="btn-icon">⏳</span> Ativando...';
+
+            const response = await fetch(`${window.location.origin}/api/whatsapp/enable`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                this.isWhatsAppEnabled = true;
+                this.whatsappStatus = data.status;
+                
+                // Atualizar botões
+                document.getElementById('disable-whatsapp-btn').disabled = false;
+                
+                this.showSuccess('WhatsApp ativado com sucesso! Agora você pode gerar o QR Code.');
+                this.updateStatus();
+            } else {
+                throw new Error(data.message);
+            }
+        } catch (error) {
+            console.error('❌ Erro ao ativar WhatsApp:', error);
+            this.showError(`Erro ao ativar WhatsApp: ${error.message}`);
+        } finally {
+            const enableBtn = document.getElementById('enable-whatsapp-btn');
+            enableBtn.disabled = this.isWhatsAppEnabled;
+            enableBtn.innerHTML = '<span class="btn-icon">🚀</span> Ativar WhatsApp';
+        }
+    }
+
+    // NOVO: Desativar WhatsApp
+    async disableWhatsApp() {
+        try {
+            const disableBtn = document.getElementById('disable-whatsapp-btn');
+            disableBtn.disabled = true;
+            disableBtn.innerHTML = '<span class="btn-icon">⏳</span> Desativando...';
+
+            const response = await fetch(`${window.location.origin}/api/whatsapp/disable`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                this.isWhatsAppEnabled = false;
+                this.whatsappStatus = 'paused';
+                
+                // Atualizar botões
+                document.getElementById('enable-whatsapp-btn').disabled = false;
+                
+                this.showSuccess('WhatsApp desativado com sucesso!');
+                this.updateStatus();
+            } else {
+                throw new Error(data.message);
+            }
+        } catch (error) {
+            console.error('❌ Erro ao desativar WhatsApp:', error);
+            this.showError(`Erro ao desativar WhatsApp: ${error.message}`);
+        } finally {
+            const disableBtn = document.getElementById('disable-whatsapp-btn');
+            disableBtn.disabled = !this.isWhatsAppEnabled;
+            disableBtn.innerHTML = '<span class="btn-icon">🛑</span> Desativar WhatsApp';
+        }
+    }
+
+    // NOVO: Atualizar status
+    updateStatus() {
+        const statusValue = document.querySelector('.status-value');
+        if (statusValue) {
+            statusValue.className = `status-value ${this.whatsappStatus}`;
+            statusValue.textContent = this.getWhatsAppStatusText();
+        }
     }
 }
 

@@ -26,11 +26,12 @@ check_process() {
 
 # Função para iniciar o servidor WhatsApp
 start_whatsapp_server() {
-    echo "📱 Iniciando servidor WhatsApp..."
+    echo "📱 Iniciando servidor WhatsApp (pausado)..."
     cd /app
     node whatsapp-server-simple.js &
     WHATSAPP_PID=$!
     echo "✅ WhatsApp Server iniciado (PID: $WHATSAPP_PID)"
+    echo "📱 Status: Pausado - Ative via Settings quando necessário"
 }
 
 # Função para iniciar o backend Python
