@@ -1041,20 +1041,24 @@ class WhatsAppModule {
         
         if (!contact) {
             console.log('🆕 Criando novo contato...');
-            // Criar novo contato se não existir
+            // Criar novo contato se não existir - usando a mesma lógica dos contatos de exemplo
             contact = {
                 id: `contact_${Date.now()}`,
                 name: clientName,
                 phone: whatsappPhone,
-                lastMessage: '',
+                lastMessage: 'Cliente do sistema SacsMax',
                 lastMessageTime: formatTime(new Date()),
-                online: false
+                online: true,
+                unreadCount: 0
             };
             this.contacts.push(contact);
             console.log(`✅ Novo contato criado:`, contact);
+            
+            // Inicializar mensagens vazias para o novo contato (mesma lógica dos exemplos)
+            this.messages[contact.id] = [];
         }
 
-        // Selecionar o contato
+        // Selecionar o contato usando o método que já funciona
         console.log('🎯 Selecionando contato:', contact.id);
         this.selectContact(contact.id);
         
