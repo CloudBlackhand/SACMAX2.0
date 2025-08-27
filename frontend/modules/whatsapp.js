@@ -1058,16 +1058,41 @@ class WhatsAppModule {
             this.messages[contact.id] = [];
         }
 
-        // Selecionar o contato usando o método que já funciona
-        console.log('🎯 Selecionando contato:', contact.id);
-        this.selectContact(contact.id);
+        // FORÇAR A SELEÇÃO DO CONTATO
+        console.log('🎯 FORÇANDO seleção do contato:', contact.id);
         
-        // Atualizar interface
-        console.log('🔄 Atualizando interface...');
+        // Definir o chat atual diretamente
+        this.currentChat = contact;
+        console.log('✅ currentChat definido:', this.currentChat);
+        
+        // Marcar como lido
+        this.markAsRead(contact.id);
+        
+        // Carregar mensagens se não existirem
+        if (!this.messages[contact.id] || this.messages[contact.id].length === 0) {
+            console.log('📝 Inicializando mensagens para o contato...');
+            this.messages[contact.id] = [{
+                id: `msg_${Date.now()}`,
+                text: `Olá! Sou o assistente do SacsMax. Como posso ajudar você hoje?`,
+                time: formatTime(new Date()),
+                isOutgoing: false,
+                timestamp: Date.now()
+            }];
+        }
+        
+        // ATUALIZAR A INTERFACE FORÇADAMENTE
+        console.log('🔄 ATUALIZANDO INTERFACE FORÇADAMENTE...');
+        
+        // Atualizar lista de contatos
         this.updateContactsList();
+        
+        // Atualizar área de chat
         this.updateChatArea();
         
-        console.log(`✅ Conversa aberta com ${clientName} (${whatsappPhone})`);
+        // Rolar para baixo
+        this.scrollToBottom();
+        
+        console.log(`✅ Conversa FORÇADA aberta com ${clientName} (${whatsappPhone})`);
         
         // Focar no input de mensagem
         setTimeout(() => {
@@ -1079,6 +1104,16 @@ class WhatsAppModule {
                 console.log('⚠️ Input de mensagem não encontrado');
             }
         }, 100);
+        
+        // TESTE: Verificar se o chat foi aberto
+        setTimeout(() => {
+            const chatArea = document.querySelector('.wa-chat-area');
+            if (chatArea) {
+                console.log('✅ Área de chat encontrada:', chatArea.innerHTML.substring(0, 100) + '...');
+            } else {
+                console.log('❌ Área de chat NÃO encontrada!');
+            }
+        }, 200);
     }
 }
 

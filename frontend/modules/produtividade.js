@@ -157,7 +157,7 @@ class ProdutividadeModule {
                             <span class="technician">👨‍🔧 ${contact.tecnico || 'N/A'}</span>
                             <span class="phone">📞 ${contact.telefone1 || contact.telefone2 || 'N/A'}</span>
                         </div>
-                    </div>
+                        </div>
                     <div class="contact-details">
                         <div class="detail-row">
                             <span class="detail-label">Data:</span>
@@ -542,7 +542,7 @@ class ProdutividadeModule {
         } else {
             console.warn('⚠️ Elemento contacts-list não encontrado');
         }
-        
+
         // Atualizar contador no header
         const contactsHeader = document.querySelector('.contacts-header h3');
         if (contactsHeader) {
