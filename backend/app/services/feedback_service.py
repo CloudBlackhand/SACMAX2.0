@@ -133,23 +133,34 @@ class FeedbackService:
             logger.error(f"Erro ao buscar feedbacks: {e}")
             return []
 
-    def get_feedbacks_by_sentiment(self, sentiment: str, limit: int = 50) -> List[Dict]:
-        """Busca feedbacks por sentimento"""
+    def get_feedbacks_by_sentiment(self, sentiment: str, limit: int = 50, days: int = None) -> List[Dict]:
+        """Busca feedbacks por sentimento e período"""
         try:
             if not self.db_manager:
                 return []
-                
-            query = """
-            SELECT 
-                feedback_id, contact_name, contact_phone, text,
-                sentiment, score, keywords, timestamp, analyzed_at
-            FROM feedbacks 
-            WHERE sentiment = %s
-            ORDER BY timestamp DESC 
-            LIMIT %s
-            """
             
-            results = self.db_manager.fetch_all(query, (sentiment, limit))
+            if days:
+                query = """
+                SELECT 
+                    feedback_id, contact_name, contact_phone, text,
+                    sentiment, score, keywords, timestamp, analyzed_at
+                FROM feedbacks 
+                WHERE sentiment = %s AND timestamp >= NOW() - INTERVAL '%s days'
+                ORDER BY timestamp DESC 
+                LIMIT %s
+                """
+                results = self.db_manager.fetch_all(query, (sentiment, days, limit))
+            else:
+                query = """
+                SELECT 
+                    feedback_id, contact_name, contact_phone, text,
+                    sentiment, score, keywords, timestamp, analyzed_at
+                FROM feedbacks 
+                WHERE sentiment = %s
+                ORDER BY timestamp DESC 
+                LIMIT %s
+                """
+                results = self.db_manager.fetch_all(query, (sentiment, limit))
             
             feedbacks = []
             for row in results:
@@ -171,6 +182,85 @@ class FeedbackService:
         except Exception as e:
             logger.error(f"Erro ao buscar feedbacks por sentimento: {e}")
             return []
+
+    def get_feedbacks_by_date_range(self, days: int, limit: int = 100) -> List[Dict]:
+        """Busca feedbacks por período de dias"""
+        try:
+            if not self.db_manager:
+                return []
+                
+            query = """
+            SELECT 
+                feedback_id, contact_name, contact_phone, text,
+                sentiment, score, keywords, timestamp, analyzed_at
+            FROM feedbacks 
+            WHERE timestamp >= NOW() - INTERVAL '%s days'
+            ORDER BY timestamp DESC 
+            LIMIT %s
+            """
+            
+            results = self.db_manager.fetch_all(query, (days, limit))
+            
+            feedbacks = []
+            for row in results:
+                feedback = {
+                    'id': row[0],
+                    'contact_name': row[1],
+                    'contact_phone': row[2],
+                    'text': row[3],
+                    'sentiment': row[4],
+                    'score': float(row[5]) if row[5] else 0.0,
+                    'keywords': json.loads(row[6]) if row[6] else [],
+                    'timestamp': row[7].isoformat() if row[7] else None,
+                    'analyzed_at': row[8].isoformat() if row[8] else None
+                }
+                feedbacks.append(feedback)
+            
+            return feedbacks
+            
+        except Exception as e:
+            logger.error(f"Erro ao buscar feedbacks por período: {e}")
+            return []
+
+    def get_feedback_stats_by_date(self, days: int = None) -> Dict:
+        """Retorna estatísticas dos feedbacks por período"""
+        try:
+            if not self.db_manager:
+                return {'positive': 0, 'negative': 0, 'neutral': 0, 'total': 0}
+            
+            if days:
+                query = """
+                SELECT 
+                    sentiment,
+                    COUNT(*) as count
+                FROM feedbacks 
+                WHERE timestamp >= NOW() - INTERVAL '%s days'
+                GROUP BY sentiment
+                """
+                results = self.db_manager.fetch_all(query, (days,))
+            else:
+                query = """
+                SELECT 
+                    sentiment,
+                    COUNT(*) as count
+                FROM feedbacks 
+                GROUP BY sentiment
+                """
+                results = self.db_manager.fetch_all(query)
+            
+            stats = {'positive': 0, 'negative': 0, 'neutral': 0, 'total': 0}
+            
+            for row in results:
+                sentiment = row[0]
+                count = row[1]
+                stats[sentiment] = count
+                stats['total'] += count
+            
+            return stats
+            
+        except Exception as e:
+            logger.error(f"Erro ao buscar estatísticas por período: {e}")
+            return {'positive': 0, 'negative': 0, 'neutral': 0, 'total': 0}
 
     def get_feedback_stats(self) -> Dict:
         """Retorna estatísticas dos feedbacks"""

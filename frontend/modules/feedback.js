@@ -5,6 +5,7 @@ class FeedbackModule {
         this.feedbacks = [];
         this.filter = 'all'; // all, positive, negative, neutral
         this.searchTerm = '';
+        this.daysFilter = null; // 5, 10, 15, 20, 25, 30
         this.loading = false;
         this.stats = { positive: 0, negative: 0, neutral: 0, total: 0 };
         
@@ -40,6 +41,18 @@ class FeedbackModule {
                         <button class="filter-btn ${this.filter === 'neutral' ? 'active' : ''}" onclick="feedbackModule.setFilter('neutral')">
                             Neutros (${this.stats.neutral})
                         </button>
+                    </div>
+                    
+                    <div class="date-filter">
+                        <select class="date-select" onchange="feedbackModule.setDaysFilter(this.value)">
+                            <option value="">Todos os períodos</option>
+                            <option value="5" ${this.daysFilter === 5 ? 'selected' : ''}>Últimos 5 dias</option>
+                            <option value="10" ${this.daysFilter === 10 ? 'selected' : ''}>Últimos 10 dias</option>
+                            <option value="15" ${this.daysFilter === 15 ? 'selected' : ''}>Últimos 15 dias</option>
+                            <option value="20" ${this.daysFilter === 20 ? 'selected' : ''}>Últimos 20 dias</option>
+                            <option value="25" ${this.daysFilter === 25 ? 'selected' : ''}>Últimos 25 dias</option>
+                            <option value="30" ${this.daysFilter === 30 ? 'selected' : ''}>Últimos 30 dias</option>
+                        </select>
                     </div>
                     
                     <div class="search-container">
@@ -228,7 +241,12 @@ class FeedbackModule {
             this.loading = true;
             this.updateFeedbackList();
             
-            const response = await fetch(`${this.backendUrl}/api/feedback/list?limit=100`);
+            let url = `${this.backendUrl}/api/feedback/list?limit=100`;
+            if (this.daysFilter) {
+                url += `&days=${this.daysFilter}`;
+            }
+            
+            const response = await fetch(url);
             const data = await response.json();
             
             if (data.success) {
@@ -249,7 +267,12 @@ class FeedbackModule {
 
     async loadStats() {
         try {
-            const response = await fetch(`${this.backendUrl}/api/feedback/stats`);
+            let url = `${this.backendUrl}/api/feedback/stats`;
+            if (this.daysFilter) {
+                url += `?days=${this.daysFilter}`;
+            }
+            
+            const response = await fetch(url);
             const data = await response.json();
             
             if (data.success) {
@@ -275,6 +298,12 @@ class FeedbackModule {
     setFilter(filter) {
         this.filter = filter;
         this.updateFeedbackList();
+    }
+
+    setDaysFilter(days) {
+        this.daysFilter = days ? parseInt(days) : null;
+        this.loadFeedbacks();
+        this.loadStats();
     }
 
     updateFeedbackList() {
