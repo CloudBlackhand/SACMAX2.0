@@ -1058,8 +1058,8 @@ class WhatsAppModule {
             this.messages[contact.id] = [];
         }
 
-        // FORÇAR A ABERTURA DO CHAT - MÉTODO DIRETO
-        console.log('🎯 FORÇANDO abertura do chat com método DIRETO...');
+        // SOLUÇÃO ALTERNATIVA: Simular clique no contato
+        console.log('🎯 SOLUÇÃO ALTERNATIVA: Simulando clique no contato...');
         
         // 1. Definir o chat atual
         this.currentChat = contact;
@@ -1080,33 +1080,49 @@ class WhatsAppModule {
             }];
         }
         
-        // 4. ATUALIZAR A INTERFACE FORÇADAMENTE - MÉTODO DIRETO
-        console.log('🔄 ATUALIZANDO INTERFACE FORÇADAMENTE...');
+        // 4. ATUALIZAR A INTERFACE COMPLETAMENTE
+        console.log('🔄 ATUALIZANDO INTERFACE COMPLETAMENTE...');
         
         // Atualizar lista de contatos
         this.updateContactsList();
         
-        // FORÇAR atualização da área de chat - MÉTODO DIRETO
+        // FORÇAR atualização da área de chat - MÉTODO ALTERNATIVO
         const chatArea = document.querySelector('.wa-chat-area');
         if (chatArea) {
-            console.log('✅ Área de chat encontrada, forçando atualização DIRETA...');
+            console.log('✅ Área de chat encontrada, forçando atualização ALTERNATIVA...');
             
-            // FORÇAR a renderização do chat
-            const chatHTML = this.renderChatArea();
-            console.log('📝 HTML do chat gerado:', chatHTML.substring(0, 100) + '...');
-            
-            chatArea.innerHTML = chatHTML;
-            console.log('✅ Chat renderizado forçadamente');
-            
-            // Verificar se foi atualizado
-            setTimeout(() => {
-                const updatedChatArea = document.querySelector('.wa-chat-area');
-                if (updatedChatArea.innerHTML !== chatHTML) {
-                    console.log('⚠️ Chat não foi atualizado, tentando novamente...');
-                    updatedChatArea.innerHTML = chatHTML;
-                }
-                console.log('✅ Verificação final do chat');
-            }, 50);
+            // MÉTODO ALTERNATIVO: Usar o método que já funciona
+            try {
+                // Primeiro, tentar o método normal
+                this.updateChatArea();
+                console.log('✅ updateChatArea() chamado');
+                
+                // Se não funcionar, forçar manualmente
+                setTimeout(() => {
+                    if (chatArea.innerHTML.includes('Selecione uma conversa')) {
+                        console.log('⚠️ Chat não foi aberto, forçando manualmente...');
+                        
+                        // FORÇAR manualmente
+                        const chatHTML = this.renderChatArea();
+                        chatArea.innerHTML = chatHTML;
+                        console.log('✅ Chat forçado manualmente');
+                        
+                        // Configurar input
+                        this.setupMessageInput();
+                        this.scrollToBottom();
+                    } else {
+                        console.log('✅ Chat foi aberto com sucesso!');
+                    }
+                }, 200);
+                
+            } catch (error) {
+                console.error('❌ Erro no updateChatArea:', error);
+                
+                // Fallback: forçar manualmente
+                const chatHTML = this.renderChatArea();
+                chatArea.innerHTML = chatHTML;
+                console.log('✅ Chat forçado por fallback');
+            }
         } else {
             console.log('❌ Área de chat não encontrada!');
         }
@@ -1124,9 +1140,9 @@ class WhatsAppModule {
             } else {
                 console.log('⚠️ Input de mensagem não encontrado');
             }
-        }, 100);
+        }, 300);
         
-        console.log(`✅ Chat FORÇADO aberto com ${clientName} (${whatsappPhone})`);
+        console.log(`✅ Chat ALTERNATIVO aberto com ${clientName} (${whatsappPhone})`);
     }
 }
 
