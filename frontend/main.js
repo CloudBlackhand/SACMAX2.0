@@ -807,6 +807,15 @@ const app = new SacsMaxApp();
 // Exporta para uso global
 window.SacsMaxApp = app;
 
+// Aguarda o DOM estar pronto e inicializa
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        app.init();
+    });
+} else {
+    app.init();
+}
+
 // Estilos CSS para o sistema de cache
 const cacheStyles = `
 <style>

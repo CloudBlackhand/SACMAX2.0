@@ -68,13 +68,26 @@ class LoginModule {
         if (appContainer) {
             appContainer.innerHTML = this.render();
             this.setupEventListeners();
+        } else {
+            // Fallback: criar container se não existir
+            const container = document.createElement('div');
+            container.id = 'app';
+            document.body.appendChild(container);
+            container.innerHTML = this.render();
+            this.setupEventListeners();
         }
     }
 
     showMainApp() {
+        // Limpar container de login
+        const appContainer = document.getElementById('app');
+        if (appContainer) {
+            appContainer.innerHTML = '';
+        }
+        
         // Inicializar a aplicação principal
         if (window.SacsMaxApp) {
-            window.SacsMaxApp.init();
+            window.SacsMaxApp.setupApp();
         }
     }
 
