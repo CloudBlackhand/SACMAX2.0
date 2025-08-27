@@ -130,5 +130,5 @@ def close_database(db_manager):
         db_manager.disconnect()
 
 # Instância global do db_manager
-db_manager = None
+db_manager = init_database()
 
