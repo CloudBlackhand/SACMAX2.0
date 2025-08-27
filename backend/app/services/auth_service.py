@@ -31,7 +31,9 @@ class AuthService:
             WHERE username = %s AND password_hash = %s
             """
             
-            result = self.db_manager.fetch_one(query, (username, password))
+            result = self.db_manager.fetch_all(query, (username, password))
+            if result:
+                result = result[0]  # Pegar o primeiro resultado
             
             if result:
                 user_data = {
