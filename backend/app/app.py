@@ -1380,13 +1380,14 @@ async def get_productivity_contacts(days: int = Query(None, description="Filtrar
         cursor = conn.cursor()
         
         if days and days in [5, 10, 15, 20, 25, 30]:
+            logger.info(f"🔍 Aplicando filtro de {days} dias na busca de contatos")
             cursor.execute("""
                 SELECT 
                     sa, data, tecnico, servico, nome_cliente, 
                     endereco, telefone1, telefone2, plano, status, obs,
                     created_at, updated_at
                 FROM produtividade 
-                WHERE data >= NOW() - INTERVAL %s days
+                WHERE data >= CURRENT_DATE - INTERVAL '%s days'
                 ORDER BY data DESC, created_at DESC
             """, (days,))
         else:
@@ -1422,6 +1423,7 @@ async def get_productivity_contacts(days: int = Query(None, description="Filtrar
         cursor.close()
         conn.close()
         
+        logger.info(f"📊 Retornados {len(contacts)} contatos (filtro: {days} dias)")
         return {
             "success": True,
             "contacts": contacts,
@@ -1543,7 +1545,8 @@ async def search_productivity_contacts(
             params.append(f"%{servico}%")
         
         if days and days in [5, 10, 15, 20, 25, 30]:
-            query += " AND data >= NOW() - INTERVAL '%s days'"
+            logger.info(f"🔍 Aplicando filtro de {days} dias na busca com filtros")
+            query += " AND data >= CURRENT_DATE - INTERVAL '%s days'"
             params.append(days)
         
         query += " ORDER BY data DESC, created_at DESC LIMIT %s"
