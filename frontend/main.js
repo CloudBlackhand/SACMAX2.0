@@ -34,13 +34,13 @@ class SacsMaxApp {
     constructor() {
         this.currentModule = null;
         this.modules = {};
-        this.init();
+        this.isAuthenticated = false;
     }
 
     init() {
-        // Aguarda o DOM estar pronto
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => this.setupApp());
+        // Verificar autenticação primeiro
+        if (window.loginModule) {
+            window.loginModule.init();
         } else {
             this.setupApp();
         }
@@ -52,6 +52,7 @@ class SacsMaxApp {
         this.setupNavigation();
         this.setupEventListeners();
         this.loadDefaultModule();
+        this.isAuthenticated = true;
     }
 
     createAppStructure() {
@@ -101,8 +102,8 @@ class SacsMaxApp {
                 </button>
             </nav>
             <div class="user-info">
-                <span class="user-name">Técnico</span>
-                <button class="logout-btn" id="logout-btn">🚪</button>
+                <span class="user-name" id="user-name">Técnico</span>
+                <button class="logout-btn" id="logout-btn" onclick="loginModule.logout()">🚪</button>
             </div>
         `;
         
@@ -1221,6 +1222,106 @@ const cacheStyles = `
         flex-direction: column;
         gap: 8px;
     }
+}
+
+/* Login Styles */
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px;
+}
+
+.login-card {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    padding: 40px;
+    width: 100%;
+    max-width: 400px;
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-logo h1 {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.login-logo p {
+    color: #666;
+    font-size: 1.1em;
+}
+
+.login-form .form-group {
+    margin-bottom: 20px;
+}
+
+.login-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #333;
+}
+
+.login-form input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+}
+
+.login-form input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.login-btn {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.login-btn:hover {
+    transform: translateY(-2px);
+}
+
+.login-info {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.login-info p {
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.login-info ul {
+    list-style: none;
+    padding: 0;
+}
+
+.login-info li {
+    padding: 5px 0;
+    color: #666;
 }
 </style>
 `;

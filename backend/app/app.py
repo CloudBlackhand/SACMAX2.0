@@ -53,6 +53,7 @@ try:
     from app.services.excel_service import ExcelService
     from app.services.sentiment_analyzer import sentiment_analyzer
     from app.services.feedback_service import feedback_service
+    from app.services.auth_service import AuthService
 except ImportError as e:
     print(f"⚠️ Erro de importação: {e}")
     ExcelToDatabaseConverter = None
@@ -62,10 +63,22 @@ except ImportError as e:
     ExcelService = None
     sentiment_analyzer = None
     feedback_service = None
+    AuthService = None
 
 # Modelos Pydantic
 class WhatsAppStartRequest(BaseModel):
     port: int = 3001
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+class UserResponse(BaseModel):
+    id: int
+    username: str
+    full_name: str
+    email: str
+    role: str
 
 # Configuração
 PORT = int(os.environ.get('BACKEND_PORT', 5000))
@@ -93,6 +106,9 @@ app.add_middleware(
 # Servir arquivos estáticos do frontend
 if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+
+# Inicializar serviços
+auth_service = AuthService(db_manager) if AuthService and db_manager else None
 
 # Dados em memória (fallback se banco não estiver disponível)
 contacts = []
@@ -1589,6 +1605,108 @@ async def search_productivity_contacts(
     except Exception as e:
         logger.error(f"Erro na busca: {e}")
         raise HTTPException(status_code=500, detail=f"Erro na busca: {str(e)}")
+
+# Rotas de Autenticação
+@app.post("/api/auth/login")
+async def login(request: LoginRequest):
+    """Login de usuário"""
+    try:
+        if not auth_service:
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "message": "Serviço de autenticação não disponível"}
+            )
+        
+        # Autenticar usuário
+        user_data = auth_service.authenticate_user(request.username, request.password)
+        
+        if user_data:
+            # Criar sessão
+            session_token = auth_service.create_session(user_data['id'])
+            
+            if session_token:
+                return {
+                    "success": True,
+                    "message": "Login realizado com sucesso",
+                    "user": user_data,
+                    "session_token": session_token
+                }
+            else:
+                return JSONResponse(
+                    status_code=500,
+                    content={"success": False, "message": "Erro ao criar sessão"}
+                )
+        else:
+            return JSONResponse(
+                status_code=401,
+                content={"success": False, "message": "Usuário ou senha inválidos"}
+            )
+            
+    except Exception as e:
+        logger.error(f"Erro no login: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": f"Erro interno: {str(e)}"}
+        )
+
+@app.post("/api/auth/logout")
+async def logout(session_token: str):
+    """Logout de usuário"""
+    try:
+        if not auth_service:
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "message": "Serviço de autenticação não disponível"}
+            )
+        
+        success = auth_service.logout(session_token)
+        
+        if success:
+            return {"success": True, "message": "Logout realizado com sucesso"}
+        else:
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "message": "Erro ao fazer logout"}
+            )
+            
+    except Exception as e:
+        logger.error(f"Erro no logout: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": f"Erro interno: {str(e)}"}
+        )
+
+@app.get("/api/auth/validate")
+async def validate_session(session_token: str):
+    """Validar sessão"""
+    try:
+        if not auth_service:
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "message": "Serviço de autenticação não disponível"}
+            )
+        
+        user_data = auth_service.validate_session(session_token)
+        
+        if user_data:
+            return {
+                "success": True,
+                "valid": True,
+                "user": user_data
+            }
+        else:
+            return {
+                "success": True,
+                "valid": False,
+                "message": "Sessão inválida ou expirada"
+            }
+            
+    except Exception as e:
+        logger.error(f"Erro na validação de sessão: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": f"Erro interno: {str(e)}"}
+        )
 
 # Eventos de inicialização e finalização
 @app.on_event("startup")
