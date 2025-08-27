@@ -160,20 +160,7 @@ class SettingsModule {
             <div class="settings-section">
                 <h3>📱 Controle do WhatsApp Server</h3>
                 
-                ${isRailway ? `
-                <div class="railway-notice">
-                    <div class="notice-icon">✅</div>
-                    <div class="notice-content">
-                        <h4>WhatsApp no Railway</h4>
-                        <p>O WhatsApp server está configurado para funcionar no Railway. O servidor Node.js está rodando na porta 3002.</p>
-                        <div class="notice-actions">
-                            <button class="notice-btn" onclick="settingsModule.testWhatsAppConnection()">
-                                🔍 Testar Conexão
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                ` : ''}
+
                 
                 <div class="whatsapp-control">
                     <div class="control-card">
@@ -643,43 +630,7 @@ class SettingsModule {
             const style = document.createElement('style');
             style.id = 'railway-styles';
             style.textContent = `
-                .railway-notice {
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    border-radius: 12px;
-                    padding: 20px;
-                    margin-bottom: 20px;
-                    color: white;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-                }
-                .railway-notice .notice-icon {
-                    font-size: 24px;
-                    margin-bottom: 10px;
-                }
-                .railway-notice h4 {
-                    margin: 0 0 10px 0;
-                    font-size: 18px;
-                }
-                .railway-notice p {
-                    margin: 0 0 15px 0;
-                    line-height: 1.5;
-                }
-                .notice-actions {
-                    display: flex;
-                    gap: 10px;
-                }
-                .notice-btn {
-                    background: rgba(255,255,255,0.2);
-                    border: 1px solid rgba(255,255,255,0.3);
-                    color: white;
-                    padding: 8px 16px;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                }
-                .notice-btn:hover {
-                    background: rgba(255,255,255,0.3);
-                    transform: translateY(-1px);
-                }
+
                 .local-instructions {
                     max-width: 600px;
                     line-height: 1.6;
