@@ -1111,7 +1111,7 @@ async def save_feedback(feedback: dict):
         }
 
 @app.get("/api/feedback/list")
-async def get_feedbacks(limit: int = 100, sentiment: str = None):
+async def get_feedbacks(limit: int = 100, sentiment: str = None, days: int = None):
     """Listar feedbacks do banco de dados"""
     try:
         if feedback_service:
@@ -1119,15 +1119,25 @@ async def get_feedbacks(limit: int = 100, sentiment: str = None):
             if db_manager:
                 feedback_service.db_manager = db_manager
             
-            if sentiment and sentiment in ['positive', 'negative', 'neutral']:
-                feedbacks = feedback_service.get_feedbacks_by_sentiment(sentiment, limit)
+            if days and days in [5, 10, 15, 20, 25, 30]:
+                if sentiment and sentiment in ['positive', 'negative', 'neutral']:
+                    feedbacks = feedback_service.get_feedbacks_by_sentiment(sentiment, limit, days)
+                else:
+                    feedbacks = feedback_service.get_feedbacks_by_date_range(days, limit)
             else:
-                feedbacks = feedback_service.get_all_feedbacks(limit)
+                if sentiment and sentiment in ['positive', 'negative', 'neutral']:
+                    feedbacks = feedback_service.get_feedbacks_by_sentiment(sentiment, limit)
+                else:
+                    feedbacks = feedback_service.get_all_feedbacks(limit)
             
             return {
                 "success": True,
                 "feedbacks": feedbacks,
-                "total": len(feedbacks)
+                "total": len(feedbacks),
+                "filter": {
+                    "sentiment": sentiment,
+                    "days": days
+                }
             }
         else:
             return {
@@ -1142,7 +1152,7 @@ async def get_feedbacks(limit: int = 100, sentiment: str = None):
         }
 
 @app.get("/api/feedback/stats")
-async def get_feedback_stats():
+async def get_feedback_stats(days: int = None):
     """Obter estatísticas dos feedbacks"""
     try:
         if feedback_service:
@@ -1150,11 +1160,17 @@ async def get_feedback_stats():
             if db_manager:
                 feedback_service.db_manager = db_manager
             
-            stats = feedback_service.get_feedback_stats()
+            if days and days in [5, 10, 15, 20, 25, 30]:
+                stats = feedback_service.get_feedback_stats_by_date(days)
+            else:
+                stats = feedback_service.get_feedback_stats()
             
             return {
                 "success": True,
-                "stats": stats
+                "stats": stats,
+                "filter": {
+                    "days": days
+                }
             }
         else:
             return {

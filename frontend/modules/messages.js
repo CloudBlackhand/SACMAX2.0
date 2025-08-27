@@ -155,6 +155,25 @@ class MessagesModule {
                             </div>
                                 </div>
                                 
+                                <div class="filter-row">
+                            <div class="filter-group">
+                                        <label>📅 Período</label>
+                                        <select id="date-filter">
+                                            <option value="">Todos os períodos</option>
+                                            <option value="5">Últimos 5 dias</option>
+                                            <option value="10">Últimos 10 dias</option>
+                                            <option value="15">Últimos 15 dias</option>
+                                            <option value="20">Últimos 20 dias</option>
+                                            <option value="25">Últimos 25 dias</option>
+                                            <option value="30">Últimos 30 dias</option>
+                                        </select>
+                            </div>
+                            <div class="filter-group">
+                                        <label>&nbsp;</label>
+                                        <div class="filter-spacer"></div>
+                            </div>
+                                </div>
+                                
                                 <div class="filter-actions">
                                     <button class="btn btn-primary" onclick="messagesModule.applyFilters()">
                                         <span class="btn-icon">🔍</span>
@@ -498,6 +517,13 @@ class MessagesModule {
                     this.applyFilters();
                 });
             }
+
+            const dateFilter = document.getElementById('date-filter');
+            if (dateFilter) {
+                dateFilter.addEventListener('change', () => {
+                    this.applyFilters();
+                });
+            }
         }, 100);
     }
 
@@ -576,6 +602,7 @@ class MessagesModule {
         const statusFilter = document.getElementById('status-filter')?.value || '';
         const technicianFilter = document.getElementById('technician-filter')?.value || '';
         const serviceFilter = document.getElementById('service-filter')?.value || '';
+        const dateFilter = document.getElementById('date-filter')?.value || '';
 
         // Construir URL com parâmetros
         const params = new URLSearchParams();
@@ -583,6 +610,7 @@ class MessagesModule {
         if (statusFilter) params.append('status', statusFilter);
         if (technicianFilter) params.append('tecnico', technicianFilter);
         if (serviceFilter) params.append('servico', serviceFilter);
+        if (dateFilter) params.append('days', dateFilter);
         params.append('limit', '1000');
 
         try {
@@ -614,6 +642,7 @@ class MessagesModule {
         const statusFilter = document.getElementById('status-filter')?.value || '';
         const technicianFilter = document.getElementById('technician-filter')?.value || '';
         const serviceFilter = document.getElementById('service-filter')?.value || '';
+        const dateFilter = document.getElementById('date-filter')?.value || '';
 
         this.filteredContacts = this.contacts.filter(contact => {
             const matchesSearch = !searchTerm || 
@@ -625,8 +654,11 @@ class MessagesModule {
             const matchesStatus = !statusFilter || contact.status?.toLowerCase() === statusFilter.toLowerCase();
             const matchesTechnician = !technicianFilter || contact.tecnico === technicianFilter;
             const matchesService = !serviceFilter || contact.servico === serviceFilter;
+            
+            // Filtro por data (se implementado no backend)
+            const matchesDate = !dateFilter || true; // Por enquanto sempre true, será implementado no backend
 
-            return matchesSearch && matchesStatus && matchesTechnician && matchesService;
+            return matchesSearch && matchesStatus && matchesTechnician && matchesService && matchesDate;
         });
 
         this.updateContactsDisplay();
@@ -638,6 +670,7 @@ class MessagesModule {
         document.getElementById('status-filter').value = '';
         document.getElementById('technician-filter').value = '';
         document.getElementById('service-filter').value = '';
+        document.getElementById('date-filter').value = '';
         
         // Recarregar todos os contatos
         await this.loadContacts();
