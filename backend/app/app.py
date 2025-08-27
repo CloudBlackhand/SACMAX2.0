@@ -1373,20 +1373,31 @@ async def get_whatsapp_server_status():
 
 # Endpoints da Produtividade
 @app.get("/api/productivity/contacts")
-async def get_productivity_contacts():
+async def get_productivity_contacts(days: int = Query(None, description="Filtrar por dias (5, 10, 15, 20, 25, 30)")):
     """Buscar todos os contatos da tabela produtividade"""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        cursor.execute("""
-            SELECT 
-                sa, data, tecnico, servico, nome_cliente, 
-                endereco, telefone1, telefone2, plano, status, obs,
-                created_at, updated_at
-            FROM produtividade 
-            ORDER BY data DESC, created_at DESC
-        """)
+        if days and days in [5, 10, 15, 20, 25, 30]:
+            cursor.execute("""
+                SELECT 
+                    sa, data, tecnico, servico, nome_cliente, 
+                    endereco, telefone1, telefone2, plano, status, obs,
+                    created_at, updated_at
+                FROM produtividade 
+                WHERE data >= NOW() - INTERVAL %s days
+                ORDER BY data DESC, created_at DESC
+            """, (days,))
+        else:
+            cursor.execute("""
+                SELECT 
+                    sa, data, tecnico, servico, nome_cliente, 
+                    endereco, telefone1, telefone2, plano, status, obs,
+                    created_at, updated_at
+                FROM produtividade 
+                ORDER BY data DESC, created_at DESC
+            """)
         
         rows = cursor.fetchall()
         contacts = []
@@ -1414,7 +1425,10 @@ async def get_productivity_contacts():
         return {
             "success": True,
             "contacts": contacts,
-            "total": len(contacts)
+            "total": len(contacts),
+            "filter": {
+                "days": days
+            }
         }
         
     except Exception as e:
@@ -1484,6 +1498,7 @@ async def search_productivity_contacts(
     status: str = Query(None, description="Filtrar por status"),
     tecnico: str = Query(None, description="Filtrar por técnico"),
     servico: str = Query(None, description="Filtrar por serviço"),
+    days: int = Query(None, description="Filtrar por dias (5, 10, 15, 20, 25, 30)"),
     limit: int = Query(100, description="Limite de resultados")
 ):
     """Buscar contatos com filtros"""
@@ -1527,6 +1542,10 @@ async def search_productivity_contacts(
             query += " AND servico ILIKE %s"
             params.append(f"%{servico}%")
         
+        if days and days in [5, 10, 15, 20, 25, 30]:
+            query += " AND data >= NOW() - INTERVAL '%s days'"
+            params.append(days)
+        
         query += " ORDER BY data DESC, created_at DESC LIMIT %s"
         params.append(limit)
         
@@ -1559,7 +1578,8 @@ async def search_productivity_contacts(
                 "search": q,
                 "status": status,
                 "tecnico": tecnico,
-                "servico": servico
+                "servico": servico,
+                "days": days
             }
         }
         

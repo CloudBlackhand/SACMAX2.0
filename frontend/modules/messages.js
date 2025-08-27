@@ -543,7 +543,14 @@ class MessagesModule {
         this.updateConnectionStatus();
 
         try {
-            const response = await fetch(`${this.backendUrl}/api/productivity/contacts`);
+            // Verificar se há filtro de data ativo
+            const dateFilter = document.getElementById('date-filter')?.value || '';
+            let url = `${this.backendUrl}/api/productivity/contacts`;
+            if (dateFilter) {
+                url += `?days=${dateFilter}`;
+            }
+
+            const response = await fetch(url);
             if (response.ok) {
                 const data = await response.json();
                 if (data.success) {
@@ -672,7 +679,7 @@ class MessagesModule {
         document.getElementById('service-filter').value = '';
         document.getElementById('date-filter').value = '';
         
-        // Recarregar todos os contatos
+        // Recarregar todos os contatos sem filtro de data
         await this.loadContacts();
         this.addLog('info', 'Filtros limpos');
     }
