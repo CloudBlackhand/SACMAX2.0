@@ -38,12 +38,7 @@ class SacsMaxApp {
     }
 
     init() {
-        // Verificar autenticação primeiro
-        if (window.loginModule) {
-            window.loginModule.init();
-        } else {
-            this.setupApp();
-        }
+        this.setupApp();
     }
 
     setupApp() {
@@ -102,8 +97,7 @@ class SacsMaxApp {
                 </button>
             </nav>
             <div class="user-info">
-                <span class="user-name" id="user-name">Técnico</span>
-                <button class="logout-btn" id="logout-btn" onclick="loginModule.logout()">🚪</button>
+                <span class="user-name" id="user-name">SacsMax</span>
             </div>
         `;
         
@@ -226,21 +220,7 @@ class SacsMaxApp {
                 font-weight: 500;
             }
 
-            .logout-btn {
-                background: rgba(255,255,255,0.1);
-                border: none;
-                color: white;
-                padding: 0.5rem;
-                border-radius: 50%;
-                cursor: pointer;
-                transition: all 0.3s ease;
-                font-size: 1.2rem;
-            }
 
-            .logout-btn:hover {
-                background: rgba(255,255,255,0.2);
-                transform: scale(1.1);
-            }
 
             .app-main {
                 flex: 1;
@@ -668,15 +648,6 @@ class SacsMaxApp {
     }
 
     setupEventListeners() {
-        // Logout
-        const logoutBtn = document.getElementById('logout-btn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => {
-                if (confirm('Tem certeza que deseja sair?')) {
-                    this.logout();
-                }
-            });
-        }
 
         // Teclas de atalho
         document.addEventListener('keydown', (e) => {
@@ -791,14 +762,7 @@ class SacsMaxApp {
         }
     }
 
-    logout() {
-        // Limpa dados da sessão
-        localStorage.removeItem('sacsmax_token');
-        localStorage.removeItem('sacsmax_user');
-        
-        // Redireciona para login (ou recarrega)
-        window.location.reload();
-    }
+
 }
 
 // Inicializa a aplicação quando o script for carregado
