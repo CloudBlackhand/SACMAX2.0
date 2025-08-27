@@ -218,7 +218,7 @@ class ProdutividadeModule {
             console.log('✅ Aba WhatsApp encontrada, clicando...');
             whatsappTab.click();
             
-            // Aguardar um pouco para a aba carregar
+            // Aguardar um pouco para a aba carregar e o módulo ser inicializado
             setTimeout(() => {
                 console.log('🔄 Verificando módulo WhatsApp...');
                 console.log('window.whatsappModule:', window.whatsappModule);
@@ -229,20 +229,39 @@ class ProdutividadeModule {
                     // Abrir conversa com o cliente
                     window.whatsappModule.openConversationWithContact(phone, clientName);
                 } else {
-                    console.log('⚠️ Módulo WhatsApp não encontrado ou método não existe');
-                    // Fallback: mostrar mensagem
-                    this.addLog('info', '🔄 Módulo WhatsApp carregando...');
-                    setTimeout(() => {
-                        if (window.whatsappModule && typeof window.whatsappModule.openConversationWithContact === 'function') {
-                            console.log('✅ Módulo WhatsApp encontrado no retry, abrindo conversa...');
-                            window.whatsappModule.openConversationWithContact(phone, clientName);
-                        } else {
-                            console.error('❌ Módulo WhatsApp ainda não disponível');
-                            this.addLog('error', '❌ Não foi possível abrir conversa no WhatsApp');
+                    console.log('⚠️ Módulo WhatsApp não encontrado, tentando inicializar...');
+                    
+                    // Tentar forçar a inicialização do módulo WhatsApp
+                    if (window.app && window.app.modules && window.app.modules.whatsapp) {
+                        console.log('✅ Módulo WhatsApp encontrado via app.modules, abrindo conversa...');
+                        window.app.modules.whatsapp.openConversationWithContact(phone, clientName);
+                    } else {
+                        console.log('⚠️ Tentando criar novo módulo WhatsApp...');
+                        
+                        // Fallback: criar novo módulo se necessário
+                        try {
+                            if (typeof WhatsAppModule !== 'undefined') {
+                                window.whatsappModule = new WhatsAppModule();
+                                setTimeout(() => {
+                                    if (window.whatsappModule && typeof window.whatsappModule.openConversationWithContact === 'function') {
+                                        console.log('✅ Novo módulo WhatsApp criado, abrindo conversa...');
+                                        window.whatsappModule.openConversationWithContact(phone, clientName);
+                                    } else {
+                                        console.error('❌ Falha ao criar módulo WhatsApp');
+                                        this.addLog('error', '❌ Não foi possível abrir conversa no WhatsApp');
+                                    }
+                                }, 500);
+                            } else {
+                                console.error('❌ WhatsAppModule não está disponível');
+                                this.addLog('error', '❌ Módulo WhatsApp não disponível');
+                            }
+                        } catch (error) {
+                            console.error('❌ Erro ao criar módulo WhatsApp:', error);
+                            this.addLog('error', '❌ Erro ao inicializar WhatsApp');
                         }
-                    }, 1000);
+                    }
                 }
-            }, 500);
+            }, 1000); // Aumentei o tempo de espera para 1 segundo
         } else {
             console.error('❌ Aba WhatsApp não encontrada');
             this.addLog('error', '❌ Aba WhatsApp não encontrada');

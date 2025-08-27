@@ -52,6 +52,10 @@ class SacsMaxApp {
         this.setupNavigation();
         this.setupEventListeners();
         this.loadDefaultModule();
+        
+        // NOVO: Tornar o app globalmente acessível
+        window.app = this;
+        console.log('✅ SacsMaxApp inicializado e disponível globalmente como window.app');
     }
 
     createAppStructure() {
