@@ -219,14 +219,14 @@ class ProdutividadeModule {
             setTimeout(() => {
                 // Tentar encontrar e ativar o módulo WhatsApp
                 if (window.whatsappModule) {
-                    // Abrir conversa com o cliente
-                    window.whatsappModule.openConversationWithContact(phone, clientName);
+                    // Criar nova conversa com o cliente
+                    window.whatsappModule.createNewChat(phone, clientName);
                 } else {
                     // Fallback: mostrar mensagem
                     this.addLog('info', '🔄 Módulo WhatsApp carregando...');
                     setTimeout(() => {
                         if (window.whatsappModule) {
-                            window.whatsappModule.openConversationWithContact(phone, clientName);
+                            window.whatsappModule.createNewChat(phone, clientName);
                         }
                     }, 1000);
                 }

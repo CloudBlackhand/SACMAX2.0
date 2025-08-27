@@ -304,15 +304,12 @@ class FeedbackModule {
         // Muda para o módulo WhatsApp
         window.SacsMaxApp.switchModule('whatsapp');
         
-        // Notifica o módulo WhatsApp para abrir o chat
+        // Notifica o módulo WhatsApp para criar/abrir o chat
         setTimeout(() => {
             const whatsappModule = window.SacsMaxApp.modules.whatsapp;
-            if (whatsappModule && whatsappModule.selectContact) {
-                // Encontra o contato pelo telefone
-                const contact = whatsappModule.contacts.find(c => c.phone === contactPhone);
-                if (contact) {
-                    whatsappModule.selectContact(contact.id);
-                }
+            if (whatsappModule && whatsappModule.createNewChat) {
+                // Criar nova conversa ou abrir existente
+                whatsappModule.createNewChat(contactPhone, 'Cliente');
             }
         }, 500);
     }

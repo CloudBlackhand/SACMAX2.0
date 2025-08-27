@@ -178,8 +178,54 @@ class WhatsAppModule {
         this.isConnected = true;
         this.sessionStatus = 'connected';
         this.hideQRCodeModal();
-        this.loadRealContacts();
+        
+        // NÃO carregar contatos do banco - usar apenas WebSocket
+        // Inicializar lista vazia para conversas reais
+        this.contacts = [];
+        this.messages = {};
+        this.updateContactsList();
+        
         this.showSuccess('WhatsApp conectado com sucesso!');
+    }
+
+    // NOVO: Método para criar nova conversa via botão da Produtividade
+    async createNewChat(phoneNumber, contactName = 'Cliente') {
+        console.log(`💬 Criando nova conversa: ${contactName} (${phoneNumber})`);
+        
+        // Verificar se já existe conversa com este número
+        const existingContact = this.contacts.find(c => c.phone === phoneNumber);
+        if (existingContact) {
+            console.log('✅ Conversa já existe, abrindo...');
+            this.selectContact(existingContact.id);
+            return existingContact.id;
+        }
+        
+        // Criar novo contato
+        const contactId = `contact_${Date.now()}`;
+        const newContact = {
+            id: contactId,
+            name: contactName,
+            phone: phoneNumber,
+            lastMessage: 'Nova conversa iniciada',
+            lastMessageTime: formatTime(new Date()),
+            online: true,
+            unreadCount: 0
+        };
+        
+        // Adicionar à lista de contatos
+        this.contacts.push(newContact);
+        
+        // Inicializar mensagens vazias
+        this.messages[contactId] = [];
+        
+        // Atualizar interface
+        this.updateContactsList();
+        
+        // Selecionar o novo chat
+        this.selectContact(contactId);
+        
+        console.log(`✅ Nova conversa criada: ${contactName}`);
+        return contactId;
     }
 
     handleAuthenticated(data) {
@@ -322,100 +368,93 @@ class WhatsAppModule {
         }
     }
 
-    async loadRealContacts() {
-        try {
-            // Primeiro, carregar contatos do banco de dados (PRODUTIVIDADE)
-            const response = await fetch('http://localhost:5000/api/productivity/contacts');
-            if (response.ok) {
-                const contacts = await response.json();
-                
-                // Converter para formato do WhatsApp
-                this.contacts = contacts.map((contact, index) => ({
-                    id: `contact_${index}`,
-                    name: contact.nome_cliente || `Cliente ${index + 1}`,
-                    phone: contact.telefone1 || contact.telefone2 || `55${Math.floor(Math.random() * 900000000) + 100000000}`,
-                    lastMessage: 'Cliente do sistema SacsMax',
-                    lastMessageTime: formatTime(new Date()),
-                    online: true,
-                    unreadCount: 0,
-                    originalData: contact
-                }));
-                
-                console.log(`✅ Carregados ${this.contacts.length} contatos do banco de dados`);
-                this.updateContactsList();
-                
-                // Inicializar mensagens vazias para cada contato
-                for (const contact of this.contacts) {
-                    if (!this.messages[contact.id]) {
-                        this.messages[contact.id] = [];
-                    }
-                }
-            } else {
-                console.error('Erro ao carregar contatos do banco:', response.status);
-                // Fallback: criar contatos de exemplo
-                this.createSampleContacts();
-            }
-        } catch (error) {
-            console.error('Erro ao carregar contatos reais:', error);
-            this.createSampleContacts();
-        }
-    }
+    // REMOVIDO: loadRealContacts() - não usar banco de dados, apenas WebSocket
+    // async loadRealContacts() {
+    //     try {
+    //         // Primeiro, carregar contatos do banco de dados (PRODUTIVIDADE)
+    //         const response = await fetch('http://localhost:5000/api/productivity/contacts');
+    //         if (response.ok) {
+    //             const contacts = await response.json();
+    //             
+    //             // Converter para formato do WhatsApp
+    //             this.contacts = contacts.map((contact, index) => ({
+    //                 id: `contact_${index}`,
+    //                 name: contact.nome_cliente || `Cliente ${index + 1}`,
+    //                 phone: contact.telefone1 || contact.telefone2 || `55${Math.floor(Math.random() * 900000000) + 100000000}`,
+    //                 lastMessage: 'Cliente do sistema SacsMax',
+    //                 lastMessageTime: formatTime(new Date()),
+    //                 online: true,
+    //                 unreadCount: 0,
+    //                 originalData: contact
+    //             }));
+    //             
+    //             console.log(`✅ Carregados ${this.contacts.length} contatos do banco de dados`);
+    //             this.updateContactsList();
+    //             
+    //             // Inicializar mensagens vazias para cada contato
+    //             for (const contact of this.contacts) {
+    //                 if (!this.messages[contact.id]) {
+    //                         this.messages[contact.id] = [];
+    //                     }
+    //                 }
+    //             } else {
+    //                 console.error('Erro ao carregar contatos do banco:', response.status);
+    //                 // Fallback: criar contatos de exemplo
+    //                 // REMOVIDO: createSampleContacts() - não usar contatos de exemplo
+    //             }
+    //         } catch (error) {
+    //             console.error('Erro ao carregar contatos reais:', error);
+    //             // REMOVIDO: createSampleContacts() - não usar contatos de exemplo
+    //         }
+    //     }
 
     async loadMessagesForContact(contactId) {
         try {
-            // Para contatos do banco, criar mensagem inicial
-            if (!this.messages[contactId] || this.messages[contactId].length === 0) {
-                const contact = this.contacts.find(c => c.id === contactId);
-                if (contact) {
-                    this.messages[contactId] = [{
-                        id: `msg_${Date.now()}`,
-                        text: `Olá! Sou o assistente do SacsMax. Como posso ajudar você hoje?`,
-                        time: formatTime(new Date()),
-                        isOutgoing: false,
-                        timestamp: Date.now()
-                    }];
-                }
+            // Para conversas reais, não criar mensagem inicial automática
+            if (!this.messages[contactId]) {
+                this.messages[contactId] = [];
             }
         } catch (error) {
             console.error('Erro ao carregar mensagens:', error);
         }
     }
 
-    createSampleContacts() {
-        this.contacts = [
-            {
-                id: 'contact_1',
-                name: 'João Silva',
-                phone: '5511999999999',
-                lastMessage: 'Olá! Preciso de ajuda com meu plano',
-                lastMessageTime: formatTime(new Date()),
-                online: true,
-                unreadCount: 0
-            },
-            {
-                id: 'contact_2',
-                name: 'Maria Santos',
-                phone: '5511888888888',
-                lastMessage: 'Quando vocês vão instalar meu serviço?',
-                lastMessageTime: formatTime(new Date()),
-                online: false,
-                unreadCount: 2
-            }
-        ];
-        
-        // Inicializar mensagens para contatos de exemplo
-        for (const contact of this.contacts) {
-            this.messages[contact.id] = [{
-                id: `msg_${Date.now()}_${contact.id}`,
-                text: contact.lastMessage,
-                time: contact.lastMessageTime,
-                isOutgoing: false,
-                timestamp: Date.now()
-            }];
-        }
-        
-        this.updateContactsList();
-    }
+    // REMOVIDO: createSampleContacts() - não usar contatos de exemplo
+    // createSampleContacts() {
+    //     this.contacts = [
+    //         {
+    //             id: 'contact_1',
+    //             name: 'João Silva',
+    //             phone: '5511999999999',
+    //             lastMessage: 'Olá! Preciso de ajuda com meu plano',
+    //             lastMessageTime: formatTime(new Date()),
+    //             online: true,
+    //             unreadCount: 0
+    //         },
+    //         {
+    //             id: 'contact_2',
+    //             name: 'Maria Santos',
+    //             phone: '5511888888888',
+    //             lastMessage: 'Quando vocês vão instalar meu serviço?',
+    //             lastMessageTime: formatTime(new Date()),
+    //             online: false,
+    //             unreadCount: 2
+    //         }
+    //     ];
+    //     
+    //     // Inicializar mensagens para contatos de exemplo
+    //     for (const contact of this.contacts) {
+    //         this.messages[contact.id] = [{
+    //             id: `msg_${Date.now()}_${contact.id}`,
+    //             text: contact.lastMessage,
+    //             time: contact.lastMessageTime,
+    //             isOutgoing: false,
+    //             timestamp: Date.now()
+    //         }];
+    //     }
+    //     
+    //     this.updateContactsList();
+    // }
 
     showQRCodeModal() {
         // Remover modal existente se houver
@@ -651,7 +690,7 @@ class WhatsAppModule {
         this.setupEventListeners();
         
         // Carregar contatos automaticamente
-        await this.loadRealContacts();
+        // await this.loadRealContacts(); // REMOVIDO - usar apenas WebSocket
         
         // Verificar status do WhatsApp
         await this.checkWhatsAppStatus();
