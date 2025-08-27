@@ -1688,3 +1688,20 @@ if (typeof module !== 'undefined' && module.exports) {
 
 // Variável global para acesso direto
 window.whatsappModule = new WhatsAppModule();
+
+// TESTE DIRETO: Verificar se o módulo está funcionando
+console.log('🔍 TESTE DIRETO: Verificando módulo WhatsApp...');
+console.log('window.whatsappModule:', window.whatsappModule);
+console.log('Método openConversationWithContact existe?', typeof window.whatsappModule?.openConversationWithContact);
+console.log('Contatos existentes:', window.whatsappModule?.contacts);
+
+// TESTE: Chamar método diretamente
+setTimeout(() => {
+    if (window.whatsappModule && typeof window.whatsappModule.openConversationWithContact === 'function') {
+        console.log('✅ Módulo WhatsApp funcionando! Testando método...');
+        // Testar com dados fictícios
+        window.whatsappModule.openConversationWithContact('19999999999', 'TESTE DIRETO');
+    } else {
+        console.error('❌ Módulo WhatsApp NÃO está funcionando!');
+    }
+}, 3000);
