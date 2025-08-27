@@ -221,50 +221,138 @@ class ProdutividadeModule {
             // Aguardar um pouco para a aba carregar e o módulo ser inicializado
             setTimeout(() => {
                 console.log('🔄 Verificando módulo WhatsApp...');
-                console.log('window.whatsappModule:', window.whatsappModule);
                 
-                // Tentar encontrar e ativar o módulo WhatsApp
+                // Tentar múltiplas formas de acessar o módulo WhatsApp
+                let whatsappModule = null;
+                
+                // 1. Tentar via window.whatsappModule
                 if (window.whatsappModule && typeof window.whatsappModule.openConversationWithContact === 'function') {
-                    console.log('✅ Módulo WhatsApp encontrado, abrindo conversa...');
-                    // Abrir conversa com o cliente
-                    window.whatsappModule.openConversationWithContact(phone, clientName);
-                } else {
-                    console.log('⚠️ Módulo WhatsApp não encontrado, tentando inicializar...');
-                    
-                    // Tentar forçar a inicialização do módulo WhatsApp
-                    if (window.app && window.app.modules && window.app.modules.whatsapp) {
-                        console.log('✅ Módulo WhatsApp encontrado via app.modules, abrindo conversa...');
-                        window.app.modules.whatsapp.openConversationWithContact(phone, clientName);
-                    } else {
-                        console.log('⚠️ Tentando criar novo módulo WhatsApp...');
-                        
-                        // Fallback: criar novo módulo se necessário
-                        try {
-                            if (typeof WhatsAppModule !== 'undefined') {
-                                window.whatsappModule = new WhatsAppModule();
-                                setTimeout(() => {
-                                    if (window.whatsappModule && typeof window.whatsappModule.openConversationWithContact === 'function') {
-                                        console.log('✅ Novo módulo WhatsApp criado, abrindo conversa...');
-                                        window.whatsappModule.openConversationWithContact(phone, clientName);
-                                    } else {
-                                        console.error('❌ Falha ao criar módulo WhatsApp');
-                                        this.addLog('error', '❌ Não foi possível abrir conversa no WhatsApp');
-                                    }
-                                }, 500);
-                            } else {
-                                console.error('❌ WhatsAppModule não está disponível');
-                                this.addLog('error', '❌ Módulo WhatsApp não disponível');
-                            }
-                        } catch (error) {
-                            console.error('❌ Erro ao criar módulo WhatsApp:', error);
-                            this.addLog('error', '❌ Erro ao inicializar WhatsApp');
+                    console.log('✅ Módulo WhatsApp encontrado via window.whatsappModule');
+                    whatsappModule = window.whatsappModule;
+                }
+                // 2. Tentar via app.modules
+                else if (window.app && window.app.modules && window.app.modules.whatsapp) {
+                    console.log('✅ Módulo WhatsApp encontrado via app.modules');
+                    whatsappModule = window.app.modules.whatsapp;
+                }
+                // 3. Tentar criar novo módulo
+                else {
+                    console.log('⚠️ Tentando criar novo módulo WhatsApp...');
+                    try {
+                        if (typeof WhatsAppModule !== 'undefined') {
+                            whatsappModule = new WhatsAppModule();
+                            window.whatsappModule = whatsappModule;
+                            console.log('✅ Novo módulo WhatsApp criado');
                         }
+                    } catch (error) {
+                        console.error('❌ Erro ao criar módulo WhatsApp:', error);
                     }
                 }
-            }, 1000); // Aumentei o tempo de espera para 1 segundo
+                
+                // Se encontrou o módulo, tentar abrir a conversa
+                if (whatsappModule && typeof whatsappModule.openConversationWithContact === 'function') {
+                    console.log('✅ Abrindo conversa com cliente...');
+                    try {
+                        whatsappModule.openConversationWithContact(phone, clientName);
+                        this.addLog('success', `✅ Conversa aberta com ${clientName}`);
+                    } catch (error) {
+                        console.error('❌ Erro ao abrir conversa:', error);
+                        this.addLog('error', '❌ Erro ao abrir conversa no WhatsApp');
+                    }
+                } else {
+                    console.error('❌ Módulo WhatsApp não disponível ou método não existe');
+                    console.log('whatsappModule:', whatsappModule);
+                    this.addLog('error', '❌ Módulo WhatsApp não disponível');
+                    
+                    // Fallback: tentar abrir manualmente
+                    this.tryManualChatOpen(phone, clientName);
+                }
+            }, 1500); // Aumentei para 1.5 segundos
         } else {
             console.error('❌ Aba WhatsApp não encontrada');
             this.addLog('error', '❌ Aba WhatsApp não encontrada');
+        }
+    }
+
+    // NOVO: Fallback manual para abrir chat
+    tryManualChatOpen(phone, clientName) {
+        console.log('🔄 Tentando abrir chat manualmente...');
+        
+        // Limpar telefone
+        const cleanPhone = phone.replace(/\D/g, '');
+        let whatsappPhone = cleanPhone;
+        if (cleanPhone.length === 11 && cleanPhone.startsWith('0')) {
+            whatsappPhone = '55' + cleanPhone.substring(1);
+        } else if (cleanPhone.length === 10) {
+            whatsappPhone = '55' + cleanPhone;
+        }
+        
+        // Tentar encontrar o contato na lista de contatos do WhatsApp
+        const contactsList = document.querySelector('.wa-contacts-list');
+        if (contactsList) {
+            // Procurar por contatos existentes
+            const contactItems = contactsList.querySelectorAll('.contact-item');
+            let foundContact = false;
+            
+            contactItems.forEach(item => {
+                const contactName = item.querySelector('.contact-name')?.textContent;
+                const contactPhone = item.querySelector('.contact-phone')?.textContent;
+                
+                if (contactName && contactName.includes(clientName) || 
+                    contactPhone && contactPhone.includes(whatsappPhone)) {
+                    console.log('✅ Contato encontrado na lista, clicando...');
+                    item.click();
+                    foundContact = true;
+                }
+            });
+            
+            if (!foundContact) {
+                console.log('⚠️ Contato não encontrado na lista, criando novo...');
+                this.createNewContact(whatsappPhone, clientName);
+            }
+        } else {
+            console.log('⚠️ Lista de contatos não encontrada, criando novo contato...');
+            this.createNewContact(whatsappPhone, clientName);
+        }
+    }
+
+    // NOVO: Criar novo contato
+    createNewContact(phone, clientName) {
+        console.log(`🆕 Criando novo contato: ${clientName} (${phone})`);
+        
+        // Tentar adicionar contato via módulo WhatsApp
+        if (window.whatsappModule && typeof window.whatsappModule.addContact === 'function') {
+            window.whatsappModule.addContact(clientName, phone);
+        } else {
+            // Fallback: adicionar manualmente à interface
+            this.addContactToInterface(clientName, phone);
+        }
+    }
+
+    // NOVO: Adicionar contato à interface
+    addContactToInterface(clientName, phone) {
+        console.log(`➕ Adicionando ${clientName} à interface...`);
+        
+        // Simular clique no botão de novo contato se existir
+        const newContactBtn = document.querySelector('.new-contact-btn, .add-contact-btn');
+        if (newContactBtn) {
+            newContactBtn.click();
+            setTimeout(() => {
+                // Preencher formulário se existir
+                const nameInput = document.querySelector('input[placeholder*="nome"], input[name="name"]');
+                const phoneInput = document.querySelector('input[placeholder*="telefone"], input[name="phone"]');
+                
+                if (nameInput && phoneInput) {
+                    nameInput.value = clientName;
+                    phoneInput.value = phone;
+                    
+                    // Simular envio
+                    const submitBtn = document.querySelector('button[type="submit"], .save-contact-btn');
+                    if (submitBtn) {
+                        submitBtn.click();
+                    }
+                }
+            }, 500);
         }
     }
 

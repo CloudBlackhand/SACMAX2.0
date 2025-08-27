@@ -1006,6 +1006,62 @@ class WhatsAppModule {
             }
         }, 5000);
     }
+
+    // NOVO: Abrir conversa com contato por telefone
+    openConversationWithContact(phone, clientName) {
+        console.log(`🎯 Tentando abrir conversa com ${clientName} (${phone})`);
+        
+        // Limpar telefone (remover caracteres especiais)
+        const cleanPhone = phone.replace(/\D/g, '');
+        
+        // Verificar se é um telefone válido
+        if (cleanPhone.length < 10) {
+            console.error('❌ Telefone inválido:', phone);
+            return;
+        }
+
+        // Formatar telefone para WhatsApp (adicionar código do país se necessário)
+        let whatsappPhone = cleanPhone;
+        if (cleanPhone.length === 11 && cleanPhone.startsWith('0')) {
+            whatsappPhone = '55' + cleanPhone.substring(1); // Brasil
+        } else if (cleanPhone.length === 10) {
+            whatsappPhone = '55' + cleanPhone; // Brasil
+        }
+
+        // Procurar contato existente por telefone
+        let contact = this.contacts.find(c => c.phone === whatsappPhone);
+        
+        if (!contact) {
+            // Criar novo contato se não existir
+            contact = {
+                id: `contact_${Date.now()}`,
+                name: clientName,
+                phone: whatsappPhone,
+                lastMessage: '',
+                lastMessageTime: formatTime(new Date()),
+                online: false
+            };
+            this.contacts.push(contact);
+            console.log(`✅ Novo contato criado: ${clientName}`);
+        }
+
+        // Selecionar o contato
+        this.selectContact(contact.id);
+        
+        // Atualizar interface
+        this.updateContactsList();
+        this.updateChatArea();
+        
+        console.log(`✅ Conversa aberta com ${clientName} (${whatsappPhone})`);
+        
+        // Focar no input de mensagem
+        setTimeout(() => {
+            const messageInput = document.getElementById('message-input');
+            if (messageInput) {
+                messageInput.focus();
+            }
+        }, 100);
+    }
 }
 
 // Adiciona estilos específicos do módulo WhatsApp
