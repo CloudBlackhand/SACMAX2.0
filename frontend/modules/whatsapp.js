@@ -1058,8 +1058,8 @@ class WhatsAppModule {
             this.messages[contact.id] = [];
         }
 
-        // FORÇAR A ABERTURA DO CHAT
-        console.log('🎯 FORÇANDO abertura do chat...');
+        // FORÇAR A ABERTURA DO CHAT - MÉTODO DIRETO
+        console.log('🎯 FORÇANDO abertura do chat com método DIRETO...');
         
         // 1. Definir o chat atual
         this.currentChat = contact;
@@ -1080,18 +1080,33 @@ class WhatsAppModule {
             }];
         }
         
-        // 4. ATUALIZAR A INTERFACE FORÇADAMENTE
+        // 4. ATUALIZAR A INTERFACE FORÇADAMENTE - MÉTODO DIRETO
         console.log('🔄 ATUALIZANDO INTERFACE FORÇADAMENTE...');
         
         // Atualizar lista de contatos
         this.updateContactsList();
         
-        // FORÇAR atualização da área de chat
+        // FORÇAR atualização da área de chat - MÉTODO DIRETO
         const chatArea = document.querySelector('.wa-chat-area');
         if (chatArea) {
-            console.log('✅ Área de chat encontrada, forçando atualização...');
-            chatArea.innerHTML = this.renderChatArea();
+            console.log('✅ Área de chat encontrada, forçando atualização DIRETA...');
+            
+            // FORÇAR a renderização do chat
+            const chatHTML = this.renderChatArea();
+            console.log('📝 HTML do chat gerado:', chatHTML.substring(0, 100) + '...');
+            
+            chatArea.innerHTML = chatHTML;
             console.log('✅ Chat renderizado forçadamente');
+            
+            // Verificar se foi atualizado
+            setTimeout(() => {
+                const updatedChatArea = document.querySelector('.wa-chat-area');
+                if (updatedChatArea.innerHTML !== chatHTML) {
+                    console.log('⚠️ Chat não foi atualizado, tentando novamente...');
+                    updatedChatArea.innerHTML = chatHTML;
+                }
+                console.log('✅ Verificação final do chat');
+            }, 50);
         } else {
             console.log('❌ Área de chat não encontrada!');
         }
