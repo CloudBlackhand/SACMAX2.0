@@ -26,9 +26,9 @@ class AuthService:
                 return None
                 
             query = """
-            SELECT id, username, password, full_name, email, role
+            SELECT id, username, password_hash, full_name, email, perms
             FROM users 
-            WHERE username = %s AND password = %s
+            WHERE username = %s AND password_hash = %s
             """
             
             result = self.db_manager.fetch_one(query, (username, password))
@@ -39,7 +39,7 @@ class AuthService:
                     'username': result[1],
                     'full_name': result[3],
                     'email': result[4],
-                    'role': result[5]
+                    'role': result[5]  # perms
                 }
                 logger.info(f"✅ Usuário autenticado: {username}")
                 return user_data

@@ -1,29 +1,27 @@
--- Tabela de usuários simples
-CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    password VARCHAR(100) NOT NULL,
-    full_name VARCHAR(100),
-    email VARCHAR(100),
-    role VARCHAR(20) DEFAULT 'user',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- Atualizar usuários existentes com senhas simples
+UPDATE users SET 
+    password_hash = 'admin123',
+    perms = 'admin'
+WHERE username = 'admin';
 
--- Inserir usuários de teste
-INSERT INTO users (username, password, full_name, email, role) VALUES
+UPDATE users SET 
+    password_hash = 'user123',
+    perms = 'user'
+WHERE username = 'user';
+
+UPDATE users SET 
+    password_hash = 'manager123',
+    perms = 'manager'
+WHERE username = 'manager';
+
+-- Inserir usuários se não existirem
+INSERT INTO users (username, password_hash, full_name, email, perms) VALUES
 ('admin', 'admin123', 'Administrador', 'admin@sacmax.com', 'admin'),
 ('user', 'user123', 'Usuário Padrão', 'user@sacmax.com', 'user'),
 ('manager', 'manager123', 'Gerente', 'manager@sacmax.com', 'manager')
 ON CONFLICT (username) DO NOTHING;
 
--- Tabela de sessões simples
-CREATE TABLE IF NOT EXISTS user_sessions (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
-    session_token VARCHAR(100) UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP
-);
+-- Verificar usuários
+SELECT username, perms FROM users;
 
--- Verificar se as tabelas foram criadas
-SELECT 'Tabelas de usuários criadas com sucesso!' as status;
+SELECT 'Usuários atualizados com sucesso!' as status;

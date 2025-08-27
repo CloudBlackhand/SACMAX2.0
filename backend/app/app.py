@@ -108,7 +108,14 @@ if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
 
 # Inicializar serviços
-auth_service = AuthService(db_manager) if AuthService and db_manager else None
+auth_service = None
+if AuthService:
+    try:
+        auth_service = AuthService(db_manager)
+        logger.info("✅ AuthService inicializado com sucesso")
+    except Exception as e:
+        logger.error(f"❌ Erro ao inicializar AuthService: {e}")
+        auth_service = None
 
 # Dados em memória (fallback se banco não estiver disponível)
 contacts = []
