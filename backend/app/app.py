@@ -711,7 +711,7 @@ async def save_message(message: dict):
         }
 
 @app.get("/api/messages/{contact_id}")
-async def get_messages(contact_id: str, limit: int = 50):
+async def get_messages(contact_id: str, limit: int = 50, days: int = None):
     """Obter mensagens de um contato"""
     try:
         if not db_manager or not db_manager.connection:
@@ -721,16 +721,25 @@ async def get_messages(contact_id: str, limit: int = 50):
                 "error": "Banco de dados não disponível"
             }
         
-        # Buscar mensagens do contato
-        query = """
-            SELECT id, text, is_outgoing, type, timestamp
-            FROM messages 
-            WHERE contact_id = %s
-            ORDER BY timestamp DESC 
-            LIMIT %s
-        """
-        
-        result = db_manager.execute_query(query, (contact_id, limit))
+        # Buscar mensagens do contato com filtro de data
+        if days and days in [5, 10, 15, 20, 25, 30]:
+            query = """
+                SELECT id, text, is_outgoing, type, timestamp
+                FROM messages 
+                WHERE contact_id = %s AND timestamp >= NOW() - INTERVAL '%s days'
+                ORDER BY timestamp DESC 
+                LIMIT %s
+            """
+            result = db_manager.execute_query(query, (contact_id, days, limit))
+        else:
+            query = """
+                SELECT id, text, is_outgoing, type, timestamp
+                FROM messages 
+                WHERE contact_id = %s
+                ORDER BY timestamp DESC 
+                LIMIT %s
+            """
+            result = db_manager.execute_query(query, (contact_id, limit))
         
         if result:
             messages = []
@@ -749,12 +758,18 @@ async def get_messages(contact_id: str, limit: int = 50):
             
             return {
                 "success": True,
-                "messages": messages
+                "messages": messages,
+                "filter": {
+                    "days": days
+                }
             }
         else:
             return {
                 "success": True,
-                "messages": []
+                "messages": [],
+                "filter": {
+                    "days": days
+                }
             }
             
     except Exception as e:

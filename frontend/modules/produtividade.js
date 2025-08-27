@@ -435,7 +435,7 @@ class ProdutividadeModule {
         } else {
             console.warn('⚠️ Elemento contacts-list não encontrado');
         }
-        
+
         // Atualizar contador no header
         const contactsHeader = document.querySelector('.contacts-header h3');
         if (contactsHeader) {

@@ -293,29 +293,50 @@ class FeedbackService:
             return {'positive': 0, 'negative': 0, 'neutral': 0, 'total': 0}
 
     def analyze_and_save_message(self, message_data: Dict) -> Dict:
-        """Analisa uma mensagem e salva como feedback"""
+        """Analisa e salva uma mensagem como feedback"""
         try:
-            # Analisa a mensagem
-            feedback_data = sentiment_analyzer.analyze_message(message_data)
+            if not sentiment_analyzer:
+                logger.warning("Analisador de sentimento não disponível")
+                return {
+                    'success': False,
+                    'message': 'Analisador de sentimento não disponível'
+                }
             
-            if not feedback_data:
-                logger.error("Falha na análise da mensagem")
-                return {}
+            # Analisar sentimento
+            analysis = sentiment_analyzer.analyze_text(message_data.get('text', ''))
             
-            # Salva no banco
-            success = self.save_feedback(feedback_data)
+            # Preparar dados do feedback
+            feedback_data = {
+                'id': f"fb_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{message_data.get('contact_phone', 'unknown')}",
+                'contact_name': message_data.get('contact_name', ''),
+                'contact_phone': message_data.get('contact_phone', ''),
+                'text': message_data.get('text', ''),
+                'sentiment': analysis.get('sentiment', 'neutral'),
+                'score': analysis.get('score', 0.0),
+                'keywords': analysis.get('keywords', []),
+                'timestamp': message_data.get('timestamp'),
+                'analyzed_at': datetime.now().isoformat()
+            }
             
-            if success:
-                logger.info(f"Feedback analisado e salvo: {feedback_data.get('id')}")
-                return feedback_data
+            # Salvar no banco
+            if self.save_feedback(feedback_data):
+                return {
+                    'success': True,
+                    'feedback': feedback_data,
+                    'message': 'Feedback analisado e salvo com sucesso'
+                }
             else:
-                logger.error("Falha ao salvar feedback")
-                return feedback_data  # Retorna mesmo sem salvar
+                return {
+                    'success': False,
+                    'message': 'Erro ao salvar feedback'
+                }
                 
         except Exception as e:
             logger.error(f"Erro ao analisar e salvar mensagem: {e}")
-            return {}
+            return {
+                'success': False,
+                'message': f'Erro ao processar feedback: {str(e)}'
+            }
 
 # Instância global do serviço
 feedback_service = FeedbackService()
-
