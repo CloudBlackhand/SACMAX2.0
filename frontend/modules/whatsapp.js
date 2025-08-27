@@ -1718,6 +1718,15 @@ if (typeof module !== 'undefined' && module.exports) {
 // Variável global para acesso direto
 window.whatsappModule = new WhatsAppModule();
 
+// FORÇAR inicialização
+setTimeout(() => {
+    if (window.whatsappModule) {
+        console.log('🔄 FORÇANDO inicialização do módulo WhatsApp...');
+        window.whatsappModule.init();
+        console.log('✅ Módulo WhatsApp inicializado forçadamente');
+    }
+}, 1000);
+
 // TESTE DIRETO: Verificar se o módulo está funcionando
 console.log('🔍 TESTE DIRETO: Verificando módulo WhatsApp...');
 console.log('window.whatsappModule:', window.whatsappModule);
@@ -1732,5 +1741,23 @@ setTimeout(() => {
         window.whatsappModule.openConversationWithContact('19999999999', 'TESTE DIRETO');
     } else {
         console.error('❌ Módulo WhatsApp NÃO está funcionando!');
+        console.log('Tentando criar novo módulo...');
+        
+        // Tentar criar novo módulo
+        try {
+            window.whatsappModule = new WhatsAppModule();
+            window.whatsappModule.init();
+            console.log('✅ Novo módulo WhatsApp criado e inicializado');
+            
+            // Testar novamente
+            if (typeof window.whatsappModule.openConversationWithContact === 'function') {
+                console.log('✅ Método disponível, testando...');
+                window.whatsappModule.openConversationWithContact('19999999999', 'TESTE DIRETO');
+            } else {
+                console.error('❌ Método ainda não disponível');
+            }
+        } catch (error) {
+            console.error('❌ Erro ao criar novo módulo:', error);
+        }
     }
 }, 3000);
