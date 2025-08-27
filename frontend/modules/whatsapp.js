@@ -1710,6 +1710,103 @@ if (!document.getElementById('whatsapp-styles')) {
     document.head.appendChild(style);
 }
 
+// Funções auxiliares para abertura de conversa
+        formatPhoneNumber(phone) {
+            // Remove caracteres não numéricos e adiciona código do Brasil se necessário
+            let cleanPhone = phone.replace(/\D/g, '');
+            if (cleanPhone.length === 11 && !cleanPhone.startsWith('55')) {
+                cleanPhone = '55' + cleanPhone;
+            }
+            return cleanPhone;
+        }
+
+        getContactByPhone(phone) {
+            const cleanPhone = this.formatPhoneNumber(phone);
+            return this.contacts.find(contact => 
+                this.formatPhoneNumber(contact.phone) === cleanPhone ||
+                contact.phone.includes(cleanPhone) ||
+                cleanPhone.includes(this.formatPhoneNumber(contact.phone))
+            );
+        }
+
+        // Função para abrir conversa com número específico
+        openConversationWithContact(phone, name = null) {
+            const cleanPhone = this.formatPhoneNumber(phone);
+            
+            // Verifica se já existe contato com esse número
+            let contact = this.getContactByPhone(phone);
+            
+            if (contact) {
+                // Contato existe, seleciona diretamente
+                this.selectContact(contact.id);
+                console.log('📱 Conversa aberta com contato existente:', contact.name);
+            } else {
+                // Cria contato temporário para abrir conversa
+                const tempContact = {
+                    id: 'temp_' + Date.now(),
+                    name: name || phone,
+                    phone: cleanPhone,
+                    isTemp: true,
+                    lastMessage: '',
+                    lastMessageTime: new Date().toISOString(),
+                    unreadCount: 0
+                };
+                
+                // Adiciona à lista de contatos
+                this.contacts.unshift(tempContact);
+                this.renderContacts();
+                
+                // Seleciona o contato
+                this.selectContact(tempContact.id);
+                
+                console.log('📱 Nova conversa criada com:', name || phone);
+                
+                // Foca no campo de mensagem
+                setTimeout(() => {
+                    const messageInput = document.getElementById('message-input');
+                    if (messageInput) {
+                        messageInput.focus();
+                    }
+                }, 500);
+            }
+            
+            return contact;
+        }
+
+        // Função para adicionar novo contato
+        addContact(name, phone) {
+            const cleanPhone = this.formatPhoneNumber(phone);
+            
+            // Verifica se já existe
+            const existingContact = this.getContactByPhone(phone);
+            if (existingContact) {
+                return existingContact;
+            }
+            
+            // Cria novo contato
+            const newContact = {
+                id: 'contact_' + Date.now(),
+                name: name,
+                phone: cleanPhone,
+                lastMessage: '',
+                lastMessageTime: new Date().toISOString(),
+                unreadCount: 0
+            };
+            
+            this.contacts.unshift(newContact);
+            this.renderContacts();
+            
+            console.log('📞 Novo contato adicionado:', name, phone);
+            return newContact;
+        }
+
+        // Função para criar e selecionar contato
+        createAndSelectContact(name, phone) {
+            const contact = this.addContact(name, phone);
+            this.selectContact(contact.id);
+            return contact;
+        }
+
 // Exporta para uso global
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = WhatsAppModule;
@@ -1718,12 +1815,37 @@ if (typeof module !== 'undefined' && module.exports) {
 // Variável global para acesso direto
 window.whatsappModule = new WhatsAppModule();
 
+// FORÇAR inicialização IMEDIATA
+console.log('🚀 FORÇANDO inicialização IMEDIATA do módulo WhatsApp...');
+try {
+    window.whatsappModule.init();
+    console.log('✅ Módulo WhatsApp inicializado IMEDIATAMENTE');
+    
+    // Verificar se o método está disponível
+    if (typeof window.whatsappModule.openConversationWithContact === 'function') {
+        console.log('✅ Método openConversationWithContact está disponível!');
+    } else {
+        console.error('❌ Método openConversationWithContact NÃO está disponível!');
+        // Adicionar método manualmente se necessário
+        window.whatsappModule.openConversationWithContact = function(phone, clientName) {
+            console.log('🔧 Método adicionado manualmente!');
+            return this.openConversationWithContact(phone, clientName);
+        };
+    }
+} catch (error) {
+    console.error('❌ Erro na inicialização:', error);
+}
+
 // FORÇAR inicialização
 setTimeout(() => {
     if (window.whatsappModule) {
         console.log('🔄 FORÇANDO inicialização do módulo WhatsApp...');
-        window.whatsappModule.init();
-        console.log('✅ Módulo WhatsApp inicializado forçadamente');
+        try {
+            window.whatsappModule.init();
+            console.log('✅ Módulo WhatsApp inicializado forçadamente');
+        } catch (error) {
+            console.error('❌ Erro na inicialização forçada:', error);
+        }
     }
 }, 1000);
 

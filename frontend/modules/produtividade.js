@@ -204,8 +204,21 @@ class ProdutividadeModule {
         // Log da ação
         this.addLog('success', `✅ Abrindo WhatsApp para ${clientName} (${phone})`);
         
-        // Mudar para aba WhatsApp e abrir conversa
-        this.openWhatsAppConversation(phone, clientName);
+        // Usar a nova função openConversationWithContact do whatsapp.js
+        if (window.whatsappModule && typeof window.whatsappModule.openConversationWithContact === 'function') {
+            window.whatsappModule.openConversationWithContact(cleanPhone, clientName);
+            
+            // Mudar para aba WhatsApp
+            const whatsappTab = document.querySelector('[data-module="whatsapp"]');
+            if (whatsappTab) {
+                whatsappTab.click();
+            }
+        } else {
+            // Fallback: abrir WhatsApp Web
+            const whatsappUrl = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=`;
+            window.open(whatsappUrl, '_blank');
+            this.addLog('info', '📱 WhatsApp aberto em nova aba');
+        }
     }
 
     // NOVO: Abrir conversa no WhatsApp interno
