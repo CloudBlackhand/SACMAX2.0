@@ -264,6 +264,11 @@ class WhatsAppModule {
     init() {
         console.log('🚀 Inicializando módulo WhatsApp...');
         this.initWhatsApp();
+        
+        // Garantir que o módulo esteja disponível globalmente
+        window.whatsappModule = this;
+        
+        console.log('✅ Módulo WhatsApp inicializado e disponível globalmente');
     }
 
     destroy() {
@@ -298,6 +303,7 @@ class WhatsAppModule {
     // Função chamada pelo módulo de produtividade
     createNewChat(phone, clientName) {
         console.log('💬 Criando novo chat:', clientName, phone);
+        console.log('🔍 Estado atual do módulo:', this);
         
         // Criar objeto de contato
         this.currentChat = {
@@ -308,15 +314,21 @@ class WhatsAppModule {
             avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(clientName)}&background=25d366&color=fff&size=40`
         };
         
+        console.log('📱 Objeto de chat criado:', this.currentChat);
+        
         // Inicializar mensagens se não existirem
         if (!this.messages[this.currentChat.id]) {
             this.messages[this.currentChat.id] = [];
         }
         
+        console.log('💾 Mensagens inicializadas para chat:', this.currentChat.id);
+        
         // Atualizar interface
+        console.log('🔄 Atualizando interface...');
         this.updateInterface();
         
         console.log('✅ Novo chat criado com sucesso');
+        console.log('🎯 Chat atual:', this.currentChat);
     }
 
     closeChat() {
@@ -391,10 +403,9 @@ class WhatsAppModule {
     }
 
     updateInterface() {
-        // Atualizar o conteúdo do módulo
-        const moduleContent = document.querySelector('.module-content');
-        if (moduleContent) {
-            moduleContent.innerHTML = this.render();
+        // Atualizar o conteúdo do módulo usando a função do main.js
+        if (window.app && window.app.currentModule === 'whatsapp') {
+            window.app.loadModule('whatsapp');
         }
         
         // Scroll para última mensagem
