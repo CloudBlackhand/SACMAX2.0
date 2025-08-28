@@ -53,14 +53,14 @@ class WhatsAppModule {
     async checkBackendStatus() {
         try {
             const response = await fetch(`${window.location.origin}/api/health`);
-            if (response.ok) {
+                if (response.ok) {
                 console.log('✅ Backend conectado');
                 return true;
             } else {
                 console.log('⚠️ Backend não disponível');
                 return false;
-            }
-        } catch (error) {
+                }
+            } catch (error) {
             console.error('Erro ao verificar backend:', error);
             return false;
         }
@@ -92,11 +92,11 @@ class WhatsAppModule {
                 this.showError('WhatsApp não está ativado. Ative primeiro via Settings.');
                 return;
             }
-
+            
             const generateBtn = document.getElementById('generate-qr-btn');
             generateBtn.disabled = true;
             generateBtn.innerHTML = '<span class="btn-icon">⏳</span> Gerando...';
-
+            
             // Solicitar geração do QR Code
             const response = await fetch(`${window.location.origin}/api/whatsapp/generate-qr`, {
                 method: 'POST',
@@ -208,7 +208,7 @@ class WhatsAppModule {
                 </div>
             `;
         }
-        
+
         return this.filteredContacts.map(contact => `
             <div class="wa-contact-item ${this.currentChat?.id === contact.id ? 'active' : ''}" 
                  onclick="whatsappModule.selectContact('${contact.id}')">
@@ -239,8 +239,8 @@ class WhatsAppModule {
         }
         
         return `
-            <div class="wa-chat-header">
-                <div class="wa-chat-contact">
+                <div class="wa-chat-header">
+                    <div class="wa-chat-contact">
                     <img src="${this.currentChat.avatar || 'https://via.placeholder.com/40'}" alt="${this.currentChat.name}">
                     <div class="wa-chat-info">
                         <div class="wa-chat-name">${this.currentChat.name}</div>
@@ -261,11 +261,11 @@ class WhatsAppModule {
                     <input type="text" class="wa-message-text" placeholder="Digite uma mensagem..." 
                            onkeypress="whatsappModule.handleMessageKeyPress(event)">
                     <button class="wa-emoji-btn" onclick="whatsappModule.toggleEmojiPicker()">
-                        😊
-                    </button>
-                    <button class="wa-send-btn" onclick="whatsappModule.sendMessage()">
-                        ➤
-                    </button>
+                            😊
+                        </button>
+                        <button class="wa-send-btn" onclick="whatsappModule.sendMessage()">
+                            ➤
+                        </button>
                 </div>
             </div>
         `;
@@ -282,10 +282,10 @@ class WhatsAppModule {
                 </div>
             `;
         }
-        
+
         return messages.map(message => `
             <div class="wa-message ${message.isOutgoing ? 'outgoing' : 'incoming'}">
-                <div class="wa-message-content">
+                    <div class="wa-message-content">
                     <div class="wa-message-text">${message.text}</div>
                     <div class="wa-message-time">${message.time}</div>
                 </div>
@@ -310,8 +310,8 @@ class WhatsAppModule {
     // Funções auxiliares
     searchContacts(query) {
         this.searchTerm = query.toLowerCase();
-        this.filteredContacts = this.contacts.filter(contact => 
-            contact.name.toLowerCase().includes(this.searchTerm) ||
+        this.filteredContacts = this.contacts.filter(contact =>
+                    contact.name.toLowerCase().includes(this.searchTerm) ||
             contact.lastMessage?.toLowerCase().includes(this.searchTerm)
         );
         this.updateContactsList();
@@ -327,7 +327,7 @@ class WhatsAppModule {
         const text = input?.value?.trim();
         
         if (!text || !this.currentChat) return;
-        
+
         const message = {
             id: Date.now(),
             text: text,

@@ -44,7 +44,7 @@ function broadcastToClients(event, data) {
 wss.on('connection', (ws) => {
     console.log('🔌 Nova conexão WebSocket estabelecida');
     connections.add(ws);
-    
+
     // Enviar status atual para nova conexão
     ws.send(JSON.stringify({
         event: 'status_update',
@@ -53,12 +53,12 @@ wss.on('connection', (ws) => {
             isEnabled: isEnabled
         }
     }));
-    
+
     ws.on('close', () => {
         console.log('🔌 Conexão WebSocket fechada');
         connections.delete(ws);
     });
-    
+
     ws.on('error', (error) => {
         console.error('❌ Erro na conexão WebSocket:', error);
         connections.delete(ws);
@@ -187,7 +187,7 @@ function createWhatsAppClient() {
         
         broadcastToClients('loading_screen', {
             percent,
-            message,
+                message,
             status: 'loading'
         });
     });
@@ -402,11 +402,11 @@ app.get('/health', (req, res) => {
 // Status do WhatsApp
 app.get('/api/whatsapp/status', (req, res) => {
     res.json({
-        success: true,
+            success: true,
         status: whatsappStatus,
         isEnabled: isEnabled,
         hasClient: !!whatsappClient,
-        timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString()
     });
 });
 
@@ -500,20 +500,20 @@ app.get('/api/connections', (req, res) => {
 });
 
 app.post('/api/sessions/add', (req, res) => {
-    const { sessionName } = req.body;
-    
-    const response = {
-        success: true,
+        const { sessionName } = req.body;
+        
+        const response = {
+            success: true,
         message: 'Sessão WhatsApp criada com sucesso',
-        data: {
-            sessionName: sessionName || 'sacmax',
+            data: {
+                sessionName: sessionName || 'sacmax',
             status: whatsappStatus,
             isEnabled: isEnabled,
-            timestamp: new Date().toISOString()
-        }
-    };
+                timestamp: new Date().toISOString()
+            }
+        };
 
-    res.json(response);
+        res.json(response);
 });
 
 app.get('/api/sessions/:sessionName/qr', (req, res) => {
@@ -522,17 +522,17 @@ app.get('/api/sessions/:sessionName/qr', (req, res) => {
 });
 
 app.get('/api/sessions/:sessionName/status', (req, res) => {
-    const { sessionName } = req.params;
-    
-    const response = {
-        success: true,
-        sessionName: sessionName,
+        const { sessionName } = req.params;
+        
+        const response = {
+            success: true,
+            sessionName: sessionName,
         status: whatsappStatus,
         isEnabled: isEnabled,
-        timestamp: new Date().toISOString()
-    };
+            timestamp: new Date().toISOString()
+        };
 
-    res.json(response);
+        res.json(response);
 });
 
 // Iniciar servidor
