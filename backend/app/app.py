@@ -174,7 +174,7 @@ async def waha_contacts(session: str = "sacsmax"):
         try:
             result = await waha_service.get_contacts(session)
             return JSONResponse(content=result)
-        except Exception as e:
+    except Exception as e:
             logger.error(f"Erro ao obter contatos WAHA: {e}")
             return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
     else:
@@ -191,14 +191,14 @@ async def root():
             return FileResponse(str(index_path))
         else:
             return HTMLResponse(content="""
-            <html>
+    <html>
                 <head><title>SacsMax - Sistema de Gestão de SAC</title></head>
-                <body>
+        <body>
                     <h1>🚀 SacsMax - Sistema de Gestão de SAC</h1>
                     <p>Sistema funcionando com WAHA!</p>
                     <p><a href="/docs">📚 API Documentation</a></p>
-                </body>
-            </html>
+        </body>
+    </html>
             """)
     except Exception as e:
         return HTMLResponse(content=f"<h1>Erro: {e}</h1>")
@@ -242,7 +242,7 @@ async def create_contact(contact: dict):
     try:
         if db_manager and db_manager.is_connected():
             # Salvar no banco de dados
-            query = """
+        query = """
             INSERT INTO contacts (name, email, phone, company, created_at)
             VALUES (%s, %s, %s, %s, NOW())
             """
@@ -301,7 +301,7 @@ async def create_message(message: dict):
             # Salvar em memória
             message["id"] = len(messages) + 1
             message["created_at"] = datetime.now().isoformat()
-            messages.append(message)
+                messages.append(message)
             return {"message": "Mensagem criada com sucesso"}
     except Exception as e:
         logger.error(f"Erro ao criar mensagem: {e}")
@@ -360,7 +360,7 @@ async def startup_event():
     # Inicializar banco de dados se disponível
     if db_manager:
         try:
-            init_database()
+        init_database()
             logger.info("✅ Banco de dados inicializado")
         except Exception as e:
             logger.warning(f"⚠️ Erro ao inicializar banco: {e}")
@@ -373,13 +373,13 @@ async def shutdown_event():
     # Fechar conexões do banco
     if db_manager:
         try:
-            close_database()
+        close_database()
             logger.info("✅ Conexões do banco fechadas")
         except Exception as e:
             logger.warning(f"⚠️ Erro ao fechar banco: {e}")
-
+    
 # ===== EXECUÇÃO DIRETA =====
-
+    
 if __name__ == "__main__":
     uvicorn.run(
         "app:app",
