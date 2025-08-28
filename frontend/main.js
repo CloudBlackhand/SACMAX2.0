@@ -801,6 +801,7 @@ const app = new SacsMaxApp();
 
 // Exporta para uso global
 window.SacsMaxApp = app;
+window.app = app; // Também disponibiliza como window.app
 
 // Aguarda o DOM estar pronto e inicializa
 if (document.readyState === 'loading') {
