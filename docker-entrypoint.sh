@@ -24,13 +24,16 @@ check_process() {
     fi
 }
 
-# Função para iniciar o servidor WhatsApp
-start_whatsapp_server() {
-    echo "📱 Iniciando servidor WhatsApp..."
-    cd /app
-    node whatsapp-server-simple.js &
-    WHATSAPP_PID=$!
-    echo "✅ WhatsApp Server iniciado (PID: $WHATSAPP_PID)"
+# Função para verificar WAHA (se disponível)
+check_waha() {
+    echo "📱 Verificando WAHA..."
+    if curl -f http://localhost:3000/api/status > /dev/null 2>&1; then
+        echo "✅ WAHA: Disponível"
+        return 0
+    else
+        echo "ℹ️ WAHA: Não está rodando (normal em desenvolvimento)"
+        return 1
+    fi
 }
 
 # Função para iniciar o backend Python
@@ -57,12 +60,8 @@ check_health() {
         return 1
     fi
     
-    # Verificar WhatsApp server
-    if curl -f http://localhost:3002/api/status > /dev/null 2>&1; then
-        echo "✅ WhatsApp Server: OK"
-    else
-        echo "⚠️ WhatsApp Server: Não respondeu"
-    fi
+    # Verificar WAHA
+    check_waha
     
     return 0
 }
@@ -70,11 +69,6 @@ check_health() {
 # Função para limpar processos
 cleanup() {
     echo "🛑 Parando serviços..."
-    
-    if [ ! -z "$WHATSAPP_PID" ]; then
-        kill $WHATSAPP_PID 2>/dev/null || true
-        echo "✅ WhatsApp Server parado"
-    fi
     
     if [ ! -z "$BACKEND_PID" ]; then
         kill $BACKEND_PID 2>/dev/null || true
@@ -88,7 +82,6 @@ cleanup() {
 trap cleanup SIGTERM SIGINT EXIT
 
 # Iniciar serviços
-start_whatsapp_server
 start_backend
 
 # Verificar saúde
@@ -97,7 +90,8 @@ if check_health; then
     echo "🎉 Sistema SacsMax iniciado com sucesso!"
     echo "🌐 Frontend: http://localhost:$PORT"
     echo "🔧 Backend API: http://localhost:$PORT/docs"
-    echo "📱 WhatsApp: http://localhost:3002"
+    echo "📱 WAHA: http://localhost:3000 (disponível via Docker)"
+    echo "📱 WhatsApp: Disponível via WAHA (sem QR Code)"
     echo ""
     echo "💡 Sistema pronto para uso!"
 else

@@ -122,87 +122,16 @@ class ExcelModule {
                     </div>
                 </div>
                 
-                <!-- Histórico de Uploads -->
-                <div class="card">
-                    <h3>📋 Histórico de Uploads</h3>
-                    <div class="upload-history" id="upload-history">
-                        ${this.renderUploadHistory()}
-                    </div>
-                </div>
-                
-                <!-- Instruções -->
-                <div class="card">
-                    <h3>📖 Instruções</h3>
-                    <div class="instructions">
-                        <div class="instruction-item">
-                            <h4>📋 Formato do Arquivo</h4>
-                            <ul>
-                                <li>Arquivo deve estar em formato Excel (.xlsx ou .xls)</li>
-                                <li>Primeira linha deve conter os cabeçalhos das colunas</li>
-                                <li>Dados devem começar na segunda linha</li>
-                                <li>Telefones devem estar no formato: (11) 99999-9999</li>
-                            </ul>
-                        </div>
-                        
-                        <div class="instruction-item">
-                            <h4>🔧 Colunas Obrigatórias</h4>
-                            <ul>
-                                <li><strong>Nome:</strong> Nome completo do contato</li>
-                                <li><strong>Telefone:</strong> Número de telefone com DDD</li>
-                                <li><strong>Email:</strong> Endereço de email (opcional)</li>
-                                <li><strong>Empresa:</strong> Nome da empresa (opcional)</li>
-                            </ul>
-                        </div>
-                        
-                        <div class="instruction-item">
-                            <h4>⚠️ Limitações</h4>
-                            <ul>
-                                <li>Máximo de 10.000 registros por upload</li>
-                                <li>Tamanho máximo do arquivo: 10MB</li>
-                                <li>Processamento pode levar alguns minutos</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
+
             </div>
         `;
     }
 
-    renderUploadHistory() {
-        const history = this.getUploadHistory();
-        
-        if (history.length === 0) {
-            return '<p class="no-history">Nenhum upload realizado ainda</p>';
-        }
 
-        return history.map(upload => `
-            <div class="history-item">
-                <div class="history-info">
-                    <div class="history-file">
-                        <span class="file-icon">📄</span>
-                        <span class="file-name">${upload.filename}</span>
-                    </div>
-                    <div class="history-details">
-                        <span class="upload-date">${upload.date}</span>
-                        <span class="upload-status ${upload.status}">${upload.statusText}</span>
-                        <span class="upload-count">${upload.records} registros</span>
-                    </div>
-                </div>
-                <div class="history-actions">
-                    <button class="btn btn-sm btn-secondary" onclick="excelModule.downloadFile('${upload.id}')">
-                        📥 Download
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="excelModule.deleteUpload('${upload.id}')">
-                        🗑️ Excluir
-                    </button>
-                </div>
-            </div>
-        `).join('');
-    }
 
     init() {
         this.setupEventListeners();
-        this.loadUploadHistory();
+
     }
 
     destroy() {
@@ -620,19 +549,12 @@ class ExcelModule {
         }
         
         localStorage.setItem('sacsmax_upload_history', JSON.stringify(history));
-        this.updateHistoryDisplay();
+
     }
 
-    updateHistoryDisplay() {
-        const historyContainer = document.getElementById('upload-history');
-        if (historyContainer) {
-            historyContainer.innerHTML = this.renderUploadHistory();
-        }
-    }
 
-    loadUploadHistory() {
-        this.updateHistoryDisplay();
-    }
+
+
 
     showError(message) {
         const alert = document.createElement('div');
@@ -819,111 +741,7 @@ const excelStyles = `
         background: #f8f9fa;
     }
 
-    .upload-history {
-        max-height: 300px;
-        overflow-y: auto;
-    }
 
-    .history-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 1rem;
-        border-bottom: 1px solid #e9ecef;
-        background: #f8f9fa;
-        border-radius: 8px;
-        margin-bottom: 0.5rem;
-    }
-
-    .history-info {
-        flex: 1;
-    }
-
-    .history-file {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        margin-bottom: 0.25rem;
-    }
-
-    .file-icon {
-        font-size: 1.2rem;
-    }
-
-    .file-name {
-        font-weight: 500;
-        color: #495057;
-    }
-
-    .history-details {
-        display: flex;
-        gap: 1rem;
-        font-size: 0.8rem;
-        color: #6c757d;
-    }
-
-    .upload-status {
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.7rem;
-        font-weight: 500;
-    }
-
-    .upload-status.success {
-        background: #d4edda;
-        color: #155724;
-    }
-
-    .upload-status.error {
-        background: #f8d7da;
-        color: #721c24;
-    }
-
-    .history-actions {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    .btn-sm {
-        padding: 0.5rem 1rem;
-        font-size: 0.8rem;
-    }
-
-    .no-history {
-        text-align: center;
-        color: #6c757d;
-        font-style: italic;
-    }
-
-    .instructions {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 1.5rem;
-    }
-
-    .instruction-item h4 {
-        color: #495057;
-        margin-bottom: 1rem;
-    }
-
-    .instruction-item ul {
-        list-style: none;
-        padding: 0;
-    }
-
-    .instruction-item li {
-        padding: 0.5rem 0;
-        border-bottom: 1px solid #e9ecef;
-        color: #6c757d;
-    }
-
-    .instruction-item li:last-child {
-        border-bottom: none;
-    }
-
-    .instruction-item li strong {
-        color: #495057;
-    }
 `;
 
 // Adiciona os estilos ao documento

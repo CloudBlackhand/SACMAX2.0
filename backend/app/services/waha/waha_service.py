@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+WAHA Service - Integração com WhatsApp HTTP API
+"""
+
+import requests
+import logging
+import os
+from typing import Optional, Dict, Any
+
+class WahaService:
+    def __init__(self, waha_url: str = "http://localhost:3000"):
+        self.waha_url = waha_url
+        self.logger = logging.getLogger(__name__)
+
+    async def check_waha_status(self) -> Dict[str, Any]:
+        """Verificar status do WAHA"""
+        try:
+            response = requests.get(f"{self.waha_url}/api/status", timeout=5)
+            if response.status_code == 200:
+                return {"status": "connected", "data": response.json()}
+            else:
+                return {"status": "error", "message": f"Status {response.status_code}"}
+        except Exception as e:
+            return {"status": "disconnected", "message": str(e)}
+
+    async def create_session(self, session_name: str = "sacsmax") -> Dict[str, Any]:
+        """Criar sessão WAHA"""
+        try:
+            response = requests.post(
+                f"{self.waha_url}/api/sessions",
+                json={"name": session_name},
+                timeout=10
+            )
+            if response.status_code == 200:
+                return {"status": "success", "data": response.json()}
+            else:
+                return {"status": "error", "message": f"Status {response.status_code}"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    async def get_screenshot(self, session_name: str = "sacsmax") -> Optional[bytes]:
+        """Obter screenshot da sessão"""
+        try:
+            response = requests.get(
+                f"{self.waha_url}/api/screenshot",
+                params={"session": session_name},
+                timeout=10
+            )
+            if response.status_code == 200:
+                return response.content
+            else:
+                return None
+        except Exception as e:
+            self.logger.error(f"Erro ao obter screenshot: {e}")
+            return None
+
+    async def send_text_message(self, chat_id: str, text: str, session_name: str = "sacsmax") -> Dict[str, Any]:
+        """Enviar mensagem de texto"""
+        try:
+            response = requests.post(
+                f"{self.waha_url}/api/sendText",
+                json={
+                    "session": session_name,
+                    "chatId": chat_id,
+                    "text": text
+                },
+                timeout=10
+            )
+            if response.status_code == 200:
+                return {"status": "success", "data": response.json()}
+            else:
+                return {"status": "error", "message": f"Status {response.status_code}"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    async def get_contacts(self, session_name: str = "sacsmax") -> Dict[str, Any]:
+        """Obter contatos"""
+        try:
+            response = requests.get(
+                f"{self.waha_url}/api/contacts",
+                params={"session": session_name},
+                timeout=10
+            )
+            if response.status_code == 200:
+                return {"status": "success", "data": response.json()}
+            else:
+                return {"status": "error", "message": f"Status {response.status_code}"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}

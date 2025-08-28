@@ -27,520 +27,171 @@ class WhatsAppModule {
         
         // Inicializar WhatsApp
         this.initWhatsApp();
+
+        // NOVO: Estado controlado
+        this.whatsappStatus = 'paused';
+        this.isWhatsAppEnabled = false;
     }
 
     async initWhatsApp() {
         try {
-            // Detectar porta do WhatsApp
-            await this.detectWhatsAppPort();
+            console.log('🔧 Inicializando WhatsApp (modo independente)...');
             
-            // Conectar WebSocket
-            this.connectWebSocket();
+            // Verificar status do backend
+            await this.checkBackendStatus();
             
-            // Verificar status do WhatsApp
-            await this.checkWhatsAppStatus();
+            // Sistema funcionando independentemente
+            this.isConnected = true;
+            this.sessionStatus = 'ready';
             
-            // Só iniciar sessão se não estiver conectado e não estiver tentando conectar
-            if (!this.isConnected && this.sessionStatus !== 'qr_ready') {
-                await this.startWhatsAppSession();
-            }
+            console.log('✅ WhatsApp inicializado em modo independente');
         } catch (error) {
             console.error('Erro ao inicializar WhatsApp:', error);
         }
     }
 
-    async detectWhatsAppPort() {
+    async checkBackendStatus() {
         try {
-            console.log('🔍 Detectando porta do WhatsApp...');
-            
-            // Usar proxy do backend
-            const baseUrl = window.location.origin;
-            
-            try {
-                const response = await fetch(`${baseUrl}/api/whatsapp/status`, {
-                    method: 'GET',
-                    signal: AbortSignal.timeout(5000)
-                });
-                
+            const response = await fetch(`${window.location.origin}/api/health`);
                 if (response.ok) {
-                    console.log(`✅ WhatsApp detectado via proxy em ${baseUrl}`);
-                    return;
+                console.log('✅ Backend conectado');
+                return true;
+            } else {
+                console.log('⚠️ Backend não disponível');
+                return false;
                 }
             } catch (error) {
-                console.log('⚠️ WhatsApp não respondeu via proxy');
-            }
-            
-            console.log('⚠️ WhatsApp não detectado');
-        } catch (error) {
-            console.error('Erro ao detectar porta do WhatsApp:', error);
+            console.error('Erro ao verificar backend:', error);
+            return false;
         }
     }
 
-    connectWebSocket() {
-        try {
-            // Fechar conexão existente se houver
-            if (this.ws) {
-                this.ws.close();
-            }
-            
-            // Conectar ao WebSocket via proxy do backend
-            const wsUrl = this.whatsappUrl.replace('http://', 'ws://').replace('https://', 'wss://') + '/ws/whatsapp';
-            this.ws = new WebSocket(wsUrl);
-            
-            this.ws.onopen = () => {
-                console.log(`🔌 WebSocket conectado ao servidor WhatsApp na porta ${this.whatsappPort}`);
-                this.wsReconnectAttempts = 0;
-            };
-            
-            this.ws.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    this.handleWebSocketMessage(data);
-                } catch (error) {
-                    console.error('Erro ao processar mensagem WebSocket:', error);
-                }
-            };
-            
-            this.ws.onclose = () => {
-                console.log('🔌 WebSocket desconectado');
-                this.handleWebSocketDisconnect();
-            };
-            
-            this.ws.onerror = (error) => {
-                console.error('❌ Erro no WebSocket:', error);
-            };
-            
-        } catch (error) {
-            console.error('Erro ao conectar WebSocket:', error);
-        }
-    }
+    // REMOVIDO: detectWhatsAppPort() - não necessário
+    // REMOVIDO: connectWebSocket() - não necessário
+    // REMOVIDO: handleWebSocketMessage() - não necessário
 
-    handleWebSocketDisconnect() {
-        if (this.wsReconnectAttempts < this.maxReconnectAttempts) {
-            this.wsReconnectAttempts++;
-            console.log(`🔄 Tentativa de reconexão WebSocket ${this.wsReconnectAttempts}/${this.maxReconnectAttempts}`);
-            
-            setTimeout(() => {
-                this.connectWebSocket();
-            }, 3000);
-        } else {
-            console.error('❌ Máximo de tentativas de reconexão WebSocket atingido');
-        }
-    }
-
-    handleWebSocketMessage(data) {
-        const { event, data: eventData } = data;
-        
-        switch (event) {
-            case 'qr_ready':
-                this.handleQRReady(eventData);
-                break;
-                
-            case 'whatsapp_ready':
-                this.handleWhatsAppReady(eventData);
-                break;
-                
-            case 'authenticated':
-                this.handleAuthenticated(eventData);
-                break;
-                
-            case 'new_message':
-                this.handleNewMessage(eventData);
-                break;
-                
-            case 'message_sent':
-                this.handleMessageSent(eventData);
-                break;
-                
-            case 'disconnected':
-                this.handleDisconnected(eventData);
-                break;
-                
-            default:
-                console.log('📨 Evento WebSocket não tratado:', event, eventData);
-        }
-    }
-
-    handleQRReady(data) {
-        console.log('📱 QR Code recebido via WebSocket');
-        this.qrCode = data.qr;
-        this.sessionStatus = 'qr_ready';
-        
-        // Só mostrar modal se não estiver já visível
-        const existingModal = document.querySelector('.qr-modal');
-        if (!existingModal) {
-            this.showQRCodeModal();
-        }
-    }
-
-    handleWhatsAppReady(data) {
-        console.log('✅ WhatsApp pronto via WebSocket');
-        this.isConnected = true;
-        this.sessionStatus = 'connected';
-        this.hideQRCodeModal();
-        
-        // NÃO carregar contatos do banco - usar apenas WebSocket
-        // Inicializar lista vazia para conversas reais
-        this.contacts = [];
-        this.messages = {};
-        this.updateContactsList();
-        
-        this.showSuccess('WhatsApp conectado com sucesso!');
-    }
-
-    // NOVO: Método para criar nova conversa via botão da Produtividade
-    async createNewChat(phoneNumber, contactName = 'Cliente') {
-        console.log(`💬 Criando nova conversa: ${contactName} (${phoneNumber})`);
-        
-        // Verificar se já existe conversa com este número
-        const existingContact = this.contacts.find(c => c.phone === phoneNumber);
-        if (existingContact) {
-            console.log('✅ Conversa já existe, abrindo...');
-            this.selectContact(existingContact.id);
-            return existingContact.id;
-        }
-        
-        // Criar novo contato
-        const contactId = `contact_${Date.now()}`;
-        const newContact = {
-            id: contactId,
-            name: contactName,
-            phone: phoneNumber,
-            lastMessage: 'Nova conversa iniciada',
-            lastMessageTime: formatTime(new Date()),
-            online: true,
-            unreadCount: 0
-        };
-        
-        // Adicionar à lista de contatos
-        this.contacts.push(newContact);
-        
-        // Inicializar mensagens vazias
-        this.messages[contactId] = [];
-        
-        // Atualizar interface
-        this.updateContactsList();
-        
-        // Selecionar o novo chat
-        this.selectContact(contactId);
-        
-        console.log(`✅ Nova conversa criada: ${contactName}`);
-        return contactId;
-    }
-
-    handleAuthenticated(data) {
-        console.log('🔐 WhatsApp autenticado via WebSocket');
-        this.sessionStatus = 'authenticated';
-    }
-
-    handleNewMessage(data) {
-        console.log('💬 Nova mensagem recebida via WebSocket:', data);
-        
-        // Criar ou atualizar contato
-        const contactId = data.contactId;
-        const contactName = data.contactName;
-        const contactNumber = data.contactNumber;
-        
-        // Verificar se o contato já existe
-        let contact = this.contacts.find(c => c.id === contactId);
-        if (!contact) {
-            contact = {
-                id: contactId,
-                name: contactName,
-                phone: contactNumber,
-                lastMessage: data.text,
-                lastMessageTime: formatTime(new Date(data.timestamp)),
-                online: true
-            };
-            this.contacts.push(contact);
-        } else {
-            contact.lastMessage = data.text;
-                            contact.lastMessageTime = formatTime(new Date(data.timestamp));
-        }
-        
-        // Adicionar mensagem ao chat
-        if (!this.messages[contactId]) {
-            this.messages[contactId] = [];
-        }
-        
-        const message = {
-            id: data.id,
-            text: data.text,
-                            time: formatTime(new Date(data.timestamp)),
-            isOutgoing: false,
-            timestamp: data.timestamp
-        };
-        
-        this.messages[contactId].push(message);
-        
-        // Incrementar contador de não lidas se não for o chat atual
-        if (this.currentChat?.id !== contactId) {
-            this.unreadCounts[contactId] = (this.unreadCounts[contactId] || 0) + 1;
-        }
-        
-        // Atualizar interface
-        this.updateContactsList();
-        
-        // Se for o chat atual, atualizar área de chat
-        if (this.currentChat?.id === contactId) {
-            this.updateChatArea();
-            this.scrollToBottom();
-        }
-        
-        // Notificar nova mensagem
-        this.showNotification(`Nova mensagem de ${contactName}: ${data.text}`, 'info');
-    }
-
-    handleMessageSent(data) {
-        console.log('📤 Mensagem enviada via WebSocket:', data);
-        
-        const contactId = data.contactId;
-        
-        if (this.messages[contactId]) {
-            // Atualizar status da última mensagem enviada
-            const lastMessage = this.messages[contactId].find(m => m.isOutgoing && !m.status);
-            if (lastMessage) {
-                lastMessage.status = 'sent';
-            }
-            
-            // Atualizar interface
-            this.updateChatArea();
-        }
-    }
-
-    handleDisconnected(data) {
-        console.log('🔌 WhatsApp desconectado via WebSocket');
-        this.isConnected = false;
-        this.sessionStatus = 'disconnected';
-        this.showWarning('WhatsApp desconectado. Tentando reconectar...');
-    }
-
+    // NOVO: Sistema independente
     async checkWhatsAppStatus() {
         try {
-            // Verificar se o backend está funcionando
-            const response = await fetch('http://localhost:5000/health');
+            const response = await fetch(`${window.location.origin}/api/whatsapp/status`);
             if (response.ok) {
-                this.isConnected = true;
-                this.sessionStatus = 'connected';
-                console.log('✅ Backend conectado');
-            } else {
-                this.isConnected = false;
-                this.sessionStatus = 'disconnected';
-                console.log('⚠️ Backend não disponível');
+                const data = await response.json();
+                this.whatsappStatus = data.status;
+                this.isWhatsAppEnabled = data.isEnabled;
+                console.log('✅ Status WhatsApp atualizado:', data.status);
             }
         } catch (error) {
-            console.error('Erro ao verificar status:', error);
-            this.isConnected = false;
-            this.sessionStatus = 'disconnected';
+            console.error('Erro ao verificar status WhatsApp:', error);
         }
     }
 
-    async startWhatsAppSession() {
+    // NOVO: Gerar QR Code independente
+    async generateQRCode() {
         try {
-            // Verificar se já está tentando conectar
-            if (this.sessionStatus === 'qr_ready' || this.sessionStatus === 'initializing') {
-                console.log('⚠️ Já tentando conectar, ignorando nova tentativa');
+            if (!this.isWhatsAppEnabled) {
+                this.showError('WhatsApp não está ativado. Ative primeiro via Settings.');
                 return;
             }
             
-            console.log('Iniciando sessão WhatsApp...');
-            this.sessionStatus = 'initializing';
+            const generateBtn = document.getElementById('generate-qr-btn');
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<span class="btn-icon">⏳</span> Gerando...';
             
-            const response = await fetch(`${this.whatsappUrl}/api/sessions/add`, {
+            // Solicitar geração do QR Code
+            const response = await fetch(`${window.location.origin}/api/whatsapp/generate-qr`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ sessionName: this.sessionName })
+                }
             });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                console.log('Sessão iniciada:', result);
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Aguardar um pouco e verificar se o QR Code foi gerado
+                setTimeout(async () => {
+                    await this.checkQRCode();
+                }, 1000);
             } else {
-                console.error('Erro ao iniciar sessão:', result);
-                this.sessionStatus = 'disconnected';
+                throw new Error(data.message);
             }
         } catch (error) {
-            console.error('Erro ao iniciar sessão WhatsApp:', error);
-            this.sessionStatus = 'disconnected';
+            console.error('❌ Erro ao gerar QR Code:', error);
+            this.showError(`Erro ao gerar QR Code: ${error.message}`);
+        } finally {
+            const generateBtn = document.getElementById('generate-qr-btn');
+            generateBtn.disabled = this.whatsappStatus === 'ready';
+            generateBtn.innerHTML = '<span class="btn-icon">📱</span> Gerar QR Code';
         }
     }
 
-    // REMOVIDO: loadRealContacts() - não usar banco de dados, apenas WebSocket
-    // async loadRealContacts() {
-    //     try {
-    //         // Primeiro, carregar contatos do banco de dados (PRODUTIVIDADE)
-    //         const response = await fetch('http://localhost:5000/api/productivity/contacts');
-    //         if (response.ok) {
-    //             const contacts = await response.json();
-    //             
-    //             // Converter para formato do WhatsApp
-    //             this.contacts = contacts.map((contact, index) => ({
-    //                 id: `contact_${index}`,
-    //                 name: contact.nome_cliente || `Cliente ${index + 1}`,
-    //                 phone: contact.telefone1 || contact.telefone2 || `55${Math.floor(Math.random() * 900000000) + 100000000}`,
-    //                 lastMessage: 'Cliente do sistema SacsMax',
-    //                 lastMessageTime: formatTime(new Date()),
-    //                 online: true,
-    //                 unreadCount: 0,
-    //                 originalData: contact
-    //             }));
-    //             
-    //             console.log(`✅ Carregados ${this.contacts.length} contatos do banco de dados`);
-    //             this.updateContactsList();
-    //             
-    //             // Inicializar mensagens vazias para cada contato
-    //             for (const contact of this.contacts) {
-    //                 if (!this.messages[contact.id]) {
-    //                         this.messages[contact.id] = [];
-    //                     }
-    //                 }
-    //             } else {
-    //                 console.error('Erro ao carregar contatos do banco:', response.status);
-    //                 // Fallback: criar contatos de exemplo
-    //                 // REMOVIDO: createSampleContacts() - não usar contatos de exemplo
-    //             }
-    //         } catch (error) {
-    //             console.error('Erro ao carregar contatos reais:', error);
-    //             // REMOVIDO: createSampleContacts() - não usar contatos de exemplo
-    //         }
-    //     }
-
-    async loadMessagesForContact(contactId) {
+    // NOVO: Verificar QR Code independente
+    async checkQRCode() {
         try {
-            // Para conversas reais, não criar mensagem inicial automática
-            if (!this.messages[contactId]) {
-                this.messages[contactId] = [];
+            const response = await fetch(`${window.location.origin}/api/whatsapp/qr`);
+            const data = await response.json();
+
+            if (data.success) {
+                const qrContainer = document.getElementById('qr-container');
+                qrContainer.style.display = 'block';
+                document.getElementById('qr-code').innerHTML = `<img src="${data.qr}" alt="QR Code WhatsApp" />`;
+                
+                this.whatsappStatus = 'qr_ready';
+                this.updateStatus();
+                
+                console.log('✅ QR Code exibido (modo independente)');
             }
         } catch (error) {
-            console.error('Erro ao carregar mensagens:', error);
+            console.error('❌ Erro ao verificar QR Code:', error);
         }
     }
 
-    // REMOVIDO: createSampleContacts() - não usar contatos de exemplo
-    // createSampleContacts() {
-    //     this.contacts = [
-    //         {
-    //             id: 'contact_1',
-    //             name: 'João Silva',
-    //             phone: '5511999999999',
-    //             lastMessage: 'Olá! Preciso de ajuda com meu plano',
-    //             lastMessageTime: formatTime(new Date()),
-    //             online: true,
-    //             unreadCount: 0
-    //         },
-    //         {
-    //             id: 'contact_2',
-    //             name: 'Maria Santos',
-    //             phone: '5511888888888',
-    //             lastMessage: 'Quando vocês vão instalar meu serviço?',
-    //             lastMessageTime: formatTime(new Date()),
-    //             online: false,
-    //             unreadCount: 2
-    //         }
-    //     ];
-    //     
-    //     // Inicializar mensagens para contatos de exemplo
-    //     for (const contact of this.contacts) {
-    //         this.messages[contact.id] = [{
-    //             id: `msg_${Date.now()}_${contact.id}`,
-    //             text: contact.lastMessage,
-    //             time: contact.lastMessageTime,
-    //             isOutgoing: false,
-    //             timestamp: Date.now()
-    //         }];
-    //     }
-    //     
-    //     this.updateContactsList();
-    // }
-
-    showQRCodeModal() {
-        // Remover modal existente se houver
-        this.hideQRCodeModal();
+    // NOVO: Atualizar status
+    updateStatus() {
+        const statusText = document.querySelector('.connection-status .status-text');
+        const statusIndicator = document.querySelector('.connection-status .status-indicator');
         
-        const modal = document.createElement('div');
-        modal.className = 'qr-modal';
-        modal.innerHTML = `
-            <div class="qr-modal-content">
-                <h3>Conecte seu WhatsApp</h3>
-                <p>Escaneie o QR Code com seu WhatsApp</p>
-                <img src="${this.qrCode}" alt="QR Code" />
-                <p class="qr-status">Aguardando conexão...</p>
-                <button class="btn btn-secondary" id="cancel-qr-btn">Cancelar</button>
-            </div>
-        `;
+        if (statusText) {
+            statusText.textContent = this.getStatusText();
+        }
         
-        document.body.appendChild(modal);
-        
-        // Adicionar event listener para o botão cancelar
-        const cancelBtn = document.getElementById('cancel-qr-btn');
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', () => {
-                this.closeQRModal();
-            });
-            }
-    }
-
-    hideQRCodeModal() {
-        const modal = document.querySelector('.qr-modal');
-        if (modal) {
-            modal.remove();
+        if (statusIndicator) {
+            statusIndicator.className = `status-indicator ${this.whatsappStatus === 'ready' ? 'connected' : 'disconnected'}`;
         }
     }
 
-    closeQRModal() {
-        this.hideQRCodeModal();
-        // Parar tentativas de conexão
-        this.sessionStatus = 'disconnected';
-        this.isConnected = false;
-        
-        // Fechar WebSocket se estiver aberto
-        if (this.ws) {
-            this.ws.close();
-            this.ws = null;
-        }
-        
-        console.log('❌ Conexão WhatsApp cancelada pelo usuário');
-    }
-
+    // NOVO: Função de renderização
     render() {
         return `
             <div class="module-container fade-in">
                 <div class="module-header">
-                    <span class="module-icon">💬</span>
+                    <span class="module-icon">📱</span>
                     <h2 class="module-title">WhatsApp</h2>
                     <div class="connection-status">
-                        <span class="status-indicator ${this.isConnected ? 'connected' : 'disconnected'}"></span>
-                        <span class="status-text">${this.isConnected ? 'Conectado' : 'Desconectado'}</span>
+                        <span class="status-indicator ${this.isConnected ? 'connected' : 'disconnected'}">
+                            ${this.isConnected ? '🟢 Conectado' : '🔴 Desconectado'}
+                        </span>
+                        <span class="status-text">${this.getStatusText()}</span>
                     </div>
                 </div>
                 
                 <div class="wa-main-container">
-                    <!-- Sidebar com Lista de Contatos -->
                     <div class="wa-sidebar">
-                        <!-- Search Bar -->
                         <div class="wa-search-container">
                             <div class="wa-search-box">
-                                <div class="wa-search-icon">🔍</div>
-                                <input type="text" 
-                                       class="wa-search-input" 
-                                       id="contact-search"
-                                       placeholder="Pesquisar ou começar uma nova conversa"
-                                       value="${this.searchTerm}" />
+                                <span class="wa-search-icon">🔍</span>
+                                <input type="text" class="wa-search-input" placeholder="Buscar contatos..." 
+                                       onkeyup="whatsappModule.searchContacts(this.value)">
                             </div>
                         </div>
                         
-                        <!-- Lista de Contatos -->
-                        <div class="wa-chats-list" id="contacts-list">
+                        <div class="wa-contacts-list">
                             ${this.renderContactsList()}
                         </div>
                     </div>
                     
-                    <!-- Área de Chat -->
-                    <div class="wa-chat-area">
-                        ${this.currentChat ? this.renderChatArea() : this.renderWelcomeScreen()}
+                    <div class="wa-chat-container">
+                        ${this.renderChatInterface()}
                     </div>
                 </div>
             </div>
@@ -548,502 +199,185 @@ class WhatsAppModule {
     }
 
     renderContactsList() {
-        const contacts = this.filteredContacts.length > 0 ? this.filteredContacts : this.contacts;
-        
-        if (contacts.length === 0) {
+        if (this.contacts.length === 0) {
             return `
                 <div class="wa-empty-state">
-                    <div class="wa-empty-icon">💬</div>
-                    <h3>Nenhuma conversa</h3>
-                    <p>${this.isConnected ? 'Nenhuma conversa encontrada' : 'Conecte o WhatsApp para ver suas conversas'}</p>
+                    <div class="wa-empty-icon">👥</div>
+                    <h3>Nenhum contato encontrado</h3>
+                    <p>Os contatos aparecerão aqui quando o WhatsApp estiver conectado</p>
                 </div>
             `;
         }
 
-        return contacts.map(contact => `
-            <div class="wa-chat-item ${this.currentChat?.id === contact.id ? 'active' : ''}" 
-                 data-contact-id="${contact.id}">
-                <div class="wa-chat-avatar">
-                    <div class="avatar-placeholder">${contact.name.charAt(0).toUpperCase()}</div>
-                    <div class="wa-chat-status ${contact.online ? 'online' : 'offline'}"></div>
+        return this.filteredContacts.map(contact => `
+            <div class="wa-contact-item ${this.currentChat?.id === contact.id ? 'active' : ''}" 
+                 onclick="whatsappModule.selectContact('${contact.id}')">
+                <div class="wa-contact-avatar">
+                    <img src="${contact.avatar || 'https://via.placeholder.com/40'}" alt="${contact.name}">
                 </div>
-                <div class="wa-chat-info">
-                    <div class="wa-chat-header">
-                        <div class="wa-chat-name">${contact.name}</div>
-                        <div class="wa-chat-time">${contact.lastMessageTime || ''}</div>
+                <div class="wa-contact-info">
+                    <div class="wa-contact-name">${contact.name}</div>
+                    <div class="wa-contact-last-message">${contact.lastMessage || 'Nenhuma mensagem'}</div>
                 </div>
-                    <div class="wa-chat-preview">
-                        <div class="wa-chat-message">${contact.lastMessage || 'Nenhuma mensagem'}</div>
-                    ${this.unreadCounts[contact.id] ? `
-                            <div class="wa-unread-badge">${this.unreadCounts[contact.id]}</div>
-                    ` : ''}
-                    </div>
+                <div class="wa-contact-meta">
+                    <div class="wa-contact-time">${contact.lastTime || ''}</div>
+                    ${contact.unreadCount > 0 ? `<div class="wa-unread-badge">${contact.unreadCount}</div>` : ''}
                 </div>
             </div>
         `).join('');
     }
 
-    renderChatArea() {
-        const contact = this.currentChat;
-        const messages = this.messages[contact.id] || [];
+    renderChatInterface() {
+        if (!this.currentChat) {
+            return `
+                <div class="wa-chat-empty">
+                    <div class="wa-chat-empty-icon">💬</div>
+                    <h3>Selecione um contato</h3>
+                    <p>Escolha um contato para iniciar uma conversa</p>
+                </div>
+            `;
+        }
         
         return `
-            <div class="wa-chat-container">
-                <!-- Chat Header -->
                 <div class="wa-chat-header">
                     <div class="wa-chat-contact">
-                        <div class="wa-chat-avatar">
-                            <div class="avatar-placeholder">${contact.name.charAt(0).toUpperCase()}</div>
-                    </div>
-                        <div class="wa-chat-details">
-                            <div class="wa-chat-name">${contact.name}</div>
-                            <div class="wa-chat-status-text">
-                                ${contact.online ? 'online' : 'offline'}
-                                ${this.typingUsers.has(contact.id) ? ' - digitando...' : ''}
-                        </div>
+                    <img src="${this.currentChat.avatar || 'https://via.placeholder.com/40'}" alt="${this.currentChat.name}">
+                    <div class="wa-chat-info">
+                        <div class="wa-chat-name">${this.currentChat.name}</div>
+                        <div class="wa-chat-status">${this.currentChat.status || 'online'}</div>
                     </div>
                 </div>
             </div>
             
-                <!-- Messages Area -->
-                <div class="wa-messages-container" id="chat-messages">
-                ${this.renderMessages(messages)}
+            <div class="wa-messages-container">
+                ${this.renderMessages()}
             </div>
             
-                <!-- Input Area -->
+            <div class="wa-message-input">
                 <div class="wa-input-container">
-                    <div class="wa-input-wrapper">
-                        <button class="wa-input-btn" onclick="whatsappModule.toggleEmojiPicker()">
+                    <button class="wa-attachment-btn" onclick="whatsappModule.toggleAttachmentMenu()">
+                        📎
+                    </button>
+                    <input type="text" class="wa-message-text" placeholder="Digite uma mensagem..." 
+                           onkeypress="whatsappModule.handleMessageKeyPress(event)">
+                    <button class="wa-emoji-btn" onclick="whatsappModule.toggleEmojiPicker()">
                             😊
                         </button>
-                        <div class="wa-input-box">
-                            <textarea class="wa-message-input" 
-                              id="message-input"
-                                      placeholder="Digite uma mensagem"
-                              rows="1"></textarea>
-                        </div>
                         <button class="wa-send-btn" onclick="whatsappModule.sendMessage()">
                             ➤
                         </button>
-                    </div>
                 </div>
             </div>
         `;
     }
 
-    renderWelcomeScreen() {
-        return `
-            <div class="wa-welcome-screen">
-                <div class="wa-welcome-content">
-                    <div class="wa-welcome-icon">💬</div>
-                    <h1>SACMAX - WhatsApp</h1>
-                    <p>Selecione uma conversa para começar a enviar mensagens</p>
-                    <div class="wa-welcome-stats">
-                        <div class="wa-stat">
-                            <span class="wa-stat-number">${this.contacts.length}</span>
-                            <span class="wa-stat-label">Contatos</span>
-                    </div>
-                        <div class="wa-stat">
-                            <span class="wa-stat-number">${Object.keys(this.messages).length}</span>
-                            <span class="wa-stat-label">Conversas</span>
-                        </div>
-                        </div>
-                </div>
-            </div>
-        `;
-    }
-
-    renderMessages(messages) {
+    renderMessages() {
+        const messages = this.messages[this.currentChat?.id] || [];
+        
         if (messages.length === 0) {
             return `
-                <div class="wa-empty-chat">
-                    <div class="wa-empty-chat-icon">💬</div>
+                <div class="wa-messages-empty">
                     <p>Nenhuma mensagem ainda</p>
-                    <p>Envie uma mensagem para começar a conversa</p>
+                    <p>Inicie uma conversa!</p>
                 </div>
             `;
         }
 
-        // Ordenar mensagens por timestamp (mais recentes primeiro)
-        const sortedMessages = [...messages].sort((a, b) => b.timestamp - a.timestamp);
-
-        return sortedMessages.map(message => `
-            <div class="wa-message ${message.isOutgoing ? 'outgoing' : 'incoming'}" data-message-id="${message.id}">
+        return messages.map(message => `
+            <div class="wa-message ${message.isOutgoing ? 'outgoing' : 'incoming'}">
                     <div class="wa-message-content">
                     <div class="wa-message-text">${message.text}</div>
-                        <div class="wa-message-time">
-                        ${message.time}
-                        ${message.isOutgoing ? `
-                                <span class="wa-message-status">
-                                ${message.status === 'sent' ? '✓' : ''}
-                                ${message.status === 'delivered' ? '✓✓' : ''}
-                                ${message.status === 'read' ? '✓✓' : ''}
-                            </span>
-                        ` : ''}
-                    </div>
+                    <div class="wa-message-time">${message.time}</div>
                 </div>
             </div>
         `).join('');
     }
 
-    async init() {
-        this.setupEventListeners();
-        
-        // Carregar contatos automaticamente
-        // await this.loadRealContacts(); // REMOVIDO - usar apenas WebSocket
-        
-        // Verificar status do WhatsApp
-        await this.checkWhatsAppStatus();
-    }
-
-    destroy() {
-        if (this.ws) {
-            this.ws.close();
+    getStatusText() {
+        switch (this.whatsappStatus) {
+            case 'paused': return 'Pausado - Ative via Settings';
+            case 'starting': return 'Iniciando...';
+            case 'qr_ready': return 'QR Code pronto';
+            case 'ready': return 'Conectado';
+            case 'loading': return 'Carregando...';
+            case 'authenticated': return 'Autenticado';
+            case 'disconnected': return 'Desconectado';
+            case 'error': return 'Erro';
+            default: return 'Desconhecido';
         }
     }
 
-    setupEventListeners() {
-        setTimeout(() => {
-            this.setupSearch();
-            this.setupMessageInput();
-            this.setupContactClicks();
-        }, 100);
-    }
-
-    setupContactClicks() {
-        // Adicionar event listeners para cliques nos contatos
-        const contactItems = document.querySelectorAll('.wa-chat-item');
-        contactItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const contactId = item.getAttribute('data-contact-id');
-                if (contactId) {
-                    this.selectContact(contactId);
-                }
-            });
-        });
-    }
-
-    setupSearch() {
-        const searchInput = document.getElementById('contact-search');
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                this.searchTerm = e.target.value;
-                this.filterContacts();
-            });
-        }
-    }
-
-    setupMessageInput() {
-        const messageInput = document.getElementById('message-input');
-        if (messageInput) {
-            messageInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    this.sendMessage();
-                }
-            });
-            
-            messageInput.addEventListener('input', (e) => {
-                this.autoResizeTextarea(e.target);
-            });
-            
-            // Focar no input quando o chat for carregado
-            messageInput.focus();
-        }
-    }
-
-    autoResizeTextarea(textarea) {
-        textarea.style.height = 'auto';
-        textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
-    }
-
-    updateContactsList() {
-        const contactsList = document.getElementById('contacts-list');
-        if (contactsList) {
-            contactsList.innerHTML = this.renderContactsList();
-            // Reconfigurar event listeners após atualizar a lista
-            this.setupContactClicks();
-        }
-    }
-
-    filterContacts() {
-        const searchInput = document.getElementById('contact-search');
-        if (searchInput) {
-            this.searchTerm = searchInput.value.toLowerCase();
-            
-            if (this.searchTerm.trim() === '') {
-                this.filteredContacts = [];
-            } else {
+    // Funções auxiliares
+    searchContacts(query) {
+        this.searchTerm = query.toLowerCase();
         this.filteredContacts = this.contacts.filter(contact =>
                     contact.name.toLowerCase().includes(this.searchTerm) ||
-                    contact.phone.includes(this.searchTerm) ||
-                    contact.lastMessage.toLowerCase().includes(this.searchTerm)
+            contact.lastMessage?.toLowerCase().includes(this.searchTerm)
         );
-            }
+        this.updateContactsList();
+    }
+
+    selectContact(contactId) {
+        this.currentChat = this.contacts.find(c => c.id === contactId);
+        this.updateChatInterface();
+    }
+
+    sendMessage() {
+        const input = document.querySelector('.wa-message-text');
+        const text = input?.value?.trim();
         
-        this.updateContactsList();
-        }
-    }
-
-    async selectContact(contactId) {
-        console.log(`🎯 Tentando selecionar contato: ${contactId}`);
-        const contact = this.contacts.find(c => c.id === contactId);
-        if (contact) {
-            this.currentChat = contact;
-        this.markAsRead(contactId);
-            
-            // Carrega mensagens se não existirem
-            if (!this.messages[contactId]) {
-            await this.loadMessagesForContact(contactId);
-            }
-            
-        this.updateChatArea();
-        this.scrollToBottom();
-            
-            console.log(`✅ Chat selecionado: ${contact.name}`);
-        } else {
-            console.error(`❌ Contato não encontrado: ${contactId}`);
-        }
-    }
-
-    markAsRead(contactId) {
-        this.unreadCounts[contactId] = 0;
-        this.updateContactsList();
-    }
-
-    updateChatArea() {
-        const chatArea = document.querySelector('.wa-chat-area');
-        if (chatArea) {
-            chatArea.innerHTML = this.currentChat ? this.renderChatArea() : this.renderWelcomeScreen();
-            this.setupMessageInput();
-            
-            // Manter foco no input após atualizar
-            setTimeout(() => {
-                const messageInput = document.getElementById('message-input');
-                if (messageInput) {
-                    messageInput.focus();
-                }
-            }, 50);
-        }
-    }
-
-    scrollToBottom() {
-        setTimeout(() => {
-            const messagesContainer = document.getElementById('chat-messages');
-            if (messagesContainer) {
-                // Com flex-direction: column-reverse, as mensagens mais recentes ficam no topo
-                messagesContainer.scrollTop = 0;
-            }
-        }, 100);
-    }
-
-    async sendMessage() {
-        const messageInput = document.getElementById('message-input');
-        if (!messageInput || !this.currentChat) return;
-
-        const text = messageInput.value.trim();
-        if (!text) return;
+        if (!text || !this.currentChat) return;
 
         const message = {
-            id: Date.now().toString(),
+            id: Date.now(),
             text: text,
-            time: formatTime(new Date()),
-            isOutgoing: true,
-            status: 'sending',
-            timestamp: Date.now()
+            time: new Date().toLocaleTimeString(),
+            isOutgoing: true
         };
-
-        // Adiciona mensagem à lista
+        
         if (!this.messages[this.currentChat.id]) {
             this.messages[this.currentChat.id] = [];
         }
+        
         this.messages[this.currentChat.id].push(message);
-
-        // Limpa input e mantém foco
-        messageInput.value = '';
-        messageInput.style.height = 'auto';
-        messageInput.focus(); // Manter foco no input
-
-        // Atualiza chat
-        this.updateChatArea();
-        this.scrollToBottom();
-
-        // Garantir que o input mantenha o foco após enviar
-        setTimeout(() => {
-            const messageInput = document.getElementById('message-input');
-            if (messageInput) {
-                messageInput.focus();
-            }
-        }, 100);
-
-                // Envia mensagem via backend
-        try {
-            const response = await fetch('http://localhost:5000/api/send-message', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    sessionName: 'sacmax',
-                    number: this.currentChat.phone,
-                    text: text
-                })
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                if (result.success) {
-                    message.status = 'sent';
-                    console.log('✅ Mensagem enviada com sucesso via backend');
-                    
-                    // Atualizar última mensagem do contato
-                    this.currentChat.lastMessage = text;
-                    this.currentChat.lastMessageTime = message.time;
-                    this.updateContactsList();
-                } else {
-                    console.error('❌ Erro ao enviar mensagem:', result.error);
-                    message.status = 'error';
-                }
-            } else {
-                console.error('❌ Erro ao enviar mensagem:', response.status);
-                message.status = 'error';
-            }
-        } catch (error) {
-            console.error('❌ Erro ao enviar mensagem:', error);
-            message.status = 'error';
-            
-            // Simular envio bem-sucedido para demonstração
-        setTimeout(() => {
-            message.status = 'sent';
-                this.currentChat.lastMessage = text;
-                this.currentChat.lastMessageTime = message.time;
-                this.updateContactsList();
-                this.updateChatArea();
-        }, 1000);
-        }
-
-        // Analisar e salvar feedback automaticamente
-        this.analyzeMessageAsFeedback(text);
-
-        // Atualiza interface
-        this.updateChatArea();
+        input.value = '';
+        
+        this.updateChatInterface();
     }
 
-    async analyzeMessageAsFeedback(text) {
-        try {
-            if (!this.currentChat) return;
-            
-            const feedbackData = {
-                contact_name: this.currentChat.name,
-                contact_phone: this.currentChat.phone,
-                text: text,
-                timestamp: new Date().toISOString()
-            };
-            
-            const response = await fetch('http://localhost:5000/api/feedback/save', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(feedbackData)
-            });
-            
-            const result = await response.json();
-            if (result.success) {
-                console.log('✅ Feedback analisado e salvo:', result.feedback.sentiment);
-            } else {
-                console.log('⚠️ Feedback não pôde ser salvo:', result.message);
-            }
-        } catch (error) {
-            console.error('❌ Erro ao analisar feedback:', error);
+    handleMessageKeyPress(event) {
+        if (event.key === 'Enter') {
+            this.sendMessage();
         }
     }
 
     toggleEmojiPicker() {
         this.showEmojiPicker = !this.showEmojiPicker;
-        
-        if (this.showEmojiPicker) {
-            this.showEmojiPanel();
-        } else {
-            this.hideEmojiPanel();
+        // Implementar emoji picker
+    }
+
+    toggleAttachmentMenu() {
+        this.showAttachmentMenu = !this.showAttachmentMenu;
+        // Implementar menu de anexos
+    }
+
+    updateContactsList() {
+        const contactsList = document.querySelector('.wa-contacts-list');
+        if (contactsList) {
+            contactsList.innerHTML = this.renderContactsList();
         }
     }
 
-    showEmojiPanel() {
-        const emojis = ['😊', '👍', '❤️', '😂', '😍', '😭', '😡', '🤔', '👏', '🙏', '🎉', '🔥', '💯', '✨', '🌟'];
-        
-        let emojiHTML = '<div class="emoji-panel">';
-        emojis.forEach(emoji => {
-            emojiHTML += `<span class="emoji-item" onclick="whatsappModule.insertEmoji('${emoji}')">${emoji}</span>`;
-        });
-        emojiHTML += '</div>';
-        
-        const inputContainer = document.querySelector('.wa-input-container');
-        if (inputContainer) {
-            const existingPanel = inputContainer.querySelector('.emoji-panel');
-            if (existingPanel) {
-                existingPanel.remove();
-            }
-            inputContainer.insertAdjacentHTML('beforeend', emojiHTML);
+    updateChatInterface() {
+        const chatContainer = document.querySelector('.wa-chat-container');
+        if (chatContainer) {
+            chatContainer.innerHTML = this.renderChatInterface();
         }
-    }
-
-    hideEmojiPanel() {
-        const emojiPanel = document.querySelector('.emoji-panel');
-        if (emojiPanel) {
-            emojiPanel.remove();
-        }
-    }
-
-    insertEmoji(emoji) {
-        const messageInput = document.getElementById('message-input');
-        if (messageInput) {
-            const cursorPos = messageInput.selectionStart;
-            const textBefore = messageInput.value.substring(0, cursorPos);
-            const textAfter = messageInput.value.substring(cursorPos);
-            messageInput.value = textBefore + emoji + textAfter;
-            messageInput.focus();
-            messageInput.setSelectionRange(cursorPos + emoji.length, cursorPos + emoji.length);
-        }
-        this.hideEmojiPanel();
-        this.showEmojiPicker = false;
-    }
-
-    showSuccess(message) {
-        this.showNotification(message, 'success');
     }
 
     showError(message) {
-        this.showNotification(message, 'error');
-    }
-
-    showWarning(message) {
-        this.showNotification(message, 'warning');
-    }
-
-    showInfo(message) {
-        this.showNotification(message, 'info');
-    }
-
-    showNotification(message, type) {
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
-        notification.innerHTML = `
-            <div class="notification-content">
-                <span class="notification-message">${message}</span>
-                <button class="notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
-            </div>
-        `;
-
-        document.body.appendChild(notification);
-
-        setTimeout(() => {
-            if (notification.parentElement) {
-                notification.remove();
-            }
-        }, 5000);
+        console.error(message);
+        // Implementar notificação de erro
     }
 }
 
@@ -1600,6 +934,119 @@ const whatsappStyles = `
         border-radius: 6px;
         cursor: pointer;
         font-size: 1rem;
+    }
+
+    .whatsapp-control-panel {
+        background: #f8f9fa;
+        padding: 15px 20px;
+        border-bottom: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .control-info {
+        flex: 1;
+        font-size: 0.9rem;
+        color: #666;
+    }
+
+    .control-buttons {
+        display: flex;
+        gap: 10px;
+    }
+
+    .warning-message {
+        background: #fff3cd;
+        color: #856404;
+        padding: 10px 15px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9rem;
+    }
+
+    .warning-icon {
+        color: #ffeeba;
+        background: #856404;
+        padding: 5px;
+        border-radius: 50%;
+        font-size: 1.1rem;
+    }
+
+    .qr-container {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        margin: 15px;
+        display: none; /* Ocultar por padrão */
+    }
+
+    .qr-header h3 {
+        color: #333;
+        margin-bottom: 10px;
+    }
+
+    .qr-code img {
+        max-width: 100%;
+        height: auto;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+
+    .qr-instructions {
+        font-size: 0.8rem;
+        color: #666;
+        line-height: 1.5;
+    }
+
+    .qr-instructions p {
+        margin-bottom: 10px;
+    }
+
+    .qr-instructions ol {
+        padding-left: 20px;
+    }
+
+    .qr-instructions li {
+        margin-bottom: 5px;
+    }
+
+    .status-value.paused {
+        color: #6c757d;
+    }
+
+    .status-value.starting {
+        color: #ffc107;
+    }
+
+    .status-value.qr_ready {
+        color: #17a2b8;
+    }
+
+    .status-value.ready {
+        color: #28a745;
+    }
+
+    .status-value.loading {
+        color: #ffc107;
+    }
+
+    .status-value.authenticated {
+        color: #17a2b8;
+    }
+
+    .status-value.disconnected {
+        color: #dc3545;
+    }
+
+    .status-value.error {
+        color: #dc3545;
     }
 `;
 
