@@ -161,7 +161,7 @@ async def waha_send_message(chat_id: str, text: str, session: str = "sacsmax"):
         try:
             result = await waha_service.send_text_message(chat_id, text, session)
             return JSONResponse(content=result)
-    except Exception as e:
+        except Exception as e:
             logger.error(f"Erro ao enviar mensagem WAHA: {e}")
             return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
     else:
@@ -174,7 +174,7 @@ async def waha_contacts(session: str = "sacsmax"):
         try:
             result = await waha_service.get_contacts(session)
             return JSONResponse(content=result)
-    except Exception as e:
+        except Exception as e:
             logger.error(f"Erro ao obter contatos WAHA: {e}")
             return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
     else:
