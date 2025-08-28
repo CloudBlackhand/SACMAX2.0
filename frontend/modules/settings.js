@@ -350,7 +350,7 @@ class SettingsModule {
     async init() {
         this.setupEventListeners();
         await this.loadSettings();
-        await this.checkWhatsAppServerStatus();
+        // REMOVIDO: checkWhatsAppServerStatus() - sistema independente
         this.updateConnectionStatus();
     }
 
@@ -661,24 +661,11 @@ class SettingsModule {
         try {
             this.showNotification('Gerando QR Code...', 'info');
             
-            // Verificar se estamos no Railway
-            const isRailway = window.location.hostname.includes('railway.app') || window.location.hostname.includes('up.railway.app');
-            
-            let response;
-            if (isRailway) {
-                // No Railway, usar proxy do backend
-                response = await fetch(`${window.location.origin}/api/sessions/${this.settings.whatsapp.session_name}/qr`, {
-                    method: 'GET',
-                    signal: AbortSignal.timeout(5000)
-                });
-            } else {
-                // Localmente, usar servidor direto
-                await this.checkWhatsAppServerStatus();
-                response = await fetch(`${this.settings.whatsapp.url}/api/sessions/${this.settings.whatsapp.session_name}/qr`, {
-                    method: 'GET',
-                    signal: AbortSignal.timeout(5000)
-                });
-            }
+            // SEMPRE usar o backend independente
+            const response = await fetch(`${window.location.origin}/api/whatsapp/qr`, {
+                method: 'GET',
+                signal: AbortSignal.timeout(5000)
+            });
             
             if (!response.ok) {
                 throw new Error(`Erro ao buscar QR Code: ${response.status}`);
@@ -691,18 +678,28 @@ class SettingsModule {
                 // Limpar o display primeiro
                 qrDisplay.innerHTML = '';
                 
-                // Gerar QR Code real usando a biblioteca (texto mais curto para evitar overflow)
-                const qrData = `https://wa.me/5511999999999`;
-                
-                // Criar novo QR Code
-                new QRCode(qrDisplay, {
-                    text: qrData,
-                    width: 300,
-                    height: 300,
-                    colorDark: "#000000",
-                    colorLight: "#FFFFFF",
-                    correctLevel: QRCode.CorrectLevel.H
-                });
+                if (data.qrCode) {
+                    // Usar QR Code do backend
+                    new QRCode(qrDisplay, {
+                        text: data.qrCode,
+                        width: 300,
+                        height: 300,
+                        colorDark: "#000000",
+                        colorLight: "#FFFFFF",
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                } else {
+                    // QR Code de exemplo (sistema independente)
+                    const qrData = `https://wa.me/5511999999999`;
+                    new QRCode(qrDisplay, {
+                        text: qrData,
+                        width: 300,
+                        height: 300,
+                        colorDark: "#000000",
+                        colorLight: "#FFFFFF",
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                }
                 
                 // Adicionar instruções abaixo do QR Code
                 const instructions = document.createElement('p');
