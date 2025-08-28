@@ -884,24 +884,24 @@ const settingsStyles = `
     border-color: #0056b3;
 }
 
-.nav-icon {
+.settings-nav .nav-icon {
     font-size: 16px;
     color: #000000 !important;
     filter: contrast(1.5);
 }
 
 /* Garantir contraste para ícones específicos */
-.nav-btn .nav-icon {
+.settings-nav .nav-btn .nav-icon {
     opacity: 1;
     color: #000000 !important;
 }
 
-.nav-btn:hover .nav-icon {
+.settings-nav .nav-btn:hover .nav-icon {
     opacity: 1;
     color: #000000 !important;
 }
 
-.nav-btn.active .nav-icon {
+.settings-nav .nav-btn.active .nav-icon {
     opacity: 1;
     color: #000000 !important;
     filter: brightness(1.2);
@@ -1370,7 +1370,7 @@ const settingsStyles = `
     border: 1px solid #e9ecef;
 }
 
-.nav-btn {
+.settings-nav .nav-btn {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -1388,14 +1388,14 @@ const settingsStyles = `
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-.nav-btn:hover {
+.settings-nav .nav-btn:hover {
     background: #e9ecef;
     color: #000000 !important;
     border-color: #007bff;
     box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 
-.nav-btn.active {
+.settings-nav .nav-btn.active {
     background: #007bff;
     color: #000000 !important;
     border-color: #0056b3;
