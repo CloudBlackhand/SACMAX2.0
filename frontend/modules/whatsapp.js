@@ -40,6 +40,9 @@ class WhatsAppModule {
             // Verificar status do backend
             await this.checkBackendStatus();
             
+            // Carregar contatos da produtividade
+            await this.loadContacts();
+            
             // Sistema funcionando independentemente
             this.isConnected = true;
             this.sessionStatus = 'ready';
@@ -47,6 +50,46 @@ class WhatsAppModule {
             console.log('✅ WhatsApp inicializado em modo independente');
         } catch (error) {
             console.error('Erro ao inicializar WhatsApp:', error);
+        }
+    }
+
+    async loadContacts() {
+        try {
+            console.log('📞 Carregando contatos da produtividade...');
+            
+            const response = await fetch(`${window.location.origin}/api/productivity/contacts?optimized=true`);
+            if (response.ok) {
+                const data = await response.json();
+                
+                if (data.success && data.contacts) {
+                    // Converter contatos da produtividade para formato WhatsApp
+                    this.contacts = data.contacts.map(contact => ({
+                        id: contact.id,
+                        name: contact.nome_cliente || 'Cliente sem nome',
+                        phone: contact.telefone1 || contact.telefone2 || '',
+                        lastMessage: `SA: ${contact.sa} - ${contact.servico}`,
+                        lastTime: contact.data ? new Date(contact.data).toLocaleDateString('pt-BR') : '',
+                        unreadCount: 0,
+                        status: contact.status === 'FINALIZADO' ? 'online' : 'offline',
+                        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.nome_cliente || 'Cliente')}&background=25d366&color=fff&size=40`
+                    }));
+                    
+                    this.filteredContacts = [...this.contacts];
+                    console.log(`✅ ${this.contacts.length} contatos carregados`);
+                } else {
+                    console.warn('⚠️ Nenhum contato encontrado');
+                    this.contacts = [];
+                    this.filteredContacts = [];
+                }
+            } else {
+                console.error('❌ Erro ao carregar contatos');
+                this.contacts = [];
+                this.filteredContacts = [];
+            }
+        } catch (error) {
+            console.error('❌ Erro ao carregar contatos:', error);
+            this.contacts = [];
+            this.filteredContacts = [];
         }
     }
 
@@ -291,6 +334,134 @@ class WhatsAppModule {
                 </div>
             </div>
         `).join('');
+    }
+
+    sendMessage() {
+        const input = document.querySelector('.wa-message-text');
+        if (!input || !this.currentChat) return;
+        
+        const text = input.value.trim();
+        if (!text) return;
+        
+        // Adicionar mensagem
+        const message = {
+            text: text,
+            time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            isOutgoing: true
+        };
+        
+        if (!this.messages[this.currentChat.id]) {
+            this.messages[this.currentChat.id] = [];
+        }
+        
+        this.messages[this.currentChat.id].push(message);
+        
+        // Limpar input
+        input.value = '';
+        
+        // Atualizar interface
+        this.updateChatInterface();
+        
+        // Simular resposta automática após 2 segundos
+        setTimeout(() => {
+            this.simulateResponse();
+        }, 2000);
+    }
+
+    simulateResponse() {
+        if (!this.currentChat) return;
+        
+        const responses = [
+            "Obrigado pelo contato!",
+            "Vou verificar isso para você.",
+            "Entendi, vou processar sua solicitação.",
+            "Aguarde um momento, estou verificando.",
+            "Sua solicitação foi registrada com sucesso."
+        ];
+        
+        const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+        
+        const message = {
+            text: randomResponse,
+            time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            isOutgoing: false
+        };
+        
+        this.messages[this.currentChat.id].push(message);
+        this.updateChatInterface();
+    }
+
+    handleMessageKeyPress(event) {
+        if (event.key === 'Enter') {
+            this.sendMessage();
+        }
+    }
+
+    toggleEmojiPicker() {
+        this.showEmojiPicker = !this.showEmojiPicker;
+        console.log('Emoji picker:', this.showEmojiPicker ? 'aberto' : 'fechado');
+    }
+
+    toggleAttachmentMenu() {
+        this.showAttachmentMenu = !this.showAttachmentMenu;
+        console.log('Menu de anexos:', this.showAttachmentMenu ? 'aberto' : 'fechado');
+    }
+
+    init() {
+        console.log('🚀 Inicializando módulo WhatsApp...');
+        this.initWhatsApp();
+    }
+
+    destroy() {
+        console.log('🛑 Destruindo módulo WhatsApp...');
+        // Limpar recursos se necessário
+    }
+
+    selectContact(contactId) {
+        const contact = this.contacts.find(c => c.id == contactId);
+        if (contact) {
+            this.currentChat = contact;
+            console.log(`💬 Chat selecionado: ${contact.name}`);
+            
+            // Inicializar mensagens se não existirem
+            if (!this.messages[contactId]) {
+                this.messages[contactId] = [];
+            }
+            
+            // Atualizar interface
+            this.updateChatInterface();
+        }
+    }
+
+    updateChatInterface() {
+        const chatContainer = document.querySelector('.wa-chat-container');
+        if (chatContainer) {
+            chatContainer.innerHTML = this.renderChatInterface();
+        }
+        
+        // Atualizar lista de contatos (marcar ativo)
+        const contactItems = document.querySelectorAll('.wa-contact-item');
+        contactItems.forEach(item => {
+            item.classList.remove('active');
+            if (item.onclick && this.currentChat && item.onclick.toString().includes(this.currentChat.id)) {
+                item.classList.add('active');
+            }
+        });
+    }
+
+    searchContacts(searchTerm) {
+        this.searchTerm = searchTerm.toLowerCase();
+        this.filteredContacts = this.contacts.filter(contact =>
+            contact.name.toLowerCase().includes(this.searchTerm) ||
+            contact.phone.includes(this.searchTerm) ||
+            contact.lastMessage.toLowerCase().includes(this.searchTerm)
+        );
+        
+        // Atualizar lista de contatos
+        const contactsList = document.querySelector('.wa-contacts-list');
+        if (contactsList) {
+            contactsList.innerHTML = this.renderContactsList();
+        }
     }
 
     getStatusText() {
