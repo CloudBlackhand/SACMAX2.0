@@ -26,7 +26,7 @@ RAILWAY_ENVIRONMENT = os.environ.get('RAILWAY_ENVIRONMENT', 'development')
 IS_RAILWAY = os.environ.get('RAILWAY_ENVIRONMENT') is not None or os.environ.get('PORT') is not None
 
 def check_dependencies():
-    """Verificar dependências Python e Node.js"""
+    """Verificar dependências Python"""
     # Verificar Python
     required_packages = ['fastapi', 'uvicorn', 'requests', 'psycopg2']
     missing_packages = []
@@ -43,21 +43,7 @@ def check_dependencies():
         logger.error("pip install -r requirements.txt")
         return False
     
-    # Verificar Node.js
-    try:
-        result = subprocess.run(['node', '--version'], capture_output=True, text=True)
-        if result.returncode == 0:
-            logger.info(f"✅ Node.js encontrado: {result.stdout.strip()}")
-        else:
-            logger.error("❌ Node.js não encontrado")
-            return False
-    except FileNotFoundError:
-        logger.error("❌ Node.js não encontrado")
-        return False
-    
-
-    
-    logger.info("✅ Todas as dependências verificadas")
+    logger.info("✅ Todas as dependências Python verificadas")
     return True
 
 def check_database_connection():
