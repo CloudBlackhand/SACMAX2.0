@@ -216,6 +216,39 @@ async def api_health():
     """Verificação de saúde da API (compatibilidade)"""
     return await health_check()
 
+@app.get("/api/database/test")
+async def test_database():
+    """Testar conexão com banco de dados"""
+    try:
+        if db_manager and db_manager.is_connected():
+            # Testar conexão
+            result = db_manager.execute_query("SELECT 1 as test")
+            if result:
+                return {
+                    "status": "connected",
+                    "message": "Banco de dados conectado com sucesso",
+                    "timestamp": datetime.now().isoformat()
+                }
+            else:
+                return {
+                    "status": "error",
+                    "message": "Falha no teste de conexão",
+                    "timestamp": datetime.now().isoformat()
+                }
+        else:
+            return {
+                "status": "disconnected",
+                "message": "Banco de dados não está conectado",
+                "timestamp": datetime.now().isoformat()
+            }
+    except Exception as e:
+        logger.error(f"Erro ao testar banco de dados: {e}")
+        return {
+            "status": "error",
+            "message": f"Erro na conexão: {str(e)}",
+            "timestamp": datetime.now().isoformat()
+        }
+
 # ===== ROTAS PARA ARQUIVOS ESTÁTICOS =====
 
 @app.get("/{file_path:path}")

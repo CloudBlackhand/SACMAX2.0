@@ -3,7 +3,7 @@
 
 class MessagesModule {
     constructor() {
-        this.backendUrl = window.location.origin;
+        this.backendUrl = SacsMaxConfig.backend.current;
         this.whatsappUrl = 'http://localhost:3001';
         this.contacts = [];
         this.filteredContacts = [];

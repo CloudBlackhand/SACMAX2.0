@@ -4,7 +4,7 @@
 
 class ProdutividadeModule {
     constructor() {
-        this.backendUrl = window.location.origin;
+        this.backendUrl = SacsMaxConfig.backend.current;
         this.contacts = [];
         this.filteredContacts = [];
         this.searchTerm = '';

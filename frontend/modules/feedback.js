@@ -10,7 +10,7 @@ class FeedbackModule {
         this.stats = { positive: 0, negative: 0, neutral: 0, total: 0 };
         
         // URLs do backend
-        this.backendUrl = window.location.origin;
+        this.backendUrl = SacsMaxConfig.backend.current;
     }
 
     render() {

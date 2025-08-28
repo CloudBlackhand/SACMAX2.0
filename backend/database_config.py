@@ -39,6 +39,17 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"❌ Erro ao desconectar DatabaseManager: {e}")
     
+    def is_connected(self):
+        """Verificar se está conectado"""
+        try:
+            if self.connection and not self.connection.closed:
+                # Testar conexão
+                self.cursor.execute("SELECT 1")
+                return True
+            return False
+        except Exception:
+            return False
+    
     def execute_query(self, query, params=None):
         """Executar query"""
         try:

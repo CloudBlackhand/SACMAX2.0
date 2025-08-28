@@ -41,13 +41,44 @@ class SacsMaxApp {
         this.setupApp();
     }
 
-    setupApp() {
+    async setupApp() {
         this.createAppStructure();
         this.loadModules();
         this.setupNavigation();
         this.setupEventListeners();
+        
+        // Verificar conectividade antes de carregar módulos
+        await this.checkConnectivity();
+        
         this.loadDefaultModule();
         this.isAuthenticated = true;
+    }
+    
+    async checkConnectivity() {
+        try {
+            console.log("🔍 Verificando conectividade do sistema...");
+            
+            // Verificar se o config.js foi carregado
+            if (typeof SacsMaxConfig === 'undefined') {
+                console.error("❌ Configuração não carregada");
+                return;
+            }
+            
+            // Verificar backend
+            const backendHealth = await checkBackendHealth();
+            if (backendHealth) {
+                console.log("✅ Backend conectado");
+            } else {
+                console.warn("⚠️ Backend não está respondendo");
+            }
+            
+            // Verificar conectividade geral
+            const connectivity = await checkSystemConnectivity();
+            console.log("📊 Status de conectividade:", connectivity);
+            
+        } catch (error) {
+            console.error("❌ Erro ao verificar conectividade:", error);
+        }
     }
 
     createAppStructure() {

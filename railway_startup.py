@@ -49,14 +49,20 @@ def check_dependencies():
 def check_database_connection():
     """Verificar conexão com banco de dados"""
     try:
-        from backend.database_config import db_manager
+        from backend.database_config import db_manager, init_database
         
-        if db_manager.connect():
+        # Tentar inicializar o banco
+        if db_manager and db_manager.is_connected():
             logger.info("✅ Conexão com banco de dados estabelecida")
             return True
         else:
-            logger.warning("⚠️ Não foi possível conectar ao banco de dados")
-            return False
+            # Tentar reconectar
+            if db_manager and db_manager.connect():
+                logger.info("✅ Conexão com banco de dados estabelecida")
+                return True
+            else:
+                logger.warning("⚠️ Não foi possível conectar ao banco de dados")
+                return False
     except Exception as e:
         logger.error(f"❌ Erro ao verificar banco de dados: {e}")
         return False

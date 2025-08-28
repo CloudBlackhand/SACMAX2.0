@@ -14,7 +14,7 @@ class BotModule {
         
         // URLs dos serviços - Detecta automaticamente as portas
         this.whatsappUrl = this.detectWhatsAppUrl();
-        this.backendUrl = window.location.origin;
+        this.backendUrl = SacsMaxConfig.backend.current;
         
         // Status de conexão
         this.whatsappConnected = false;
