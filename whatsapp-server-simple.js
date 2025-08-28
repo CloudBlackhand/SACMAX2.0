@@ -29,6 +29,7 @@ let whatsappClient = null;
 let whatsappStatus = 'paused'; // Inicia pausado
 let qrCode = null;
 let isEnabled = false; // Controlado via Settings
+let qrCodeData = null; // QR Code real do WhatsApp Web
 
 // Broadcast para todos os clientes WebSocket
 function broadcastToClients(event, data) {
@@ -118,17 +119,24 @@ function createWhatsAppClient() {
 
     // Eventos do cliente
     client.on('qr', async (qr) => {
-        console.log('📱 QR Code gerado - aguardando escaneamento...');
+        console.log('📱 QR Code REAL gerado - aguardando escaneamento...');
+        console.log('🔗 QR Code data:', qr);
+        
         try {
+            // Salvar o QR Code real
+            qrCodeData = qr;
             qrCode = await qrcode.toDataURL(qr);
             whatsappStatus = 'qr_ready';
             
+            console.log('✅ QR Code REAL convertido para imagem');
+            
             broadcastToClients('qr_ready', {
                 qr: qrCode,
+                qrData: qrCodeData,
                 status: 'qr_ready'
             });
         } catch (error) {
-            console.error('Erro ao gerar QR Code:', error);
+            console.error('❌ Erro ao gerar QR Code REAL:', error);
         }
     });
 
@@ -402,7 +410,7 @@ app.get('/api/whatsapp/status', (req, res) => {
     });
 });
 
-// Obter QR Code
+// Obter QR Code REAL
 app.get('/api/whatsapp/qr', (req, res) => {
     if (!isEnabled) {
         return res.status(400).json({
@@ -412,11 +420,14 @@ app.get('/api/whatsapp/qr', (req, res) => {
         });
     }
     
-    if (whatsappStatus === 'qr_ready' && qrCode) {
+    if (whatsappStatus === 'qr_ready' && qrCode && qrCodeData) {
+        console.log('📱 Retornando QR Code REAL do WhatsApp Web');
         res.json({
             success: true,
             qr: qrCode,
-            status: 'qr_ready'
+            qrData: qrCodeData, // QR Code real do WhatsApp Web
+            status: 'qr_ready',
+            message: 'QR Code REAL do WhatsApp Web gerado'
         });
     } else if (whatsappStatus === 'ready') {
         res.json({
@@ -427,7 +438,7 @@ app.get('/api/whatsapp/qr', (req, res) => {
     } else {
         res.json({
             success: false,
-            message: 'QR Code não disponível. Clique em "Gerar QR Code" primeiro.',
+            message: 'QR Code REAL não disponível. Clique em "Gerar QR Code" primeiro.',
             status: whatsappStatus
         });
     }
