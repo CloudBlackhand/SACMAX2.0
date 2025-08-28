@@ -145,32 +145,106 @@ class WhatsAppModule {
         }
     }
 
-    // Função de renderização simples
+    // Função de renderização - Chat WhatsApp Web
     render() {
-        return `
-            <div class="module-container fade-in">
-                <div class="module-header">
-                    <span class="module-icon">📱</span>
-                    <h2 class="module-title">WhatsApp</h2>
-                    <div class="connection-status">
-                        <span class="status-indicator ${this.isConnected ? 'connected' : 'disconnected'}">
-                            ${this.isConnected ? '🟢 Conectado' : '🔴 Desconectado'}
-                        </span>
-                        <span class="status-text">${this.getStatusText()}</span>
+        if (!this.currentChat) {
+            // Tela inicial - sem chat ativo
+            return `
+                <div class="module-container fade-in">
+                    <div class="module-header">
+                        <span class="module-icon">📱</span>
+                        <h2 class="module-title">WhatsApp</h2>
+                        <div class="connection-status">
+                            <span class="status-indicator ${this.isConnected ? 'connected' : 'disconnected'}">
+                                ${this.isConnected ? '🟢 Conectado' : '🔴 Desconectado'}
+                            </span>
+                            <span class="status-text">${this.getStatusText()}</span>
+                        </div>
                     </div>
-                </div>
-                
-                <div class="wa-content">
-                    <div class="wa-info">
-                        <h3>💬 Chat WhatsApp</h3>
-                        <p>Para iniciar um chat, clique no botão "WhatsApp" na lista de contatos do módulo Produtividade.</p>
-                        <div class="wa-status">
-                            <strong>Status:</strong> ${this.getStatusText()}
+                    
+                    <div class="wa-content">
+                        <div class="wa-info">
+                            <h3>💬 Chat WhatsApp</h3>
+                            <p>Para iniciar um chat, clique no botão "WhatsApp" na lista de contatos do módulo Produtividade.</p>
+                            <div class="wa-status">
+                                <strong>Status:</strong> ${this.getStatusText()}
+                            </div>
                         </div>
                     </div>
                 </div>
+            `;
+        } else {
+            // Chat ativo - Interface WhatsApp Web
+            return `
+                <div class="module-container fade-in">
+                    <div class="module-header">
+                        <span class="module-icon">📱</span>
+                        <h2 class="module-title">WhatsApp - ${this.currentChat.name}</h2>
+                        <button class="btn-close-chat" onclick="whatsappModule.closeChat()">✕</button>
+                    </div>
+                    
+                    <div class="wa-chat-container">
+                        ${this.renderChatInterface()}
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    renderChatInterface() {
+        return `
+            <div class="wa-chat-header">
+                <div class="wa-chat-contact">
+                    <img src="${this.currentChat.avatar || 'https://via.placeholder.com/40'}" alt="${this.currentChat.name}">
+                    <div class="wa-chat-info">
+                        <div class="wa-chat-name">${this.currentChat.name}</div>
+                        <div class="wa-chat-status">${this.currentChat.status || 'online'}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="wa-messages-container">
+                ${this.renderMessages()}
+            </div>
+            
+            <div class="wa-message-input">
+                <div class="wa-input-container">
+                    <button class="wa-attachment-btn" onclick="whatsappModule.toggleAttachmentMenu()">
+                        📎
+                    </button>
+                    <input type="text" class="wa-message-text" placeholder="Digite uma mensagem..." 
+                           onkeypress="whatsappModule.handleMessageKeyPress(event)">
+                    <button class="wa-emoji-btn" onclick="whatsappModule.toggleEmojiPicker()">
+                        😊
+                    </button>
+                    <button class="wa-send-btn" onclick="whatsappModule.sendMessage()">
+                        ➤
+                    </button>
+                </div>
             </div>
         `;
+    }
+
+    renderMessages() {
+        const messages = this.messages[this.currentChat?.id] || [];
+        
+        if (messages.length === 0) {
+            return `
+                <div class="wa-messages-empty">
+                    <p>Nenhuma mensagem ainda</p>
+                    <p>Inicie uma conversa!</p>
+                </div>
+            `;
+        }
+
+        return messages.map(message => `
+            <div class="wa-message ${message.isOutgoing ? 'outgoing' : 'incoming'}">
+                <div class="wa-message-content">
+                    <div class="wa-message-text">${message.text}</div>
+                    <div class="wa-message-time">${message.time}</div>
+                </div>
+            </div>
+        `).join('');
     }
 
     getStatusText() {
@@ -195,6 +269,141 @@ class WhatsAppModule {
     destroy() {
         console.log('🛑 Destruindo módulo WhatsApp...');
         // Limpar recursos se necessário
+    }
+
+    // Funções do chat
+    startChat(contactData) {
+        console.log('💬 Iniciando chat com:', contactData);
+        
+        // Criar objeto de contato
+        this.currentChat = {
+            id: contactData.id,
+            name: contactData.nome_cliente || 'Cliente',
+            phone: contactData.telefone1 || contactData.telefone2 || '',
+            status: 'online',
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(contactData.nome_cliente || 'Cliente')}&background=25d366&color=fff&size=40`
+        };
+        
+        // Inicializar mensagens se não existirem
+        if (!this.messages[this.currentChat.id]) {
+            this.messages[this.currentChat.id] = [];
+        }
+        
+        // Atualizar interface
+        this.updateInterface();
+        
+        console.log('✅ Chat iniciado com sucesso');
+    }
+
+    // Função chamada pelo módulo de produtividade
+    createNewChat(phone, clientName) {
+        console.log('💬 Criando novo chat:', clientName, phone);
+        
+        // Criar objeto de contato
+        this.currentChat = {
+            id: `chat_${Date.now()}`,
+            name: clientName,
+            phone: phone,
+            status: 'online',
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(clientName)}&background=25d366&color=fff&size=40`
+        };
+        
+        // Inicializar mensagens se não existirem
+        if (!this.messages[this.currentChat.id]) {
+            this.messages[this.currentChat.id] = [];
+        }
+        
+        // Atualizar interface
+        this.updateInterface();
+        
+        console.log('✅ Novo chat criado com sucesso');
+    }
+
+    closeChat() {
+        console.log('🛑 Fechando chat');
+        this.currentChat = null;
+        this.updateInterface();
+    }
+
+    sendMessage() {
+        const input = document.querySelector('.wa-message-text');
+        if (!input || !this.currentChat) return;
+        
+        const text = input.value.trim();
+        if (!text) return;
+        
+        // Adicionar mensagem
+        const message = {
+            text: text,
+            time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            isOutgoing: true
+        };
+        
+        this.messages[this.currentChat.id].push(message);
+        
+        // Limpar input
+        input.value = '';
+        
+        // Atualizar interface
+        this.updateInterface();
+        
+        // Simular resposta automática após 2 segundos
+        setTimeout(() => {
+            this.simulateResponse();
+        }, 2000);
+    }
+
+    simulateResponse() {
+        if (!this.currentChat) return;
+        
+        const responses = [
+            "Obrigado pelo contato!",
+            "Vou verificar isso para você.",
+            "Entendi, vou processar sua solicitação.",
+            "Aguarde um momento, estou verificando.",
+            "Sua solicitação foi registrada com sucesso."
+        ];
+        
+        const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+        
+        const message = {
+            text: randomResponse,
+            time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            isOutgoing: false
+        };
+        
+        this.messages[this.currentChat.id].push(message);
+        this.updateInterface();
+    }
+
+    handleMessageKeyPress(event) {
+        if (event.key === 'Enter') {
+            this.sendMessage();
+        }
+    }
+
+    toggleEmojiPicker() {
+        console.log('Emoji picker:', 'funcionalidade em desenvolvimento');
+    }
+
+    toggleAttachmentMenu() {
+        console.log('Menu de anexos:', 'funcionalidade em desenvolvimento');
+    }
+
+    updateInterface() {
+        // Atualizar o conteúdo do módulo
+        const moduleContent = document.querySelector('.module-content');
+        if (moduleContent) {
+            moduleContent.innerHTML = this.render();
+        }
+        
+        // Scroll para última mensagem
+        setTimeout(() => {
+            const messagesContainer = document.querySelector('.wa-messages-container');
+            if (messagesContainer) {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        }, 100);
     }
 
     // Funções auxiliares
@@ -273,10 +482,165 @@ class WhatsAppModule {
 
 // Adiciona estilos específicos do módulo WhatsApp
 const whatsappStyles = `
-    .wa-main-container {
+    /* Chat WhatsApp Web */
+    .wa-chat-container {
         display: flex;
+        flex-direction: column;
         height: calc(100vh - 120px);
         background: #f0f0f0;
+    }
+
+    .wa-chat-header {
+        background: #075e54;
+        color: white;
+        padding: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .wa-chat-contact img {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .wa-chat-info {
+        flex: 1;
+    }
+
+    .wa-chat-name {
+        font-weight: bold;
+        font-size: 16px;
+    }
+
+    .wa-chat-status {
+        font-size: 12px;
+        opacity: 0.8;
+    }
+
+    .wa-messages-container {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background: #e5ddd5;
+    }
+
+    .wa-messages-empty {
+        text-align: center;
+        color: #666;
+        margin-top: 50px;
+    }
+
+    .wa-message {
+        margin-bottom: 10px;
+        display: flex;
+    }
+
+    .wa-message.outgoing {
+        justify-content: flex-end;
+    }
+
+    .wa-message.incoming {
+        justify-content: flex-start;
+    }
+
+    .wa-message-content {
+        max-width: 70%;
+        padding: 10px 15px;
+        border-radius: 15px;
+        position: relative;
+    }
+
+    .wa-message.outgoing .wa-message-content {
+        background: #dcf8c6;
+        color: #000;
+    }
+
+    .wa-message.incoming .wa-message-content {
+        background: white;
+        color: #000;
+    }
+
+    .wa-message-text {
+        margin-bottom: 5px;
+        word-wrap: break-word;
+    }
+
+    .wa-message-time {
+        font-size: 11px;
+        opacity: 0.7;
+        text-align: right;
+    }
+
+    .wa-message-input {
+        background: #f0f0f0;
+        padding: 15px;
+        border-top: 1px solid #ddd;
+    }
+
+    .wa-input-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: white;
+        border-radius: 25px;
+        padding: 8px 15px;
+    }
+
+    .wa-attachment-btn,
+    .wa-emoji-btn,
+    .wa-send-btn {
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 50%;
+        transition: background 0.2s;
+    }
+
+    .wa-attachment-btn:hover,
+    .wa-emoji-btn:hover {
+        background: #f0f0f0;
+    }
+
+    .wa-send-btn {
+        background: #25d366;
+        color: white;
+        width: 35px;
+        height: 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .wa-send-btn:hover {
+        background: #128c7e;
+    }
+
+    .wa-message-text {
+        flex: 1;
+        border: none;
+        outline: none;
+        font-size: 14px;
+        padding: 8px 0;
+    }
+
+    .btn-close-chat {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 20px;
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 50%;
+        transition: background 0.2s;
+    }
+
+    .btn-close-chat:hover {
+        background: rgba(255, 255, 255, 0.2);
     }
 
     .wa-sidebar {
