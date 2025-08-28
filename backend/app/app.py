@@ -93,20 +93,24 @@ excel_service = ExcelService() if ExcelService else None
 
 # ===== WAHA INTEGRATION =====
 
-# Importar controlador WAHA
+# Importar controlador WAHA e rotas do WhatsApp
 try:
     from app.services.waha.waha_controller import router as waha_router
     from app.services.waha.waha_service import WahaService
+    from app.api.routes.whatsapp import router as whatsapp_router
     
     # Incluir rotas do WAHA
     app.include_router(waha_router)
     
+    # Incluir rotas do WhatsApp
+    app.include_router(whatsapp_router, prefix="/api")
+    
     # Instanciar serviço WAHA
     waha_service = WahaService()
     
-    logger.info(" WAHA integrado com sucesso!")
+    logger.info("✅ WAHA e WhatsApp integrados com sucesso!")
 except ImportError as e:
-    logger.warning(f" WAHA não disponível: {e}")
+    logger.warning(f"⚠️ WAHA/WhatsApp não disponível: {e}")
     waha_service = None
 
 # Endpoints de compatibilidade WAHA

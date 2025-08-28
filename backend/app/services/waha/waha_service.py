@@ -19,7 +19,7 @@ class WahaService:
         self.logger = logging.getLogger(__name__)
         self.db_manager = db_manager
         self.feedback_service = FeedbackService(db_manager)
-        self.excel_service = ExcelService(db_manager)
+        self.excel_service = ExcelService()  # ExcelService não precisa de db_manager
         self.session_name = "sacsmax"
 
     async def check_waha_status(self) -> Dict[str, Any]:

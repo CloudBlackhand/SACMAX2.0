@@ -11,7 +11,10 @@ import os
 
 # Importações do sistema
 from app.services.waha.waha_service import WahaService
-from app.core.database import get_db_manager
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+from database_config import get_db_manager
 
 router = APIRouter()
 
