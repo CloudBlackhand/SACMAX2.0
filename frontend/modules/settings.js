@@ -903,7 +903,7 @@ const settingsStyles = `
 
 .nav-btn.active .nav-icon {
     opacity: 1;
-    color: white !important;
+    color: #000000 !important;
     filter: brightness(1.2);
 }
 
@@ -1397,7 +1397,7 @@ const settingsStyles = `
 
 .nav-btn.active {
     background: #007bff;
-    color: white !important;
+    color: #000000 !important;
     border-color: #0056b3;
     box-shadow: 0 2px 8px rgba(0,123,255,0.3);
 }
