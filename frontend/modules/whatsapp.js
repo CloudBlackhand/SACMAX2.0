@@ -159,6 +159,226 @@ class WhatsAppModule {
             statusIndicator.className = `status-indicator ${this.whatsappStatus === 'ready' ? 'connected' : 'disconnected'}`;
         }
     }
+
+    // NOVO: Função de renderização
+    render() {
+        return `
+            <div class="module-container fade-in">
+                <div class="module-header">
+                    <span class="module-icon">📱</span>
+                    <h2 class="module-title">WhatsApp</h2>
+                    <div class="connection-status">
+                        <span class="status-indicator ${this.isConnected ? 'connected' : 'disconnected'}">
+                            ${this.isConnected ? '🟢 Conectado' : '🔴 Desconectado'}
+                        </span>
+                        <span class="status-text">${this.getStatusText()}</span>
+                    </div>
+                </div>
+                
+                <div class="wa-main-container">
+                    <div class="wa-sidebar">
+                        <div class="wa-search-container">
+                            <div class="wa-search-box">
+                                <span class="wa-search-icon">🔍</span>
+                                <input type="text" class="wa-search-input" placeholder="Buscar contatos..." 
+                                       onkeyup="whatsappModule.searchContacts(this.value)">
+                            </div>
+                        </div>
+                        
+                        <div class="wa-contacts-list">
+                            ${this.renderContactsList()}
+                        </div>
+                    </div>
+                    
+                    <div class="wa-chat-container">
+                        ${this.renderChatInterface()}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    renderContactsList() {
+        if (this.contacts.length === 0) {
+            return `
+                <div class="wa-empty-state">
+                    <div class="wa-empty-icon">👥</div>
+                    <h3>Nenhum contato encontrado</h3>
+                    <p>Os contatos aparecerão aqui quando o WhatsApp estiver conectado</p>
+                </div>
+            `;
+        }
+        
+        return this.filteredContacts.map(contact => `
+            <div class="wa-contact-item ${this.currentChat?.id === contact.id ? 'active' : ''}" 
+                 onclick="whatsappModule.selectContact('${contact.id}')">
+                <div class="wa-contact-avatar">
+                    <img src="${contact.avatar || 'https://via.placeholder.com/40'}" alt="${contact.name}">
+                </div>
+                <div class="wa-contact-info">
+                    <div class="wa-contact-name">${contact.name}</div>
+                    <div class="wa-contact-last-message">${contact.lastMessage || 'Nenhuma mensagem'}</div>
+                </div>
+                <div class="wa-contact-meta">
+                    <div class="wa-contact-time">${contact.lastTime || ''}</div>
+                    ${contact.unreadCount > 0 ? `<div class="wa-unread-badge">${contact.unreadCount}</div>` : ''}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    renderChatInterface() {
+        if (!this.currentChat) {
+            return `
+                <div class="wa-chat-empty">
+                    <div class="wa-chat-empty-icon">💬</div>
+                    <h3>Selecione um contato</h3>
+                    <p>Escolha um contato para iniciar uma conversa</p>
+                </div>
+            `;
+        }
+        
+        return `
+            <div class="wa-chat-header">
+                <div class="wa-chat-contact">
+                    <img src="${this.currentChat.avatar || 'https://via.placeholder.com/40'}" alt="${this.currentChat.name}">
+                    <div class="wa-chat-info">
+                        <div class="wa-chat-name">${this.currentChat.name}</div>
+                        <div class="wa-chat-status">${this.currentChat.status || 'online'}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="wa-messages-container">
+                ${this.renderMessages()}
+            </div>
+            
+            <div class="wa-message-input">
+                <div class="wa-input-container">
+                    <button class="wa-attachment-btn" onclick="whatsappModule.toggleAttachmentMenu()">
+                        📎
+                    </button>
+                    <input type="text" class="wa-message-text" placeholder="Digite uma mensagem..." 
+                           onkeypress="whatsappModule.handleMessageKeyPress(event)">
+                    <button class="wa-emoji-btn" onclick="whatsappModule.toggleEmojiPicker()">
+                        😊
+                    </button>
+                    <button class="wa-send-btn" onclick="whatsappModule.sendMessage()">
+                        ➤
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    renderMessages() {
+        const messages = this.messages[this.currentChat?.id] || [];
+        
+        if (messages.length === 0) {
+            return `
+                <div class="wa-messages-empty">
+                    <p>Nenhuma mensagem ainda</p>
+                    <p>Inicie uma conversa!</p>
+                </div>
+            `;
+        }
+        
+        return messages.map(message => `
+            <div class="wa-message ${message.isOutgoing ? 'outgoing' : 'incoming'}">
+                <div class="wa-message-content">
+                    <div class="wa-message-text">${message.text}</div>
+                    <div class="wa-message-time">${message.time}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    getStatusText() {
+        switch (this.whatsappStatus) {
+            case 'paused': return 'Pausado - Ative via Settings';
+            case 'starting': return 'Iniciando...';
+            case 'qr_ready': return 'QR Code pronto';
+            case 'ready': return 'Conectado';
+            case 'loading': return 'Carregando...';
+            case 'authenticated': return 'Autenticado';
+            case 'disconnected': return 'Desconectado';
+            case 'error': return 'Erro';
+            default: return 'Desconhecido';
+        }
+    }
+
+    // Funções auxiliares
+    searchContacts(query) {
+        this.searchTerm = query.toLowerCase();
+        this.filteredContacts = this.contacts.filter(contact => 
+            contact.name.toLowerCase().includes(this.searchTerm) ||
+            contact.lastMessage?.toLowerCase().includes(this.searchTerm)
+        );
+        this.updateContactsList();
+    }
+
+    selectContact(contactId) {
+        this.currentChat = this.contacts.find(c => c.id === contactId);
+        this.updateChatInterface();
+    }
+
+    sendMessage() {
+        const input = document.querySelector('.wa-message-text');
+        const text = input?.value?.trim();
+        
+        if (!text || !this.currentChat) return;
+        
+        const message = {
+            id: Date.now(),
+            text: text,
+            time: new Date().toLocaleTimeString(),
+            isOutgoing: true
+        };
+        
+        if (!this.messages[this.currentChat.id]) {
+            this.messages[this.currentChat.id] = [];
+        }
+        
+        this.messages[this.currentChat.id].push(message);
+        input.value = '';
+        
+        this.updateChatInterface();
+    }
+
+    handleMessageKeyPress(event) {
+        if (event.key === 'Enter') {
+            this.sendMessage();
+        }
+    }
+
+    toggleEmojiPicker() {
+        this.showEmojiPicker = !this.showEmojiPicker;
+        // Implementar emoji picker
+    }
+
+    toggleAttachmentMenu() {
+        this.showAttachmentMenu = !this.showAttachmentMenu;
+        // Implementar menu de anexos
+    }
+
+    updateContactsList() {
+        const contactsList = document.querySelector('.wa-contacts-list');
+        if (contactsList) {
+            contactsList.innerHTML = this.renderContactsList();
+        }
+    }
+
+    updateChatInterface() {
+        const chatContainer = document.querySelector('.wa-chat-container');
+        if (chatContainer) {
+            chatContainer.innerHTML = this.renderChatInterface();
+        }
+    }
+
+    showError(message) {
+        console.error(message);
+        // Implementar notificação de erro
+    }
 }
 
 // Adiciona estilos específicos do módulo WhatsApp

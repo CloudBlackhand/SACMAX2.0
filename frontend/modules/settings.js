@@ -678,10 +678,10 @@ class SettingsModule {
                 // Limpar o display primeiro
                 qrDisplay.innerHTML = '';
                 
-                if (data.qrCode) {
-                    // Usar QR Code do backend
+                if (data.qr) {
+                    // Usar QR Code do backend (para conectar WhatsApp Web)
                     new QRCode(qrDisplay, {
-                        text: data.qrCode,
+                        text: data.qr,
                         width: 300,
                         height: 300,
                         colorDark: "#000000",
@@ -689,8 +689,8 @@ class SettingsModule {
                         correctLevel: QRCode.CorrectLevel.H
                     });
                 } else {
-                    // QR Code de exemplo (sistema independente)
-                    const qrData = `https://wa.me/5511999999999`;
+                    // QR Code de exemplo para conectar WhatsApp Web (não para enviar mensagem)
+                    const qrData = `https://web.whatsapp.com`;
                     new QRCode(qrDisplay, {
                         text: qrData,
                         width: 300,
