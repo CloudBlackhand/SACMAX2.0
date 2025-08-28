@@ -452,15 +452,26 @@ async def start_whatsapp_session(session_name: str = "sacmax"):
 
 @app.get("/api/whatsapp/qr")
 async def get_whatsapp_qr(session_name: str = "sacmax"):
-    """Obter QR Code do WhatsApp - Sistema 100% Independente"""
+    """Obter QR Code REAL do WhatsApp Web"""
     try:
-        # Sistema funcionando 100% independente - SEM WhatsApp Server
+        # Primeiro, tentar obter QR Code REAL do WhatsApp Server
+        try:
+            response = requests.get(f"{WHATSAPP_API_URL}/api/whatsapp/qr", timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("success") and data.get("qr"):
+                    logger.info("✅ QR Code REAL obtido do WhatsApp Server")
+                    return data
+        except Exception as e:
+            logger.warning(f"Erro ao conectar ao WhatsApp Server: {e}")
+        
+        # Se não conseguir QR Code REAL, retornar fallback
         return {
             "success": True,
             "qr": "https://web.whatsapp.com",
-            "message": "QR Code para conectar WhatsApp Web",
+            "message": "QR Code para conectar WhatsApp Web (fallback)",
             "status": "qr_ready",
-            "note": "Sistema funcionando independentemente"
+            "note": "WhatsApp Server não disponível - use fallback"
         }
     except Exception as e:
         logger.error(f"Erro ao gerar QR Code: {e}")
@@ -1602,14 +1613,24 @@ async def search_productivity_contacts(
 # NOVO: Endpoints do WhatsApp (versão independente)
 @app.post("/api/whatsapp/enable")
 async def enable_whatsapp():
-    """Ativar WhatsApp via Settings - Sistema Independente"""
+    """Ativar WhatsApp via Settings - Conectar ao servidor real"""
     try:
-        # Sistema funcionando 100% independente
+        # Tentar ativar no WhatsApp Server real
+        try:
+            response = requests.post(f"{WHATSAPP_API_URL}/api/whatsapp/enable", timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                logger.info("✅ WhatsApp REAL ativado via servidor")
+                return data
+        except Exception as e:
+            logger.warning(f"Erro ao conectar ao WhatsApp Server: {e}")
+        
+        # Fallback se WhatsApp Server não estiver disponível
         return {
             "success": True,
-            "message": "WhatsApp ativado com sucesso",
+            "message": "WhatsApp ativado com sucesso (modo fallback)",
             "status": "ready",
-            "note": "Sistema funcionando independentemente"
+            "note": "WhatsApp Server não disponível - usando fallback"
         }
     except Exception as e:
         logger.error(f"Erro ao ativar WhatsApp: {e}")
@@ -1632,14 +1653,24 @@ async def disable_whatsapp():
 
 @app.post("/api/whatsapp/generate-qr")
 async def generate_qr_code():
-    """Gerar QR Code do WhatsApp - Sistema Independente"""
+    """Gerar QR Code REAL do WhatsApp Web"""
     try:
-        # Sistema funcionando 100% independente
+        # Tentar gerar QR Code REAL no WhatsApp Server
+        try:
+            response = requests.post(f"{WHATSAPP_API_URL}/api/whatsapp/generate-qr", timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                logger.info("✅ QR Code REAL sendo gerado via servidor")
+                return data
+        except Exception as e:
+            logger.warning(f"Erro ao conectar ao WhatsApp Server: {e}")
+        
+        # Fallback se WhatsApp Server não estiver disponível
         return {
             "success": True,
-            "message": "QR Code sendo gerado...",
+            "message": "QR Code sendo gerado... (modo fallback)",
             "status": "qr_ready",
-            "note": "Sistema funcionando independentemente"
+            "note": "WhatsApp Server não disponível - usando fallback"
         }
     except Exception as e:
         logger.error(f"Erro ao gerar QR Code: {e}")
