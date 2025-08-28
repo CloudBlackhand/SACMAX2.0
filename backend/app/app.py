@@ -79,6 +79,8 @@ app.add_middleware(
 # Servir arquivos estáticos do frontend
 if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+    # Servir também da raiz para compatibilidade
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIR)), name="root")
 
 # Dados em memória (fallback se banco não estiver disponível)
 contacts = []
