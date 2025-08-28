@@ -119,7 +119,7 @@ async def waha_status():
         try:
             result = await waha_service.check_waha_status()
             return JSONResponse(content=result)
-        except Exception as e:
+    except Exception as e:
             logger.error(f"Erro ao verificar status do WAHA: {e}")
             return JSONResponse(content={"status": "error", "message": str(e)}, status_code=503)
     else:
@@ -132,7 +132,7 @@ async def waha_create_session(session_name: str = "sacsmax"):
         try:
             result = await waha_service.create_session(session_name)
             return JSONResponse(content=result)
-        except Exception as e:
+    except Exception as e:
             logger.error(f"Erro ao criar sessão WAHA: {e}")
             return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
     else:
@@ -148,7 +148,7 @@ async def waha_screenshot(session: str = "sacsmax"):
                 return Response(content=screenshot, media_type="image/png")
             else:
                 return JSONResponse(content={"status": "error", "message": "Screenshot não disponível"}, status_code=404)
-        except Exception as e:
+    except Exception as e:
             logger.error(f"Erro ao obter screenshot WAHA: {e}")
             return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
     else:
@@ -161,7 +161,7 @@ async def waha_send_message(chat_id: str, text: str, session: str = "sacsmax"):
         try:
             result = await waha_service.send_text_message(chat_id, text, session)
             return JSONResponse(content=result)
-        except Exception as e:
+    except Exception as e:
             logger.error(f"Erro ao enviar mensagem WAHA: {e}")
             return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
     else:
@@ -174,7 +174,7 @@ async def waha_contacts(session: str = "sacsmax"):
         try:
             result = await waha_service.get_contacts(session)
             return JSONResponse(content=result)
-        except Exception as e:
+    except Exception as e:
             logger.error(f"Erro ao obter contatos WAHA: {e}")
             return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
     else:
@@ -242,7 +242,7 @@ async def create_contact(contact: dict):
     try:
         if db_manager and db_manager.is_connected():
             # Salvar no banco de dados
-            query = """
+        query = """
             INSERT INTO contacts (name, email, phone, company, created_at)
             VALUES (%s, %s, %s, %s, NOW())
             """
@@ -301,7 +301,7 @@ async def create_message(message: dict):
             # Salvar em memória
             message["id"] = len(messages) + 1
             message["created_at"] = datetime.now().isoformat()
-            messages.append(message)
+                messages.append(message)
             return {"message": "Mensagem criada com sucesso"}
     except Exception as e:
         logger.error(f"Erro ao criar mensagem: {e}")
@@ -360,7 +360,7 @@ async def startup_event():
     # Inicializar banco de dados se disponível
     if db_manager:
         try:
-            init_database()
+        init_database()
             logger.info("✅ Banco de dados inicializado")
         except Exception as e:
             logger.warning(f"⚠️ Erro ao inicializar banco: {e}")
@@ -373,7 +373,7 @@ async def shutdown_event():
     # Fechar conexões do banco
     if db_manager:
         try:
-            close_database()
+        close_database()
             logger.info("✅ Conexões do banco fechadas")
         except Exception as e:
             logger.warning(f"⚠️ Erro ao fechar banco: {e}")
