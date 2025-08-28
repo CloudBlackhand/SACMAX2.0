@@ -403,9 +403,19 @@ class WhatsAppModule {
     }
 
     updateInterface() {
+        console.log('🔄 Atualizando interface do WhatsApp...');
+        
         // Atualizar o conteúdo do módulo usando a função do main.js
         if (window.app && window.app.currentModule === 'whatsapp') {
             window.app.loadModule('whatsapp');
+        } else {
+            // Fallback: atualizar diretamente o conteúdo
+            const moduleContent = document.querySelector('.module-content');
+            if (moduleContent) {
+                moduleContent.innerHTML = this.render();
+            } else {
+                console.warn('⚠️ Elemento .module-content não encontrado');
+            }
         }
         
         // Scroll para última mensagem
@@ -415,6 +425,8 @@ class WhatsAppModule {
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }
         }, 100);
+        
+        console.log('✅ Interface atualizada');
     }
 
     // Funções auxiliares
