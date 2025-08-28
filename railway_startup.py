@@ -126,36 +126,7 @@ def start_backend():
         logger.error(f"❌ Erro ao iniciar servidor backend: {e}")
         return None
 
-def start_whatsapp_server():
-    """Iniciar servidor WhatsApp automaticamente (apenas em desenvolvimento)"""
-    # No Railway, não iniciar WhatsApp server automaticamente
-    if IS_RAILWAY:
-        logger.info("ℹ️ WhatsApp server não será iniciado automaticamente no Railway")
-        logger.info("💡 Para usar WhatsApp, inicie manualmente via Settings ou localmente")
-        return None
-    
-    try:
-        logger.info("📱 Verificando servidor WhatsApp...")
-        
-        # No Docker, o WhatsApp server é iniciado pelo docker-entrypoint.sh
-        # Apenas verificar se está rodando
-        whatsapp_ports = [3001, 3002, 3003, 3004, 3005]
-        
-        for port in whatsapp_ports:
-            try:
-                response = requests.get(f"http://localhost:{port}/api/status", timeout=3)
-                if response.status_code == 200:
-                    logger.info(f"✅ WhatsApp server detectado na porta {port}")
-                    return True
-            except:
-                continue
-        
-        logger.info("ℹ️ WhatsApp server não detectado (será iniciado pelo Docker)")
-        return None
-            
-    except Exception as e:
-        logger.error(f"❌ Erro ao verificar servidor WhatsApp: {e}")
-        return None
+
 
 def serve_frontend():
     """Servir frontend estático"""
@@ -183,7 +154,8 @@ def serve_frontend():
 def check_services():
     """Verificar se os serviços estão rodando"""
     services = [
-        ("Backend", f"http://localhost:{PORT}/api/health")
+        ("Backend", f"http://localhost:{PORT}/health"),
+        ("WAHA", "http://localhost:3000/api/status")
     ]
     
     logger.info("🔍 Verificando serviços...")
@@ -196,20 +168,10 @@ def check_services():
             else:
                 logger.warning(f"⚠️ {name}: Status {response.status_code}")
         except Exception as e:
-            logger.error(f"❌ {name}: Erro - {e}")
-    
-    # Verificar WhatsApp server
-    whatsapp_ports = [3001, 3002, 3003, 3004, 3005]
-    for port in whatsapp_ports:
-        try:
-            response = requests.get(f"http://localhost:{port}/api/status", timeout=3)
-            if response.status_code == 200:
-                logger.info(f"✅ WhatsApp Server: OK (porta {port})")
-                return
-        except:
-            continue
-    
-    logger.info("ℹ️ WhatsApp Server: Não está rodando")
+            if name == "WAHA":
+                logger.info(f"ℹ️ {name}: Não está rodando (normal em desenvolvimento)")
+            else:
+                logger.error(f"❌ {name}: Erro - {e}")
 
 def main():
     """Função principal"""
@@ -232,9 +194,6 @@ def main():
     # Configurar frontend
     serve_frontend()
     
-    # Iniciar WhatsApp server primeiro
-    whatsapp_process = start_whatsapp_server()
-    
     # Iniciar backend
     backend_process = start_backend()
     if not backend_process:
@@ -244,12 +203,8 @@ def main():
     logger.info("\n✅ Sistema iniciado com sucesso!")
     logger.info(f"🌐 Frontend: http://localhost:{PORT}")
     logger.info(f"🔧 Backend API: http://localhost:{PORT}/docs")
-    if whatsapp_process:
-        logger.info(f"📱 WhatsApp: http://localhost:3002 (iniciado automaticamente)")
-    elif IS_RAILWAY:
-        logger.info(f"📱 WhatsApp: Disponível via Settings (não iniciado no Railway)")
-    else:
-        logger.info(f"📱 WhatsApp: http://localhost:3002 (inicie manualmente via Settings)")
+    logger.info(f"📱 WAHA: http://localhost:3000 (disponível via Docker)")
+    logger.info(f"📱 WhatsApp: Disponível via WAHA (sem QR Code)")
     
     # Verificar serviços
     time.sleep(10)
@@ -267,25 +222,11 @@ def main():
             if backend_process.poll() is not None:
                 logger.error("❌ Processo backend parou inesperadamente")
                 return False
-            
-            if whatsapp_process and whatsapp_process.poll() is not None:
-                logger.warning("⚠️ Processo WhatsApp parou, tentando reiniciar...")
-                whatsapp_process = start_whatsapp_server()
                 
     except KeyboardInterrupt:
         logger.info("\n🛑 Parando sistema...")
         
         # Parar processos
-        try:
-            if whatsapp_process:
-                whatsapp_process.terminate()
-                whatsapp_process.wait(timeout=5)
-                logger.info("✅ WhatsApp Server parado")
-        except:
-            if whatsapp_process:
-                whatsapp_process.kill()
-                logger.info("⚠️ WhatsApp Server forçado a parar")
-        
         try:
             backend_process.terminate()
             backend_process.wait(timeout=5)
