@@ -174,7 +174,7 @@ async def waha_contacts(session: str = "sacsmax"):
         try:
             result = await waha_service.get_contacts(session)
             return JSONResponse(content=result)
-    except Exception as e:
+        except Exception as e:
             logger.error(f"Erro ao obter contatos WAHA: {e}")
             return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
     else:
@@ -360,7 +360,7 @@ async def startup_event():
     # Inicializar banco de dados se disponível
     if db_manager:
         try:
-        init_database()
+            init_database()
             logger.info("✅ Banco de dados inicializado")
         except Exception as e:
             logger.warning(f"⚠️ Erro ao inicializar banco: {e}")
@@ -373,7 +373,7 @@ async def shutdown_event():
     # Fechar conexões do banco
     if db_manager:
         try:
-        close_database()
+            close_database()
             logger.info("✅ Conexões do banco fechadas")
         except Exception as e:
             logger.warning(f"⚠️ Erro ao fechar banco: {e}")
