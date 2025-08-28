@@ -869,16 +869,39 @@ const settingsStyles = `
     white-space: nowrap;
     font-size: 14px;
     font-weight: 500;
+    border: 2px solid transparent;
 }
 
 .nav-btn:hover {
     background: #e9ecef;
     color: #1a1a1a;
+    border-color: #007bff;
 }
 
 .nav-btn.active {
     background: #007bff;
     color: white;
+    border-color: #0056b3;
+}
+
+.nav-icon {
+    font-size: 16px;
+    color: inherit;
+    filter: contrast(1.2);
+}
+
+/* Garantir contraste para ícones específicos */
+.nav-btn .nav-icon {
+    opacity: 0.9;
+}
+
+.nav-btn:hover .nav-icon {
+    opacity: 1;
+}
+
+.nav-btn.active .nav-icon {
+    opacity: 1;
+    filter: brightness(1.1);
 }
 
 .nav-icon {
@@ -1329,6 +1352,51 @@ const settingsStyles = `
     display: flex;
     gap: 12px;
     margin-top: 16px;
+}
+
+/* Melhorar visibilidade geral */
+.settings-nav {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    border: 1px solid #e9ecef;
+}
+
+.nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border: none;
+    background: #f8f9fa;
+    color: #1a1a1a;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    font-size: 14px;
+    font-weight: 500;
+    border: 2px solid transparent;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.nav-btn:hover {
+    background: #e9ecef;
+    color: #1a1a1a;
+    border-color: #007bff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.nav-btn.active {
+    background: #007bff;
+    color: white;
+    border-color: #0056b3;
+    box-shadow: 0 2px 8px rgba(0,123,255,0.3);
 }
 
 /* Responsividade */
