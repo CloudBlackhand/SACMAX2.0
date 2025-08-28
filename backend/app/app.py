@@ -79,8 +79,6 @@ app.add_middleware(
 # Servir arquivos estáticos do frontend
 if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
-    # Servir também da raiz para compatibilidade
-    app.mount("/", StaticFiles(directory=str(FRONTEND_DIR)), name="root")
 
 # Dados em memória (fallback se banco não estiver disponível)
 contacts = []
@@ -163,7 +161,7 @@ async def waha_send_message(chat_id: str, text: str, session: str = "sacsmax"):
         try:
             result = await waha_service.send_text_message(chat_id, text, session)
             return JSONResponse(content=result)
-        except Exception as e:
+    except Exception as e:
             logger.error(f"Erro ao enviar mensagem WAHA: {e}")
             return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
     else:
@@ -176,7 +174,7 @@ async def waha_contacts(session: str = "sacsmax"):
         try:
             result = await waha_service.get_contacts(session)
             return JSONResponse(content=result)
-        except Exception as e:
+    except Exception as e:
             logger.error(f"Erro ao obter contatos WAHA: {e}")
             return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
     else:
@@ -220,6 +218,28 @@ async def api_health():
     """Verificação de saúde da API (compatibilidade)"""
     return await health_check()
 
+# ===== ROTAS PARA ARQUIVOS ESTÁTICOS =====
+
+@app.get("/{file_path:path}")
+async def serve_static_files(file_path: str):
+    """Servir arquivos estáticos do frontend"""
+    try:
+        # Verificar se é um arquivo JavaScript ou HTML
+        if file_path.endswith(('.js', '.html', '.css', '.png', '.jpg', '.ico')):
+            file_path_obj = FRONTEND_DIR / file_path
+            if file_path_obj.exists():
+                return FileResponse(str(file_path_obj))
+        
+        # Se não for arquivo estático, servir index.html
+        index_path = FRONTEND_DIR / "index.html"
+        if index_path.exists():
+            return FileResponse(str(index_path))
+        
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+    except Exception as e:
+        logger.error(f"Erro ao servir arquivo estático: {e}")
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+
 # ===== ENDPOINTS DE CONTATOS =====
 
 @app.get("/api/contacts")
@@ -244,7 +264,7 @@ async def create_contact(contact: dict):
     try:
         if db_manager and db_manager.is_connected():
             # Salvar no banco de dados
-            query = """
+        query = """
             INSERT INTO contacts (name, email, phone, company, created_at)
             VALUES (%s, %s, %s, %s, NOW())
             """
@@ -303,7 +323,7 @@ async def create_message(message: dict):
             # Salvar em memória
             message["id"] = len(messages) + 1
             message["created_at"] = datetime.now().isoformat()
-            messages.append(message)
+                messages.append(message)
             return {"message": "Mensagem criada com sucesso"}
     except Exception as e:
         logger.error(f"Erro ao criar mensagem: {e}")
@@ -362,7 +382,7 @@ async def startup_event():
     # Inicializar banco de dados se disponível
     if db_manager:
         try:
-            init_database()
+        init_database()
             logger.info("✅ Banco de dados inicializado")
         except Exception as e:
             logger.warning(f"⚠️ Erro ao inicializar banco: {e}")
@@ -375,7 +395,7 @@ async def shutdown_event():
     # Fechar conexões do banco
     if db_manager:
         try:
-            close_database()
+        close_database()
             logger.info("✅ Conexões do banco fechadas")
         except Exception as e:
             logger.warning(f"⚠️ Erro ao fechar banco: {e}")
