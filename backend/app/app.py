@@ -382,7 +382,7 @@ async def startup_event():
     # Inicializar banco de dados se disponível
     if db_manager:
         try:
-        init_database()
+            init_database()
             logger.info("✅ Banco de dados inicializado")
         except Exception as e:
             logger.warning(f"⚠️ Erro ao inicializar banco: {e}")
@@ -395,7 +395,7 @@ async def shutdown_event():
     # Fechar conexões do banco
     if db_manager:
         try:
-        close_database()
+            close_database()
             logger.info("✅ Conexões do banco fechadas")
         except Exception as e:
             logger.warning(f"⚠️ Erro ao fechar banco: {e}")
