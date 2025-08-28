@@ -242,7 +242,7 @@ async def create_contact(contact: dict):
     try:
         if db_manager and db_manager.is_connected():
             # Salvar no banco de dados
-        query = """
+            query = """
             INSERT INTO contacts (name, email, phone, company, created_at)
             VALUES (%s, %s, %s, %s, NOW())
             """
@@ -301,7 +301,7 @@ async def create_message(message: dict):
             # Salvar em memória
             message["id"] = len(messages) + 1
             message["created_at"] = datetime.now().isoformat()
-                messages.append(message)
+            messages.append(message)
             return {"message": "Mensagem criada com sucesso"}
     except Exception as e:
         logger.error(f"Erro ao criar mensagem: {e}")
