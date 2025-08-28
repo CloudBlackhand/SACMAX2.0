@@ -55,17 +55,7 @@ def check_dependencies():
         logger.error("❌ Node.js não encontrado")
         return False
     
-    # Verificar npm
-    try:
-        result = subprocess.run(['npm', '--version'], capture_output=True, text=True)
-        if result.returncode == 0:
-            logger.info(f"✅ npm encontrado: {result.stdout.strip()}")
-        else:
-            logger.error("❌ npm não encontrado")
-            return False
-    except FileNotFoundError:
-        logger.error("❌ npm não encontrado")
-        return False
+
     
     logger.info("✅ Todas as dependências verificadas")
     return True
