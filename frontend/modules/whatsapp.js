@@ -26,10 +26,20 @@ class WhatsAppModule {
         // Carregar dados salvos
         this.loadSavedData();
         
-        // Verificar conexão
-        this.checkConnection();
+        // Verificar conexão e carregar chats
+        this.initializeWaha();
         
         console.log('✅ WhatsApp Web inicializado');
+    }
+
+    async initializeWaha() {
+        // Verificar conexão
+        await this.checkConnection();
+        
+        // Se conectado, carregar chats do WAHA
+        if (this.isConnected) {
+            await this.loadWahaChats();
+        }
     }
 
     // Carregar dados salvos do localStorage
@@ -64,13 +74,93 @@ class WhatsAppModule {
 
     async checkConnection() {
         try {
-            const response = await fetch(`${SacsMaxConfig.backend.current}/api/health`);
-            this.isConnected = response.ok;
+            // Verificar status do WAHA
+            const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/status`);
+            const data = await response.json();
+            
+            this.isConnected = data.success && data.data.status === 'connected';
             this.sessionStatus = this.isConnected ? 'connected' : 'disconnected';
+            
+            console.log('📱 Status WAHA:', data.data);
         } catch (error) {
-            console.error('❌ Erro ao verificar conexão:', error);
+            console.error('❌ Erro ao verificar conexão WAHA:', error);
             this.isConnected = false;
             this.sessionStatus = 'disconnected';
+        }
+    }
+
+    // Carregar chats do WAHA
+    async loadWahaChats() {
+        try {
+            const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/chats`);
+            const data = await response.json();
+            
+            if (data.success && data.data) {
+                console.log('📱 Chats carregados do WAHA:', data.data.length);
+                
+                // Processar chats do WAHA
+                for (const wahaChat of data.data) {
+                    const chatId = `chat_${wahaChat.id}`;
+                    
+                    if (!this.chats.has(chatId)) {
+                        const newChat = {
+                            id: chatId,
+                            name: wahaChat.name || wahaChat.id,
+                            phone: wahaChat.id,
+                            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(wahaChat.name || wahaChat.id)}&background=25d366&color=fff&size=40`,
+                            status: 'online',
+                            lastMessage: wahaChat.lastMessage || 'Nova conversa',
+                            lastMessageTime: wahaChat.timestamp ? new Date(wahaChat.timestamp).toLocaleTimeString('pt-BR') : new Date().toLocaleTimeString('pt-BR'),
+                            unreadCount: wahaChat.unreadCount || 0,
+                            isPinned: false,
+                            wahaId: wahaChat.id
+                        };
+                        
+                        this.chats.set(chatId, newChat);
+                    }
+                }
+                
+                this.saveData();
+                this.updateInterface();
+            }
+        } catch (error) {
+            console.error('❌ Erro ao carregar chats do WAHA:', error);
+        }
+    }
+
+    // Carregar mensagens de um chat específico
+    async loadChatMessages(chatId, limit = 50) {
+        try {
+            const chat = this.chats.get(chatId);
+            if (!chat || !chat.wahaId) return;
+            
+            const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/messages/${chat.wahaId}?limit=${limit}`);
+            const data = await response.json();
+            
+            if (data.success && data.data) {
+                console.log('📱 Mensagens carregadas:', data.data.length);
+                
+                // Processar mensagens
+                const messages = data.data.map(msg => ({
+                    id: msg.id,
+                    text: msg.text || '',
+                    timestamp: msg.timestamp,
+                    fromMe: msg.fromMe || false,
+                    status: msg.fromMe ? 'sent' : 'received'
+                }));
+                
+                this.messages.set(chatId, messages);
+                this.saveData();
+                
+                // Atualizar última mensagem do chat
+                if (messages.length > 0) {
+                    const lastMsg = messages[messages.length - 1];
+                    chat.lastMessage = lastMsg.text.substring(0, 50) + (lastMsg.text.length > 50 ? '...' : '');
+                    chat.lastMessageTime = new Date(lastMsg.timestamp).toLocaleTimeString('pt-BR');
+                }
+            }
+        } catch (error) {
+            console.error('❌ Erro ao carregar mensagens:', error);
         }
     }
 
@@ -84,8 +174,8 @@ class WhatsAppModule {
         if (this.chats.has(chatId)) {
             console.log('📱 Chat já existe, abrindo...');
             this.openChat(chatId);
-                return;
-            }
+            return;
+        }
             
         // Criar novo chat
         const newChat = {
@@ -128,7 +218,7 @@ class WhatsAppModule {
     }
 
     // Abrir chat existente
-    openChat(chatId) {
+    async openChat(chatId) {
         const chat = this.chats.get(chatId);
         if (!chat) return;
         
@@ -142,6 +232,11 @@ class WhatsAppModule {
             }
         });
         chat.unreadCount = 0;
+        
+        // Carregar mensagens do WAHA se disponível
+        if (chat.wahaId) {
+            await this.loadChatMessages(chatId);
+        }
         
         // Salvar dados
         this.saveData();
@@ -159,20 +254,20 @@ class WhatsAppModule {
     }
 
     // Enviar mensagem
-    sendMessage(content) {
+    async sendMessage(content) {
         if (!content.trim() || !this.currentChat) return;
 
         const chatId = this.currentChat.id;
         const messages = this.messages.get(chatId) || [];
         
-        // Adicionar mensagem enviada
+        // Adicionar mensagem enviada localmente
         const sentMessage = {
             id: Date.now(),
             type: 'sent',
             content: content.trim(),
             timestamp: new Date().toLocaleTimeString('pt-BR'),
             sender: 'Você',
-            status: 'sent'
+            status: 'sending'
         };
         
         messages.push(sentMessage);
@@ -189,10 +284,47 @@ class WhatsAppModule {
         // Atualizar interface
         this.updateInterface();
         
-        // Simular resposta automática após 2-4 segundos
-        setTimeout(() => {
-            this.simulateResponse();
-        }, 2000 + Math.random() * 2000);
+        // Enviar mensagem via WAHA se disponível
+        if (this.currentChat.wahaId) {
+            try {
+                const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/send`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        phone: this.currentChat.phone,
+                        message: content.trim(),
+                        message_type: 'text'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Atualizar status da mensagem
+                    sentMessage.status = 'sent';
+                    console.log('✅ Mensagem enviada via WAHA');
+                } else {
+                    sentMessage.status = 'error';
+                    console.error('❌ Erro ao enviar mensagem:', result.error);
+                }
+                
+                this.saveData();
+                this.updateInterface();
+                
+            } catch (error) {
+                console.error('❌ Erro ao enviar mensagem:', error);
+                sentMessage.status = 'error';
+                this.saveData();
+                this.updateInterface();
+            }
+        } else {
+            // Simular resposta automática se não estiver conectado ao WAHA
+            setTimeout(() => {
+                this.simulateResponse();
+            }, 2000 + Math.random() * 2000);
+        }
     }
 
     // Simular resposta automática
@@ -429,7 +561,7 @@ class WhatsAppModule {
                         <button class="wa-action-btn" title="Menu">
                             <span>⋮</span>
                         </button>
-                    </div>
+                </div>
             </div>
             
                 <!-- Área de Mensagens -->

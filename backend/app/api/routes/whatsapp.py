@@ -1,5 +1,5 @@
 """
-Rotas para integração com WhatsApp
+Rotas para integração com WhatsApp usando WAHA
 """
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
@@ -9,19 +9,13 @@ from pydantic import BaseModel
 from datetime import datetime
 import os
 
-# Importação condicional
-try:
-    from app.core.database import get_db, WhatsAppSession
-    from app.services.whatsapp_service import WhatsAppService
-    whatsapp_service = WhatsAppService()
-except ImportError:
-    # Versão simplificada se não conseguir importar
-    get_db = None
-    WhatsAppSession = None
-    whatsapp_service = None
+# Importações do sistema
+from app.services.waha.waha_service import WahaService
+from app.core.database import get_db_manager
 
 router = APIRouter()
 
+# Modelos Pydantic
 class MessageRequest(BaseModel):
     phone: str
     message: str
@@ -32,61 +26,30 @@ class BulkMessageRequest(BaseModel):
     message_template: str
     delay: int = 2
 
-@router.post("/start")
-async def start_whatsapp_session(
-    session_name: str = "default",
-    db: Session = Depends(get_db) if get_db else None
-):
-    """
-    Iniciar sessão do WhatsApp
-    """
-    if not whatsapp_service:
-        raise HTTPException(status_code=503, detail="WhatsApp service not available")
-    
-    try:
-        result = await whatsapp_service.start_whatsapp_session(session_name)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+class ChatHistoryRequest(BaseModel):
+    chat_id: str
+    limit: int = 100
 
-@router.post("/stop")
-async def stop_whatsapp_session(db: Session = Depends(get_db) if get_db else None):
-    """
-    Parar sessão do WhatsApp
-    """
-    if not whatsapp_service:
-        raise HTTPException(status_code=503, detail="WhatsApp service not available")
-    
-    try:
-        result = await whatsapp_service.stop_whatsapp_session()
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# Inicializar serviço WAHA
+waha_service = None
+
+def get_waha_service():
+    global waha_service
+    if waha_service is None:
+        db_manager = get_db_manager()
+        waha_url = os.getenv("WAHA_URL", "http://localhost:3000")
+        waha_service = WahaService(waha_url, db_manager)
+    return waha_service
 
 @router.get("/status")
-async def get_whatsapp_status(db: Session = Depends(get_db) if get_db else None):
-    """
-    Obter status do WhatsApp
-    """
-    if not whatsapp_service:
-        return {
-            "success": True,
-            "data": {
-                "status": "disconnected",
-                "session_active": False,
-                "message": "WhatsApp service not available"
-            }
-        }
-    
+async def get_whatsapp_status():
+    """Obter status do WAHA"""
     try:
-        status = whatsapp_service.get_status()
+        service = get_waha_service()
+        status = await service.check_waha_status()
         return {
             "success": True,
-            "data": {
-                "status": "connected" if status.get("connected") else "disconnected",
-                "session_active": status.get("session_active", False),
-                "message": status.get("message", "")
-            }
+            "data": status
         }
     except Exception as e:
         return {
@@ -94,130 +57,161 @@ async def get_whatsapp_status(db: Session = Depends(get_db) if get_db else None)
             "error": str(e)
         }
 
-@router.post("/qr-code")
-async def generate_qr_code(db: Session = Depends(get_db) if get_db else None):
-    """
-    Gerar novo QR Code para conexão WhatsApp
-    """
-    if not whatsapp_service:
-        raise HTTPException(status_code=503, detail="WhatsApp service not available")
-    
+@router.post("/session/create")
+async def create_session(session_name: str = "sacsmax"):
+    """Criar sessão WAHA"""
     try:
-        qr_data = await whatsapp_service.generate_qr_code()
-        if qr_data:
-            return {
-                "success": True,
-                "data": {
-                    "qr_code_url": qr_data.get("qr_code_url"),
-                    "session_id": qr_data.get("session_id"),
-                    "expires_in": qr_data.get("expires_in", 120),  # 2 minutos
-                    "created_at": qr_data.get("created_at")
-                }
-            }
-        else:
-            return {
-                "success": False,
-                "error": "Não foi possível gerar o QR Code"
-            }
-    except Exception as e:
+        service = get_waha_service()
+        result = await service.create_session(session_name)
         return {
-            "success": False,
-            "error": str(e)
+            "success": result.get("status") == "success",
+            "data": result
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/qr")
-async def get_qr_code(db: Session = Depends(get_db) if get_db else None):
-    """
-    Obter QR Code da sessão atual
-    """
-    if not whatsapp_service:
-        raise HTTPException(status_code=503, detail="WhatsApp service not available")
-    
+@router.get("/screenshot")
+async def get_screenshot(session_name: str = "sacsmax"):
+    """Obter screenshot da sessão"""
     try:
-        qr_code = await whatsapp_service.get_qr_code()
-        if qr_code:
-            return {"qr_code": qr_code}
+        service = get_waha_service()
+        screenshot = await service.get_screenshot(session_name)
+        if screenshot:
+            from fastapi.responses import Response
+            return Response(content=screenshot, media_type="image/png")
         else:
-            return {"message": "QR Code não disponível"}
+            raise HTTPException(status_code=404, detail="Screenshot não disponível")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/contacts")
+async def get_contacts(session_name: str = "sacsmax"):
+    """Obter contatos do WhatsApp"""
+    try:
+        service = get_waha_service()
+        result = await service.get_contacts(session_name)
+        return {
+            "success": result.get("status") == "success",
+            "data": result.get("data", [])
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/chats")
+async def get_chats(session_name: str = "sacsmax"):
+    """Obter chats/conversas"""
+    try:
+        service = get_waha_service()
+        result = await service.get_chats(session_name)
+        return {
+            "success": result.get("status") == "success",
+            "data": result.get("data", [])
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/messages/{chat_id}")
+async def get_messages(chat_id: str, limit: int = 50, session_name: str = "sacsmax"):
+    """Obter mensagens de um chat específico"""
+    try:
+        service = get_waha_service()
+        result = await service.get_messages(chat_id, limit, session_name)
+        return {
+            "success": result.get("status") == "success",
+            "data": result.get("data", [])
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/send")
-async def send_message(
-    message: MessageRequest,
-    db: Session = Depends(get_db) if get_db else None
-):
-    """
-    Enviar mensagem individual
-    """
-    if not whatsapp_service:
-        raise HTTPException(status_code=503, detail="WhatsApp service not available")
-    
+async def send_message(request: MessageRequest, session_name: str = "sacsmax"):
+    """Enviar mensagem individual"""
     try:
-        result = await whatsapp_service.send_message(
-            message.phone,
-            message.message,
-            message.message_type
-        )
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.post("/send-messages")
-async def send_bulk_messages(
-    request: BulkMessageRequest,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db) if get_db else None
-):
-    """
-    Enviar mensagens em lote
-    """
-    if not whatsapp_service:
-        raise HTTPException(status_code=503, detail="WhatsApp service not available")
-    
-    try:
-        result = await whatsapp_service.send_bulk_messages(
-            request.contacts,
-            request.message_template,
-            request.delay
-        )
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/sessions")
-async def get_whatsapp_sessions(db: Session = Depends(get_db) if get_db else None):
-    """
-    Listar sessões do WhatsApp
-    """
-    if not db or not WhatsAppSession:
-        return {"sessions": []}
-    
-    try:
-        sessions = db.query(WhatsAppSession).all()
+        service = get_waha_service()
+        result = await service.send_text_message(request.phone, request.message, session_name)
         return {
-            "sessions": [
-                {
-                    "id": session.id,
-                    "session_id": session.session_id,
-                    "status": session.status,
-                    "phone_number": session.phone_number,
-                    "created_at": session.created_at.isoformat(),
-                    "updated_at": session.updated_at.isoformat()
-                }
-                for session in sessions
-            ]
+            "success": result.get("status") == "success",
+            "data": result
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/health")
-async def health_check():
-    """Endpoint de verificação de saúde para Railway"""
-    return {
-        "status": "healthy",
-        "service": "sacsmax-backend",
-        "timestamp": datetime.now().isoformat(),
-        "environment": os.environ.get("RAILWAY_ENVIRONMENT", "development")
-    }
+@router.post("/send/bulk")
+async def send_bulk_messages(request: BulkMessageRequest, session_name: str = "sacsmax"):
+    """Enviar mensagens em massa"""
+    try:
+        service = get_waha_service()
+        result = await service.send_bulk_messages(
+            request.contacts, 
+            request.message_template, 
+            request.delay
+        )
+        return {
+            "success": result.get("status") == "success",
+            "data": result.get("data", {})
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/history/{chat_id}")
+async def get_chat_history(chat_id: str, limit: int = 100):
+    """Obter histórico completo de um chat (WAHA + banco)"""
+    try:
+        service = get_waha_service()
+        result = await service.get_chat_history(chat_id, limit)
+        return {
+            "success": result.get("status") == "success",
+            "data": result.get("data", {})
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/contact/{phone}")
+async def get_contact_info(phone: str):
+    """Buscar informações do contato na tabela de produtividade"""
+    try:
+        service = get_waha_service()
+        contact_info = await service.get_contact_from_produtividade(phone)
+        return {
+            "success": True,
+            "data": contact_info
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/produtividade/contacts")
+async def get_produtividade_contacts():
+    """Obter contatos da tabela de produtividade para disparo"""
+    try:
+        db_manager = get_db_manager()
+        if not db_manager:
+            raise HTTPException(status_code=503, detail="Database não disponível")
+        
+        query = """
+        SELECT DISTINCT 
+            nome_cliente, telefone1, telefone2, plano, status
+        FROM produtividade 
+        WHERE telefone1 IS NOT NULL OR telefone2 IS NOT NULL
+        ORDER BY nome_cliente
+        """
+        
+        results = db_manager.fetch_all(query)
+        
+        contacts = []
+        for row in results:
+            contact = {
+                "nome_cliente": row[0] or "Sem nome",
+                "telefone1": row[1] or "",
+                "telefone2": row[2] or "",
+                "plano": row[3] or "",
+                "status": row[4] or ""
+            }
+            contacts.append(contact)
+        
+        return {
+            "success": True,
+            "data": contacts
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 

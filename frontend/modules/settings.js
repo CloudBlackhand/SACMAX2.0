@@ -103,9 +103,9 @@ class SettingsModule {
                                 <span class="status-text">Banco</span>
                             </div>
                         </div>
-                    </div>
                 </div>
-
+                </div>
+                
                 <!-- Navegação -->
                 <div class="settings-nav">
                     <button class="nav-btn ${this.currentTab === 'overview' ? 'active' : ''}" 
@@ -143,8 +143,8 @@ class SettingsModule {
                 <!-- Conteúdo -->
                 <div class="settings-content">
                     ${this.renderCurrentTab()}
-                </div>
-            </div>
+                            </div>
+                            </div>
         `;
     }
 
@@ -192,7 +192,7 @@ class SettingsModule {
                         <div class="card-actions">
                             <button class="action-btn" onclick="settingsModule.testBackendConnection()">
                                 Testar Conexão
-                            </button>
+                    </button>
                         </div>
                     </div>
 
@@ -209,28 +209,28 @@ class SettingsModule {
                             <button class="action-btn" onclick="settingsModule.connectWaha()" 
                                     ${this.wahaStatus === 'connected' ? 'disabled' : ''}>
                                 Conectar
-                            </button>
+                    </button>
                             <button class="action-btn danger" onclick="settingsModule.disconnectWaha()"
                                     ${this.wahaStatus !== 'connected' ? 'disabled' : ''}>
                                 Desconectar
-                            </button>
+                        </button>
                         </div>
-                    </div>
-
+                </div>
+                
                     <div class="status-card ${this.databaseStatus || 'disconnected'}">
                         <div class="card-header">
                             <span class="card-icon">💾</span>
                             <h3>Banco de Dados</h3>
-                        </div>
+                                </div>
                         <div class="card-content">
                             <p class="status-text">${this.databaseStatus === 'connected' ? 'Conectado' : 'Desconectado'}</p>
                             <p class="status-details">PostgreSQL - Railway</p>
-                        </div>
+                            </div>
                         <div class="card-actions">
                             <button class="action-btn" onclick="settingsModule.testDatabaseConnection()">
                                 Testar Conexão
                             </button>
-                        </div>
+                                </div>
                     </div>
                 </div>
 
@@ -253,9 +253,9 @@ class SettingsModule {
                             <span class="action-icon">📥</span>
                             <span class="action-text">Importar Config</span>
                         </button>
-                    </div>
-                </div>
-            </div>
+                            </div>
+                                </div>
+                            </div>
         `;
     }
 
@@ -271,14 +271,14 @@ class SettingsModule {
                 <div class="settings-form">
                     <div class="form-section">
                         <h3>Backend</h3>
-                        
-                        <div class="form-group">
+                
+                            <div class="form-group">
                             <label for="backend-url">URL do Backend</label>
                             <input type="text" id="backend-url" value="${this.settings.backend.url}" 
                                    placeholder="https://sacmax20-production.up.railway.app">
                             <small>URL principal do servidor backend</small>
-                        </div>
-                        
+                            </div>
+                            
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="backend-port">Porta</label>
@@ -291,12 +291,12 @@ class SettingsModule {
                                        min="1000" max="60000">
                             </div>
                         </div>
-                    </div>
+                        </div>
 
                     <div class="form-section">
                         <h3>WAHA (WhatsApp HTTP API)</h3>
                         
-                        <div class="form-group">
+                    <div class="form-group">
                             <label for="waha-url">URL do WAHA</label>
                             <input type="text" id="waha-url" value="${this.settings.waha.url}" 
                                    placeholder="http://localhost:3000">
@@ -324,18 +324,18 @@ class SettingsModule {
                                 Iniciar automaticamente com o sistema
                             </label>
                         </div>
-                    </div>
-
-                    <div class="form-actions">
+                                </div>
+                
+                <div class="form-actions">
                         <button class="btn btn-secondary" onclick="settingsModule.resetToDefaults()">
                             Restaurar Padrões
-                        </button>
+                    </button>
                         <button class="btn btn-primary" onclick="settingsModule.saveSettings()">
                             Salvar Configurações
-                        </button>
+                    </button>
                     </div>
-                </div>
-            </div>
+                            </div>
+                                </div>
         `;
     }
 
@@ -357,7 +357,7 @@ class SettingsModule {
                                 <p class="status-text">${this.wahaStatus === 'connected' ? 'Conectado e funcionando' : 'Desconectado'}</p>
                             </div>
                         </div>
-                        
+                    
                         <div class="status-details">
                             <div class="detail-item">
                                 <span class="detail-label">Sessão:</span>
@@ -382,51 +382,51 @@ class SettingsModule {
                                         ${this.wahaStatus === 'connected' ? 'disabled' : ''}>
                                     <span class="btn-icon">🔗</span>
                                     Conectar
-                                </button>
+                            </button>
                                 <button class="action-btn danger" onclick="settingsModule.disconnectWaha()"
                                         ${this.wahaStatus !== 'connected' ? 'disabled' : ''}>
                                     <span class="btn-icon">❌</span>
-                                    Desconectar
-                                </button>
+                             Desconectar
+                            </button>
                                 <button class="action-btn warning" onclick="settingsModule.restartWaha()">
                                     <span class="btn-icon">🔄</span>
-                                    Reiniciar
-                                </button>
-                            </div>
-                        </div>
-
+                             Reiniciar
+                        </button>
+                    </div>
+                </div>
+                
                         <div class="action-group">
                             <h4>Autenticação</h4>
                             <div class="auth-form">
-                                <div class="form-group">
+                    <div class="form-group">
                                     <label for="whatsapp-number">Número WhatsApp</label>
                                     <input type="text" id="whatsapp-number" placeholder="5511999999999" 
                                            style="font-family: monospace;">
                                     <small>Formato: código do país + DDD + número</small>
-                                </div>
-                                
-                                <div class="form-group">
+                            </div>
+                    
+                    <div class="form-group">
                                     <label for="auth-method">Método de Verificação</label>
-                                    <select id="auth-method">
+                        <select id="auth-method">
                                         <option value="sms">SMS</option>
                                         <option value="telegram">Telegram</option>
-                                        <option value="link">Link Direto</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="form-group" id="code-input-group" style="display: none;">
+                            <option value="link">Link Direto</option>
+                        </select>
+                        </div>
+                    
+                    <div class="form-group" id="code-input-group" style="display: none;">
                                     <label for="verification-code">Código de Verificação</label>
                                     <input type="text" id="verification-code" placeholder="123456" maxlength="6" 
                                            style="font-family: monospace; font-size: 18px; text-align: center;">
                                     <button class="btn btn-primary" onclick="settingsModule.submitVerificationCode()">
-                                        Enviar Código
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                             Enviar Código
+                            </button>
+                    </div>
                     </div>
                 </div>
-            </div>
+                                </div>
+                                </div>
+                            </div>
         `;
     }
 
@@ -437,39 +437,39 @@ class SettingsModule {
                 <div class="panel-header">
                     <h2>Configurações do Banco de Dados</h2>
                     <p>Gerencie conexões e backups do banco de dados</p>
-                </div>
+                                        </div>
 
                 <div class="settings-form">
                     <div class="form-section">
                         <h3>Conexão</h3>
-                        
-                        <div class="form-group">
+                    
+                                        <div class="form-group">
                             <label for="db-type">Tipo de Banco</label>
                             <select id="db-type">
                                 <option value="postgresql" ${this.settings.database.type === 'postgresql' ? 'selected' : ''}>PostgreSQL</option>
                                 <option value="mysql" ${this.settings.database.type === 'mysql' ? 'selected' : ''}>MySQL</option>
                                 <option value="sqlite" ${this.settings.database.type === 'sqlite' ? 'selected' : ''}>SQLite</option>
                             </select>
-                        </div>
-                        
-                        <div class="form-group">
+                                        </div>
+                    
+                                    <div class="form-group">
                             <label for="railway-url">URL do Railway</label>
                             <input type="text" id="railway-url" value="${this.settings.database.railway_url}" 
                                    placeholder="postgresql://...">
                             <small>URL de conexão do banco no Railway</small>
                         </div>
-                    </div>
+                            </div>
 
                     <div class="form-section">
                         <h3>Backup</h3>
-                        
-                        <div class="form-group">
+                            
+                    <div class="form-group">
                             <label class="checkbox-label">
                                 <input type="checkbox" id="local-backup" 
                                        ${this.settings.database.local_backup ? 'checked' : ''}>
                                 <span class="checkmark"></span>
                                 Manter backup local
-                            </label>
+                                    </label>
                         </div>
                         
                         <div class="backup-actions">
@@ -489,9 +489,9 @@ class SettingsModule {
                         <button class="btn btn-primary" onclick="settingsModule.saveSettings()">
                             Salvar Configurações
                         </button>
-                    </div>
-                </div>
-            </div>
+                                </div>
+                                    </div>
+                                    </div>
         `;
     }
 
@@ -507,44 +507,44 @@ class SettingsModule {
                 <div class="settings-form">
                     <div class="form-section">
                         <h3>Logs</h3>
-                        
-                        <div class="form-group">
+                
+                            <div class="form-group">
                             <label for="log-level">Nível de Log</label>
-                            <select id="log-level">
+                        <select id="log-level">
                                 <option value="debug" ${this.settings.system.log_level === 'debug' ? 'selected' : ''}>Debug</option>
                                 <option value="info" ${this.settings.system.log_level === 'info' ? 'selected' : ''}>Info</option>
                                 <option value="warning" ${this.settings.system.log_level === 'warning' ? 'selected' : ''}>Warning</option>
                                 <option value="error" ${this.settings.system.log_level === 'error' ? 'selected' : ''}>Error</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
                             <label for="max-log-files">Máximo de Arquivos de Log</label>
                             <input type="number" id="max-log-files" value="${this.settings.system.max_log_files}" 
                                    min="1" max="100">
                         </div>
-                    </div>
+                            </div>
 
                     <div class="form-section">
                         <h3>Backup Automático</h3>
-                        
-                        <div class="form-group">
+                            
+                            <div class="form-group">
                             <label for="backup-interval">Intervalo de Backup (horas)</label>
                             <input type="number" id="backup-interval" value="${this.settings.system.backup_interval}" 
                                    min="1" max="168">
                         </div>
-                    </div>
-
-                    <div class="form-actions">
+                        </div>
+                        
+                <div class="form-actions">
                         <button class="btn btn-secondary" onclick="settingsModule.clearLogs()">
                             Limpar Logs
                         </button>
-                        <button class="btn btn-primary" onclick="settingsModule.saveSettings()">
+                    <button class="btn btn-primary" onclick="settingsModule.saveSettings()">
                             Salvar Configurações
                         </button>
                     </div>
+                    </div>
                 </div>
-            </div>
         `;
     }
 
@@ -555,37 +555,37 @@ class SettingsModule {
                 <div class="panel-header">
                     <h2>Configurações de Segurança</h2>
                     <p>Gerencie chaves de API e timeouts de sessão</p>
-                </div>
+                        </div>
 
                 <div class="settings-form">
                     <div class="form-section">
                         <h3>Sessão</h3>
                         
-                        <div class="form-group">
+                                <div class="form-group">
                             <label for="session-timeout">Timeout de Sessão (minutos)</label>
                             <input type="number" id="session-timeout" value="${this.settings.security.session_timeout}" 
                                    min="5" max="1440">
                         </div>
-                    </div>
+                                </div>
 
                     <div class="form-section">
                         <h3>API</h3>
-                        
-                        <div class="form-group">
+                                
+                                <div class="form-group">
                             <label for="api-key">Chave da API</label>
                             <input type="password" id="api-key" value="${this.settings.security.api_key}" 
                                    placeholder="Sua chave de API">
                             <small>Chave para autenticação de APIs externas</small>
                         </div>
-                    </div>
-
-                    <div class="form-actions">
+                            </div>
+                
+                <div class="form-actions">
                         <button class="btn btn-secondary" onclick="settingsModule.generateApiKey()">
                             Gerar Nova Chave
-                        </button>
+                    </button>
                         <button class="btn btn-primary" onclick="settingsModule.saveSettings()">
                             Salvar Configurações
-                        </button>
+                    </button>
                     </div>
                 </div>
             </div>
@@ -610,11 +610,11 @@ class SettingsModule {
         try {
             this.showNotification('🔍 Testando conexão com o backend...', 'info');
             const response = await fetch(`${this.backendUrl}/api/health`);
-            
-            if (response.ok) {
+                
+                if (response.ok) {
                 this.showNotification('✅ Backend conectado com sucesso!', 'success');
                 this.backendStatus = 'connected';
-            } else {
+                } else {
                 this.showNotification('❌ Falha na conexão com o backend', 'error');
                 this.backendStatus = 'disconnected';
             }
@@ -685,17 +685,17 @@ class SettingsModule {
         try {
             this.showNotification('🔍 Testando conexão com o banco...', 'info');
             const response = await fetch(`${this.backendUrl}/api/database/test`);
-            
-            if (response.ok) {
+                    
+                    if (response.ok) {
                 this.showNotification('✅ Banco de dados conectado!', 'success');
                 this.databaseStatus = 'connected';
             } else {
                 this.showNotification('❌ Falha na conexão com o banco', 'error');
                 this.databaseStatus = 'disconnected';
-            }
+                    }
             
             this.updateInterface();
-        } catch (error) {
+                } catch (error) {
             this.showNotification(`❌ Erro: ${error.message}`, 'error');
             this.databaseStatus = 'disconnected';
             this.updateInterface();
@@ -863,7 +863,7 @@ const settingsStyles = `
     border: none;
     background: #f8f9fa;
     color: #1a1a1a;
-    border-radius: 8px;
+        border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
@@ -880,7 +880,7 @@ const settingsStyles = `
 
 .nav-btn.active {
     background: #007bff;
-    color: white;
+        color: white;
     border-color: #0056b3;
 }
 
@@ -942,12 +942,12 @@ const settingsStyles = `
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 16px;
-    border: none;
+                padding: 8px 16px;
+        border: none;
     background: #f8f9fa;
     color: #6c757d;
     border-radius: 6px;
-    cursor: pointer;
+        cursor: pointer;
     transition: all 0.2s;
     font-size: 14px;
 }
@@ -1058,9 +1058,9 @@ const settingsStyles = `
 }
 
 .action-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
 
 /* Ações Rápidas */
 .quick-actions {

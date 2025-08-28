@@ -183,6 +183,48 @@ class FeedbackService:
             logger.error(f"Erro ao buscar feedbacks por sentimento: {e}")
             return []
 
+    def get_feedbacks_by_phone(self, phone: str, limit: int = 50) -> List[Dict]:
+        """Busca feedbacks por número de telefone"""
+        try:
+            if not self.db_manager:
+                return []
+                
+            # Limpar número de telefone
+            clean_phone = phone.replace('+', '').replace('-', '').replace(' ', '')
+                
+            query = """
+            SELECT 
+                feedback_id, contact_name, contact_phone, text,
+                sentiment, score, keywords, timestamp, analyzed_at
+            FROM feedbacks 
+            WHERE contact_phone LIKE %s
+            ORDER BY timestamp DESC 
+            LIMIT %s
+            """
+            
+            results = self.db_manager.fetch_all(query, (f"%{clean_phone}%", limit))
+            
+            feedbacks = []
+            for row in results:
+                feedback = {
+                    'feedback_id': row[0],
+                    'contact_name': row[1],
+                    'contact_phone': row[2],
+                    'text': row[3],
+                    'sentiment': row[4],
+                    'score': float(row[5]) if row[5] else 0.0,
+                    'keywords': json.loads(row[6]) if row[6] else [],
+                    'timestamp': row[7].isoformat() if row[7] else None,
+                    'analyzed_at': row[8].isoformat() if row[8] else None
+                }
+                feedbacks.append(feedback)
+            
+            return feedbacks
+            
+        except Exception as e:
+            logger.error(f"Erro ao buscar feedbacks por telefone: {e}")
+            return []
+
     def get_feedbacks_by_date_range(self, days: int, limit: int = 100) -> List[Dict]:
         """Busca feedbacks por período de dias"""
         try:
