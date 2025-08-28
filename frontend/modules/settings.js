@@ -862,7 +862,7 @@ const settingsStyles = `
     padding: 12px 20px;
     border: none;
     background: #f8f9fa;
-    color: #6c757d;
+    color: #1a1a1a;
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
@@ -873,7 +873,7 @@ const settingsStyles = `
 
 .nav-btn:hover {
     background: #e9ecef;
-    color: #495057;
+    color: #1a1a1a;
 }
 
 .nav-btn.active {
@@ -998,6 +998,7 @@ const settingsStyles = `
     font-weight: 500;
     transition: all 0.2s;
     margin-right: 8px;
+    color: #1a1a1a;
 }
 
 .action-btn.primary {
@@ -1007,6 +1008,7 @@ const settingsStyles = `
 
 .action-btn.primary:hover {
     background: #0056b3;
+    color: white;
 }
 
 .action-btn.danger {
@@ -1016,15 +1018,17 @@ const settingsStyles = `
 
 .action-btn.danger:hover {
     background: #c82333;
+    color: white;
 }
 
 .action-btn.warning {
     background: #ffc107;
-    color: #212529;
+    color: #1a1a1a;
 }
 
 .action-btn.warning:hover {
     background: #e0a800;
+    color: #1a1a1a;
 }
 
 .action-btn:disabled {
@@ -1289,6 +1293,7 @@ const settingsStyles = `
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    color: #1a1a1a;
 }
 
 .btn-primary {
@@ -1298,6 +1303,7 @@ const settingsStyles = `
 
 .btn-primary:hover {
     background: #0056b3;
+    color: white;
 }
 
 .btn-secondary {
@@ -1307,6 +1313,7 @@ const settingsStyles = `
 
 .btn-secondary:hover {
     background: #545b62;
+    color: white;
 }
 
 .form-actions {
