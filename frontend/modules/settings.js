@@ -886,22 +886,25 @@ const settingsStyles = `
 
 .nav-icon {
     font-size: 16px;
-    color: inherit;
-    filter: contrast(1.2);
+    color: #000000 !important;
+    filter: contrast(1.5);
 }
 
 /* Garantir contraste para ícones específicos */
 .nav-btn .nav-icon {
-    opacity: 0.9;
+    opacity: 1;
+    color: #000000 !important;
 }
 
 .nav-btn:hover .nav-icon {
     opacity: 1;
+    color: #000000 !important;
 }
 
 .nav-btn.active .nav-icon {
     opacity: 1;
-    filter: brightness(1.1);
+    color: white !important;
+    filter: brightness(1.2);
 }
 
 .nav-icon {
@@ -1354,7 +1357,7 @@ const settingsStyles = `
     margin-top: 16px;
 }
 
-/* Melhorar visibilidade geral */
+/* Navegação - FORÇAR TEXTO PRETO */
 .settings-nav {
     background: white;
     border-radius: 12px;
@@ -1374,27 +1377,27 @@ const settingsStyles = `
     padding: 12px 20px;
     border: none;
     background: #f8f9fa;
-    color: #1a1a1a;
+    color: #000000 !important;
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
     border: 2px solid transparent;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .nav-btn:hover {
     background: #e9ecef;
-    color: #1a1a1a;
+    color: #000000 !important;
     border-color: #007bff;
     box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 
 .nav-btn.active {
     background: #007bff;
-    color: white;
+    color: white !important;
     border-color: #0056b3;
     box-shadow: 0 2px 8px rgba(0,123,255,0.3);
 }
