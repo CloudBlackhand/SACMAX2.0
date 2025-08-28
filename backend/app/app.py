@@ -119,7 +119,7 @@ async def waha_status():
         try:
             result = await waha_service.check_waha_status()
             return JSONResponse(content=result)
-    except Exception as e:
+        except Exception as e:
             logger.error(f"Erro ao verificar status do WAHA: {e}")
             return JSONResponse(content={"status": "error", "message": str(e)}, status_code=503)
     else:
@@ -132,7 +132,7 @@ async def waha_create_session(session_name: str = "sacsmax"):
         try:
             result = await waha_service.create_session(session_name)
             return JSONResponse(content=result)
-    except Exception as e:
+        except Exception as e:
             logger.error(f"Erro ao criar sessão WAHA: {e}")
             return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
     else:
@@ -148,7 +148,7 @@ async def waha_screenshot(session: str = "sacsmax"):
                 return Response(content=screenshot, media_type="image/png")
             else:
                 return JSONResponse(content={"status": "error", "message": "Screenshot não disponível"}, status_code=404)
-    except Exception as e:
+        except Exception as e:
             logger.error(f"Erro ao obter screenshot WAHA: {e}")
             return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
     else:
