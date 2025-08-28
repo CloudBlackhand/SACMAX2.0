@@ -511,23 +511,25 @@ class WhatsAppModule {
     // Atualizar interface
     updateInterface() {
         console.log('🔄 Atualizando interface do WhatsApp...');
+        console.log('📱 Chat atual:', this.currentChat?.name);
         
-        if (window.app && window.app.currentModule === 'whatsapp') {
-            window.app.loadModule('whatsapp');
+        // Forçar atualização da interface
+        const contentArea = document.getElementById('app-content');
+        if (contentArea) {
+            contentArea.innerHTML = this.render();
+            console.log('✅ HTML atualizado');
         } else {
-            const contentArea = document.getElementById('app-content');
-            if (contentArea) {
-                contentArea.innerHTML = this.render();
-            }
+            console.error('❌ Elemento app-content não encontrado');
         }
         
-        // Scroll para última mensagem
+        // Scroll para última mensagem após um pequeno delay
         setTimeout(() => {
             const messagesContainer = document.querySelector('.wa-messages-container');
             if (messagesContainer) {
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                console.log('✅ Scroll para última mensagem');
             }
-        }, 100);
+        }, 200);
         
         console.log('✅ Interface atualizada');
     }
