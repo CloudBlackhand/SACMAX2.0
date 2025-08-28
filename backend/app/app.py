@@ -31,7 +31,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 try:
     from excel_to_database import ExcelToDatabaseConverter
-    from database_config import db_manager, init_database, close_database
+    from database_config import get_db_manager, init_database, close_database
     from feedback_analyzer import feedback_analyzer
     from app.services.excel_service import ExcelService
     from app.services.sentiment_analyzer import sentiment_analyzer
@@ -40,7 +40,7 @@ try:
 except ImportError as e:
     print(f" Erro de importação: {e}")
     ExcelToDatabaseConverter = None
-    db_manager = None
+    get_db_manager = None
     feedback_analyzer = None
     ExcelService = None
     sentiment_analyzer = None
@@ -220,25 +220,33 @@ async def api_health():
 async def test_database():
     """Testar conexão com banco de dados"""
     try:
-        if db_manager and db_manager.is_connected():
-            # Testar conexão
-            result = db_manager.execute_query("SELECT 1 as test")
-            if result:
-                return {
-                    "status": "connected",
-                    "message": "Banco de dados conectado com sucesso",
-                    "timestamp": datetime.now().isoformat()
-                }
+        if get_db_manager:
+            db_manager = get_db_manager()
+            if db_manager and db_manager.is_connected():
+                # Testar conexão
+                result = db_manager.execute_query("SELECT 1 as test")
+                if result:
+                    return {
+                        "status": "connected",
+                        "message": "Banco de dados conectado com sucesso",
+                        "timestamp": datetime.now().isoformat()
+                    }
+                else:
+                    return {
+                        "status": "error",
+                        "message": "Falha no teste de conexão",
+                        "timestamp": datetime.now().isoformat()
+                    }
             else:
                 return {
-                    "status": "error",
-                    "message": "Falha no teste de conexão",
+                    "status": "disconnected",
+                    "message": "Banco de dados não está conectado",
                     "timestamp": datetime.now().isoformat()
                 }
         else:
             return {
-                "status": "disconnected",
-                "message": "Banco de dados não está conectado",
+                "status": "error",
+                "message": "Módulo de banco de dados não disponível",
                 "timestamp": datetime.now().isoformat()
             }
     except Exception as e:
@@ -250,26 +258,7 @@ async def test_database():
         }
 
 # ===== ROTAS PARA ARQUIVOS ESTÁTICOS =====
-
-@app.get("/{file_path:path}")
-async def serve_static_files(file_path: str):
-    """Servir arquivos estáticos do frontend"""
-    try:
-        # Verificar se é um arquivo JavaScript ou HTML
-        if file_path.endswith(('.js', '.html', '.css', '.png', '.jpg', '.ico')):
-            file_path_obj = FRONTEND_DIR / file_path
-            if file_path_obj.exists():
-                return FileResponse(str(file_path_obj))
-        
-        # Se não for arquivo estático, servir index.html
-        index_path = FRONTEND_DIR / "index.html"
-        if index_path.exists():
-            return FileResponse(str(index_path))
-        
-        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
-    except Exception as e:
-        logger.error(f"Erro ao servir arquivo estático: {e}")
-        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+# (Movida para o final para não interceptar rotas da API)
 
 # ===== ENDPOINTS DE CONTATOS =====
 
@@ -277,13 +266,17 @@ async def serve_static_files(file_path: str):
 async def get_contacts():
     """Listar contatos"""
     try:
-        if db_manager and db_manager.is_connected():
-            # Buscar do banco de dados
-            query = "SELECT * FROM contacts ORDER BY name"
-            contacts = db_manager.execute_query(query)
-            return {"contacts": contacts}
+        if get_db_manager:
+            db_manager = get_db_manager()
+            if db_manager and db_manager.is_connected():
+                # Buscar do banco de dados
+                query = "SELECT * FROM contacts ORDER BY name"
+                contacts = db_manager.execute_query(query)
+                return {"contacts": contacts}
+            else:
+                # Dados em memória
+                return {"contacts": contacts}
         else:
-            # Dados em memória
             return {"contacts": contacts}
     except Exception as e:
         logger.error(f"Erro ao buscar contatos: {e}")
@@ -360,6 +353,83 @@ async def create_message(message: dict):
         logger.error(f"Erro ao criar mensagem: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# ===== ENDPOINTS DE PRODUTIVIDADE =====
+
+@app.get("/api/productivity/contacts")
+async def get_productivity_contacts(optimized: bool = False):
+    """Listar contatos de produtividade"""
+    try:
+        if get_db_manager:
+            db_manager = get_db_manager()
+            if db_manager and db_manager.is_connected():
+                # Buscar da tabela produtividade
+                if optimized:
+                    # Query otimizada para performance
+                    query = """
+                    SELECT 
+                        id, nome_cliente, tecnico, sa, servico, telefone1, telefone2,
+                        data, status, obs as observacoes, created_at, updated_at
+                    FROM produtividade 
+                    ORDER BY data DESC, created_at DESC
+                    """
+                else:
+                    # Query completa
+                    query = "SELECT * FROM produtividade ORDER BY data DESC, created_at DESC"
+                
+                contacts = db_manager.execute_query(query)
+                
+                # Converter para formato esperado pelo frontend
+                formatted_contacts = []
+                for contact in contacts:
+                    formatted_contact = {
+                        "id": contact.get("id"),
+                        "nome_cliente": contact.get("nome_cliente", ""),
+                        "tecnico": contact.get("tecnico", ""),
+                        "sa": contact.get("sa", ""),
+                        "servico": contact.get("servico", ""),
+                        "telefone1": contact.get("telefone1", ""),
+                        "telefone2": contact.get("telefone2", ""),
+                        "data": contact.get("data"),
+                        "status": contact.get("status", ""),
+                        "observacoes": contact.get("obs", ""),
+                        "created_at": contact.get("created_at"),
+                        "updated_at": contact.get("updated_at")
+                    }
+                    formatted_contacts.append(formatted_contact)
+                
+                return {
+                    "success": True,
+                    "contacts": formatted_contacts,
+                    "total": len(formatted_contacts),
+                    "timestamp": datetime.now().isoformat()
+                }
+            else:
+                # Dados em memória (fallback)
+                return {
+                    "success": True,
+                    "contacts": [],
+                    "total": 0,
+                    "timestamp": datetime.now().isoformat(),
+                    "message": "Banco de dados não conectado"
+                }
+        else:
+            return {
+                "success": False,
+                "contacts": [],
+                "total": 0,
+                "error": "Módulo de banco de dados não disponível",
+                "timestamp": datetime.now().isoformat()
+            }
+    except Exception as e:
+        logger.error(f"Erro ao buscar contatos de produtividade: {e}")
+        return {
+            "success": False,
+            "contacts": [],
+            "total": 0,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+
 # ===== ENDPOINTS DE CONFIGURAÇÃO DO BOT =====
 
 @app.get("/api/bot/config")
@@ -411,12 +481,24 @@ async def startup_event():
     logger.info("🚀 SacsMax Backend iniciando...")
     
     # Inicializar banco de dados se disponível
-    if db_manager:
+    if get_db_manager:
         try:
-            init_database()
-            logger.info("✅ Banco de dados inicializado")
+            db_manager = get_db_manager()
+            if db_manager and db_manager.connect():
+                logger.info("✅ Banco de dados conectado")
+                
+                # Testar conexão
+                result = db_manager.execute_query("SELECT 1 as test")
+                if result:
+                    logger.info("✅ Teste de conexão com banco bem-sucedido")
+                else:
+                    logger.warning("⚠️ Teste de conexão falhou")
+            else:
+                logger.warning("⚠️ Não foi possível conectar ao banco")
         except Exception as e:
             logger.warning(f"⚠️ Erro ao inicializar banco: {e}")
+    else:
+        logger.warning("⚠️ get_db_manager não disponível")
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -424,13 +506,41 @@ async def shutdown_event():
     logger.info("🛑 SacsMax Backend parando...")
     
     # Fechar conexões do banco
-    if db_manager:
+    if get_db_manager:
         try:
-            close_database()
-            logger.info("✅ Conexões do banco fechadas")
+            db_manager = get_db_manager()
+            if db_manager:
+                close_database(db_manager)
+                logger.info("✅ Conexões do banco fechadas")
         except Exception as e:
             logger.warning(f"⚠️ Erro ao fechar banco: {e}")
     
+# ===== ROTAS PARA ARQUIVOS ESTÁTICOS =====
+
+@app.get("/{file_path:path}")
+async def serve_static_files(file_path: str):
+    """Servir arquivos estáticos do frontend"""
+    try:
+        # Não interceptar rotas da API
+        if file_path.startswith('api/'):
+            raise HTTPException(status_code=404, detail="Endpoint não encontrado")
+        
+        # Verificar se é um arquivo JavaScript ou HTML
+        if file_path.endswith(('.js', '.html', '.css', '.png', '.jpg', '.ico')):
+            file_path_obj = FRONTEND_DIR / file_path
+            if file_path_obj.exists():
+                return FileResponse(str(file_path_obj))
+        
+        # Se não for arquivo estático, servir index.html
+        index_path = FRONTEND_DIR / "index.html"
+        if index_path.exists():
+            return FileResponse(str(index_path))
+        
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+    except Exception as e:
+        logger.error(f"Erro ao servir arquivo estático: {e}")
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+
 # ===== EXECUÇÃO DIRETA =====
     
 if __name__ == "__main__":

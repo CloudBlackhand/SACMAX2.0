@@ -111,8 +111,16 @@ def get_db_connection():
         return conn
         
     except Exception as e:
-        logger.error(f"❌ Erro ao conectar ao banco: {e}")
-        raise e
+        # Fallback para URL hardcoded do Railway (desenvolvimento local)
+        try:
+            railway_url = "postgresql://postgres:MbVOkkTYrVOlJXGTKiVHGVOfCjaixYdv@nozomi.proxy.rlwy.net:49949/railway"
+            conn = psycopg2.connect(railway_url)
+            logger.info("✅ Conectado ao banco PostgreSQL do Railway via URL hardcoded")
+            return conn
+        except Exception as e2:
+            logger.error(f"❌ Erro ao conectar ao banco: {e}")
+            logger.error(f"❌ Erro no fallback: {e2}")
+            raise e
 
 def test_connection():
     """Testar conexão com banco"""
@@ -140,6 +148,13 @@ def close_database(db_manager):
     if db_manager:
         db_manager.disconnect()
 
-# Instância global do db_manager
-db_manager = init_database()
+# Instância global do db_manager (será inicializada quando necessário)
+db_manager = None
+
+def get_db_manager():
+    """Obter instância do db_manager, inicializando se necessário"""
+    global db_manager
+    if db_manager is None:
+        db_manager = init_database()
+    return db_manager
 
