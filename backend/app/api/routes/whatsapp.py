@@ -3,18 +3,23 @@ Rotas para integração com WhatsApp usando WAHA
 """
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 from pydantic import BaseModel
 from datetime import datetime
 import os
+import sys
 
 # Importações do sistema
-from app.services.waha.waha_service import WahaService
-import sys
-import os
+try:
+    from app.services.waha.waha_service import WahaService
+except ImportError:
+    WahaService = None
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from database_config import get_db_manager
+try:
+    from database_config import get_db_manager
+except ImportError:
+    get_db_manager = None
 
 router = APIRouter()
 
@@ -61,7 +66,7 @@ async def get_whatsapp_status():
         }
 
 @router.post("/session/create")
-async def create_session(session_name: str = "sacsmax"):
+async def create_session(session_name: str = "default"):
     """Criar sessão WAHA"""
     try:
         service = get_waha_service()
@@ -74,7 +79,7 @@ async def create_session(session_name: str = "sacsmax"):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/screenshot")
-async def get_screenshot(session_name: str = "sacsmax"):
+async def get_screenshot(session_name: str = "default"):
     """Obter screenshot da sessão"""
     try:
         service = get_waha_service()
@@ -140,7 +145,7 @@ async def send_message(request: MessageRequest, session_name: str = "default"):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/send/bulk")
-async def send_bulk_messages(request: BulkMessageRequest, session_name: str = "sacsmax"):
+async def send_bulk_messages(request: BulkMessageRequest, session_name: str = "default"):
     """Enviar mensagens em massa"""
     try:
         service = get_waha_service()

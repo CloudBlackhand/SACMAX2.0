@@ -14,13 +14,13 @@ from ..feedback_service import FeedbackService
 from ..excel_service import ExcelService
 
 class WahaService:
-    def __init__(self, waha_url: str = "http://localhost:3000", db_manager=None):
+    def __init__(self, waha_url: str = "https://waha-production-1c76.up.railway.app", db_manager=None):
         self.waha_url = waha_url
         self.logger = logging.getLogger(__name__)
         self.db_manager = db_manager
         self.feedback_service = FeedbackService(db_manager)
         self.excel_service = ExcelService()  # ExcelService não precisa de db_manager
-        self.session_name = "sacsmax"
+        self.session_name = "default"
 
     async def check_waha_status(self) -> Dict[str, Any]:
         """Verificar status do WAHA"""
@@ -33,7 +33,7 @@ class WahaService:
         except Exception as e:
             return {"status": "disconnected", "message": str(e)}
 
-    async def create_session(self, session_name: str = "sacsmax") -> Dict[str, Any]:
+    async def create_session(self, session_name: str = "default") -> Dict[str, Any]:
         """Criar sessão WAHA"""
         try:
             response = requests.post(
@@ -49,7 +49,7 @@ class WahaService:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    async def get_screenshot(self, session_name: str = "sacsmax") -> Optional[bytes]:
+    async def get_screenshot(self, session_name: str = "default") -> Optional[bytes]:
         """Obter screenshot da sessão"""
         try:
             response = requests.get(

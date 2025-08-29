@@ -133,7 +133,7 @@ async def waha_status():
         return JSONResponse(content={"status": "error", "message": "WAHA não disponível"}, status_code=503)
 
 @app.post("/api/waha/sessions")
-async def waha_create_session(session_name: str = "sacsmax"):
+async def waha_create_session(session_name: str = "default"):
     """Criar sessão WAHA - Compatibilidade"""
     if waha_service:
         try:
@@ -146,7 +146,7 @@ async def waha_create_session(session_name: str = "sacsmax"):
         return JSONResponse(content={"status": "error", "message": "WAHA não disponível"}, status_code=503)
 
 @app.get("/api/waha/screenshot")
-async def waha_screenshot(session: str = "sacsmax"):
+async def waha_screenshot(session: str = "default"):
     """Screenshot WAHA - Compatibilidade"""
     if waha_service:
         try:
@@ -162,7 +162,7 @@ async def waha_screenshot(session: str = "sacsmax"):
         return JSONResponse(content={"status": "error", "message": "WAHA não disponível"}, status_code=503)
 
 @app.post("/api/waha/send-message")
-async def waha_send_message(chat_id: str, text: str, session: str = "sacsmax"):
+async def waha_send_message(chat_id: str, text: str, session: str = "default"):
     """Enviar mensagem WAHA - Compatibilidade"""
     if waha_service:
         try:
@@ -175,7 +175,7 @@ async def waha_send_message(chat_id: str, text: str, session: str = "sacsmax"):
         return JSONResponse(content={"status": "error", "message": "WAHA não disponível"}, status_code=503)
 
 @app.get("/api/waha/contacts")
-async def waha_contacts(session: str = "sacsmax"):
+async def waha_contacts(session: str = "default"):
     """Contatos WAHA - Compatibilidade"""
     if waha_service:
         try:
@@ -250,8 +250,11 @@ async def webhook_handler(request: Request):
         elif webhook_data.get("event") == "engine.event":
             payload = webhook_data.get("payload", {})
             if payload.get("event") == "unread_count":
-                last_message = payload.get("lastMessage")
+                # O lastMessage está em payload.data.lastMessage
+                data = payload.get("data", {})
+                last_message = data.get("lastMessage")
                 if last_message:
+                    logger.info(f"🔍 Processando lastMessage: {last_message}")
                     message_data = process_received_message(last_message)
         
         # Processar a mensagem se encontrada

@@ -26,7 +26,10 @@ class BotModule {
         const possiblePorts = [3001, 3002, 3003, 3004, 3005];
         
         // Por enquanto, usa a porta 3001 que está funcionando
-        return 'http://localhost:3001';
+        // Usar configuração dinâmica baseada no ambiente
+        return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:3001'
+            : window.location.origin;
     }
 
     render() {

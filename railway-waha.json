@@ -22,11 +22,12 @@
       "variables": {
         "RAILWAY_ENVIRONMENT": "development",
         "NODE_ENV": "development",
-        "WAHA_URL": "http://localhost:3000"
+        "WAHA_URL": "https://waha-production-1c76.up.railway.app"
       }
     }
   }
 }
+
 
 
 

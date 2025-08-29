@@ -4,7 +4,10 @@
 class MessagesModule {
     constructor() {
         this.backendUrl = SacsMaxConfig.backend.current;
-        this.whatsappUrl = 'http://localhost:3001';
+        // Usar configuração dinâmica baseada no ambiente
+        this.whatsappUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:3001'
+            : window.location.origin;
         this.contacts = [];
         this.filteredContacts = [];
         this.selectedContacts = new Set();

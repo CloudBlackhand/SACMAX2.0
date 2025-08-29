@@ -15,7 +15,7 @@ class WhatsAppModule {
         
         // Configuração WAHA
         this.wahaUrl = "https://waha-production-1c76.up.railway.app";
-        this.sessionName = "sacsmax";
+        this.sessionName = "default";
         
         // Polling para novas mensagens
         this.pollingInterval = null;

@@ -11,16 +11,16 @@ from app.services.waha.waha_service import WahaService
 import os
 
 router = APIRouter()
-WAHA_URL = os.environ.get("WAHA_URL", "http://localhost:3000")
+WAHA_URL = os.environ.get("WAHA_URL", "https://waha-production-1c76.up.railway.app")
 waha_service = WahaService(waha_url=WAHA_URL)
 
 class WahaMessageRequest(BaseModel):
-    session_name: str = "sacsmax"
+    session_name: str = "default"
     chat_id: str
     message: str
 
 class WahaSessionRequest(BaseModel):
-    session_name: str = "sacsmax"
+    session_name: str = "default"
     auth_method: str = "qr"  # or "code"
     phone_number: Optional[str] = None
 
@@ -37,7 +37,7 @@ async def create_waha_session(request: WahaSessionRequest):
     return result
 
 @router.get("/waha/screenshot")
-async def get_waha_screenshot(session_name: str = "sacsmax"):
+async def get_waha_screenshot(session_name: str = "default"):
     """Obter screenshot da sessão WAHA"""
     screenshot = await waha_service.get_screenshot(session_name)
     if screenshot:
@@ -57,7 +57,7 @@ async def send_waha_message(request: WahaMessageRequest):
     return result
 
 @router.get("/waha/contacts")
-async def get_waha_contacts(session_name: str = "sacsmax"):
+async def get_waha_contacts(session_name: str = "default"):
     """Obter contatos do WAHA"""
     result = await waha_service.get_contacts(session_name)
     return result
