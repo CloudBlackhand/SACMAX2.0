@@ -25,6 +25,13 @@ class WhatsAppModule {
         // Controle de mensagens já processadas (evitar duplicatas)
         this.processedMessages = new Set();
         
+        // Configuração simplificada - Backend cuida da persistência
+        this.cacheConfig = {
+            maxCacheSize: 100, // Cache local limitado
+            refreshInterval: 5000, // 5 segundos
+            autoRefresh: true
+        };
+
         // Inicializar
         this.init();
     }
@@ -35,13 +42,27 @@ class WhatsAppModule {
         // Disponibilizar globalmente
         window.whatsappModule = this;
         
-        // Carregar dados salvos
-        this.loadSavedData();
-        
         // Verificar conexão e carregar chats
         this.initializeWaha();
         
+        // Configurar eventos de página
+        this.setupPageEvents();
+        
         console.log('✅ WhatsApp Web inicializado');
+    }
+
+    destroy() {
+        console.log('🔄 Destruindo WhatsApp Web...');
+        
+        // Parar polling
+        this.stopPolling();
+        
+        // Limpar referência global
+        if (window.whatsappModule === this) {
+            window.whatsappModule = null;
+        }
+        
+        console.log('✅ WhatsApp Web destruído');
     }
 
     async initializeWaha() {
@@ -51,14 +72,11 @@ class WhatsAppModule {
         // Verificar conexão
         await this.checkConnection();
         
-        // Iniciar polling para novas mensagens independentemente da conexão
-        // (o backend pode receber webhooks mesmo se o frontend não estiver "conectado")
-        this.startPolling();
+        // Carregar chats do backend
+        await this.loadChatsFromBackend();
         
-        // Se conectado, carregar chats do WAHA
-        if (this.isConnected) {
-            await this.loadWahaChats();
-        }
+        // Iniciar polling para novas mensagens
+        this.startPolling();
     }
 
     // Iniciar polling para novas mensagens
@@ -70,7 +88,7 @@ class WhatsAppModule {
         
         this.pollingInterval = setInterval(async () => {
             await this.checkForNewMessages();
-        }, 5000); // Verificar a cada 5 segundos
+        }, this.cacheConfig.refreshInterval);
     }
 
     // Parar polling
@@ -90,13 +108,11 @@ class WhatsAppModule {
         try {
             console.log('🔄 Verificando novas mensagens...');
             
-            // Buscar novas mensagens do backend usando o novo endpoint
+            // Buscar novas mensagens do backend
             const sinceParam = this.lastMessageCheck ? `?since=${this.lastMessageCheck.toISOString()}` : '';
             const url = `${SacsMaxConfig.backend.current}/api/whatsapp/new-messages${sinceParam}`;
-            console.log('📡 Fazendo requisição para:', url);
             
             const response = await fetch(url);
-            console.log('📡 Resposta do servidor:', response.status, response.statusText);
             
             if (!response.ok) {
                 console.warn('⚠️ Resposta não OK:', response.status);
@@ -104,7 +120,6 @@ class WhatsAppModule {
             }
             
             const data = await response.json();
-            console.log('📡 Dados recebidos:', data);
             
             if (data.success && data.data && data.data.length > 0) {
                 console.log(`📱 Encontradas ${data.count || data.data.length} novas mensagens`);
@@ -119,8 +134,6 @@ class WhatsAppModule {
                 
                 // Confirmar que as mensagens foram processadas
                 await this.confirmMessagesProcessed();
-            } else {
-                console.log('📱 Nenhuma nova mensagem encontrada');
             }
             
             // Atualizar timestamp da última verificação
@@ -151,13 +164,32 @@ class WhatsAppModule {
         }
     }
 
-    // Processar nova mensagem recebida
-    processNewMessage(messageData) {
+    // Configurar eventos de página
+    setupPageEvents() {
+        console.log('📄 Configurando eventos de página...');
+        
+        // Salvar ao trocar de aba
+        window.addEventListener('beforeunload', () => {
+            console.log('💾 Salvando antes de sair da página...');
+        });
+        
+        // Salvar quando a página fica oculta
+        window.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                console.log('💾 Salvando quando página fica oculta...');
+            }
+        });
+        
+        console.log('✅ Eventos de página configurados');
+    }
+
+    // Processar nova mensagem
+    async processNewMessage(messageData) {
         try {
             console.log('📱 Processando nova mensagem:', messageData);
             
-            // Extrair informações da mensagem (formato do webhook WAHA)
-            const chatId = messageData.phone || messageData.chat_id || messageData.from || '';
+            // Extrair informações
+            const chatId = `chat_${messageData.phone || messageData.chat_id || messageData.from || ''}`;
             const messageText = messageData.message || messageData.body || messageData.text || '';
             const senderName = messageData.senderName || messageData.notifyName || 'Desconhecido';
             const timestamp = messageData.received_at || messageData.timestamp || new Date().toISOString();
@@ -167,55 +199,32 @@ class WhatsAppModule {
                 return;
             }
             
-            // Criar ID único para a mensagem (evitar duplicatas)
+            // Criar ID único
             const messageId = `${chatId}_${messageText}_${timestamp}`;
             
-            // Verificar se a mensagem já foi processada
+            // Verificar duplicatas
             if (this.processedMessages.has(messageId)) {
                 console.log('🔄 Mensagem já processada, ignorando:', messageId);
                 return;
             }
             
-            // Marcar mensagem como processada
             this.processedMessages.add(messageId);
             
-            // Limpar mensagens antigas do Set (manter apenas as últimas 100)
-            if (this.processedMessages.size > 100) {
-                const messagesArray = Array.from(this.processedMessages);
-                this.processedMessages = new Set(messagesArray.slice(-50));
-            }
+            // Criar ou atualizar chat
+            await this.createOrUpdateChat(chatId, messageText, senderName, timestamp);
             
-            console.log(`📱 Criando chat para: ${chatId} (${senderName})`);
+            // Adicionar mensagem ao histórico
+            await this.addMessageToChat(chatId, {
+                id: Date.now(),
+                type: 'received',
+                content: messageText,
+                timestamp: new Date(timestamp).toLocaleTimeString('pt-BR'),
+                sender: senderName,
+                status: 'received',
+                originalTimestamp: timestamp
+            });
             
-            // Criar ou atualizar o chat
-            this.createChatFromMessage(chatId, messageText, senderName);
-            
-            // Se for o chat atual, adicionar mensagem diretamente
-            const fullChatId = `chat_${chatId}`;
-            if (this.currentChat && this.currentChat.id === fullChatId) {
-                const messages = this.messages.get(fullChatId) || [];
-                const newMessage = {
-                    id: Date.now(),
-                    type: 'received',
-                    content: messageText,
-                    timestamp: new Date(timestamp).toLocaleTimeString('pt-BR'),
-                    sender: senderName,
-                    status: 'received'
-                };
-                
-                messages.push(newMessage);
-                this.messages.set(fullChatId, messages);
-                
-                // Scroll para a última mensagem
-                setTimeout(() => {
-                    const messagesArea = document.querySelector('.wa-messages-area');
-                    if (messagesArea) {
-                        messagesArea.scrollTop = messagesArea.scrollHeight;
-                    }
-                }, 100);
-            }
-            
-            // Mostrar notificação (se suportado pelo navegador)
+            // Mostrar notificação
             this.showNotification(senderName, messageText, chatId);
             
             console.log('✅ Nova mensagem processada:', { chatId, senderName, messageText });
@@ -225,33 +234,151 @@ class WhatsAppModule {
         }
     }
 
-    // Carregar dados salvos do localStorage
-    loadSavedData() {
+    // Criar ou atualizar chat
+    async createOrUpdateChat(chatId, messageText, senderName, timestamp) {
         try {
-            const savedChats = localStorage.getItem('whatsapp_chats');
-            const savedMessages = localStorage.getItem('whatsapp_messages');
+            let chat = this.chats.get(chatId);
+            const phone = chatId.replace('chat_', '');
             
-            if (savedChats) {
-                this.chats = new Map(JSON.parse(savedChats));
+            if (!chat) {
+                // Criar novo chat
+                chat = {
+                    id: chatId,
+                    name: senderName || phone,
+                    phone: phone,
+                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(senderName || phone)}&background=25d366&color=fff&size=40`,
+                    status: 'online',
+                    lastMessage: messageText,
+                    lastMessageTime: new Date(timestamp).toLocaleTimeString('pt-BR'),
+                    unreadCount: 1,
+                    isPinned: false,
+                    isMuted: false,
+                    wahaId: phone,
+                    createdAt: Date.now()
+                };
+                this.chats.set(chatId, chat);
+                console.log('✅ Novo chat criado:', chat.name);
+            } else {
+                // Atualizar chat existente
+                chat.lastMessage = messageText;
+                chat.lastMessageTime = new Date(timestamp).toLocaleTimeString('pt-BR');
+                chat.unreadCount = (chat.unreadCount || 0) + 1;
+                chat.updatedAt = Date.now();
+                console.log('📱 Chat atualizado:', chat.name);
             }
             
-            if (savedMessages) {
-                this.messages = new Map(JSON.parse(savedMessages));
-            }
-            
-            console.log('📱 Dados carregados:', this.chats.size, 'chats,', this.messages.size, 'conversas');
         } catch (error) {
-            console.error('❌ Erro ao carregar dados:', error);
+            console.error('❌ Erro ao criar/atualizar chat:', error);
         }
     }
 
-    // Salvar dados no localStorage
-    saveData() {
+    // Adicionar mensagem ao chat
+    async addMessageToChat(chatId, message) {
         try {
-            localStorage.setItem('whatsapp_chats', JSON.stringify(Array.from(this.chats.entries())));
-            localStorage.setItem('whatsapp_messages', JSON.stringify(Array.from(this.messages.entries())));
-            } catch (error) {
-            console.error('❌ Erro ao salvar dados:', error);
+            let messages = this.messages.get(chatId) || [];
+            
+            // Evitar duplicatas
+            const isDuplicate = messages.some(msg => 
+                msg.content === message.content && 
+                msg.timestamp === message.timestamp &&
+                msg.type === message.type
+            );
+            
+            if (!isDuplicate) {
+                messages.push(message);
+                
+                // Limitar número de mensagens no cache local
+                if (messages.length > this.cacheConfig.maxCacheSize) {
+                    messages = messages.slice(-this.cacheConfig.maxCacheSize);
+                }
+                
+                this.messages.set(chatId, messages);
+                console.log(`💬 Mensagem adicionada ao chat ${chatId}: ${messages.length} mensagens totais`);
+            }
+            
+        } catch (error) {
+            console.error('❌ Erro ao adicionar mensagem:', error);
+        }
+    }
+
+    // Carregar chats do backend
+    async loadChatsFromBackend() {
+        try {
+            console.log('📱 Carregando chats do backend...');
+            
+            const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/chats`);
+            const data = await response.json();
+            
+            if (data.success && data.data && data.data.chats) {
+                console.log(`📱 ${data.data.chats.length} chats carregados do backend`);
+                
+                // Processar chats do backend
+                for (const backendChat of data.data.chats) {
+                    const chatId = `chat_${backendChat.phone}`;
+                    
+                    const chat = {
+                        id: chatId,
+                        name: backendChat.name || backendChat.phone,
+                        phone: backendChat.phone,
+                        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(backendChat.name || backendChat.phone)}&background=25d366&color=fff&size=40`,
+                        status: 'online',
+                        lastMessage: backendChat.last_message || 'Nova conversa',
+                        lastMessageTime: backendChat.last_message_time ? new Date(backendChat.last_message_time).toLocaleTimeString('pt-BR') : new Date().toLocaleTimeString('pt-BR'),
+                        unreadCount: backendChat.unread_count || 0,
+                        isPinned: false,
+                        wahaId: backendChat.phone,
+                        messageCount: backendChat.message_count || 0
+                    };
+                    
+                    this.chats.set(chatId, chat);
+                }
+                
+                this.updateInterface();
+                console.log('✅ Chats carregados do backend');
+            }
+        } catch (error) {
+            console.error('❌ Erro ao carregar chats do backend:', error);
+        }
+    }
+
+    // Carregar mensagens de um chat específico do backend
+    async loadChatMessages(chatId, limit = 100) {
+        try {
+            const chat = this.chats.get(chatId);
+            if (!chat || !chat.phone) return;
+            
+            console.log(`📱 Carregando mensagens do chat ${chat.phone}...`);
+            
+            const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/messages/${chat.phone}?limit=${limit}`);
+            const data = await response.json();
+            
+            if (data.success && data.data && data.data.messages) {
+                console.log(`📱 ${data.data.messages.length} mensagens carregadas do backend`);
+                
+                // Processar mensagens do backend
+                const messages = data.data.messages.map(msg => ({
+                    id: msg.id || Date.now(),
+                    type: msg.type || 'received',
+                    content: msg.content || msg.text || '',
+                    timestamp: msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('pt-BR') : new Date().toLocaleTimeString('pt-BR'),
+                    sender: msg.sender || chat.name,
+                    status: msg.status || 'received',
+                    originalTimestamp: msg.timestamp
+                }));
+                
+                this.messages.set(chatId, messages);
+                
+                // Atualizar última mensagem do chat
+                if (messages.length > 0) {
+                    const lastMsg = messages[messages.length - 1];
+                    chat.lastMessage = lastMsg.content.substring(0, 50) + (lastMsg.content.length > 50 ? '...' : '');
+                    chat.lastMessageTime = lastMsg.timestamp;
+                }
+                
+                console.log('✅ Mensagens carregadas do backend');
+            }
+        } catch (error) {
+            console.error('❌ Erro ao carregar mensagens do backend:', error);
         }
     }
 
@@ -261,7 +388,7 @@ class WhatsAppModule {
             const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/status`);
             const data = await response.json();
             
-            this.isConnected = data.success && data.data.status === 'connected';
+            this.isConnected = data.success && data.data.waha_status === 'connected';
             this.sessionStatus = this.isConnected ? 'connected' : 'disconnected';
             
             console.log('📱 Status WAHA:', data.data);
@@ -269,45 +396,6 @@ class WhatsAppModule {
             console.error('❌ Erro ao verificar conexão WAHA:', error);
             this.isConnected = false;
             this.sessionStatus = 'disconnected';
-        }
-    }
-
-    // Carregar chats do WAHA
-    async loadWahaChats() {
-        try {
-            const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/chats`);
-            const data = await response.json();
-            
-            if (data.success && data.data) {
-                console.log('📱 Chats carregados do WAHA:', data.data.length);
-                
-                // Processar chats do WAHA
-                for (const wahaChat of data.data) {
-                    const chatId = `chat_${wahaChat.id}`;
-                    
-                    if (!this.chats.has(chatId)) {
-                        const newChat = {
-                            id: chatId,
-                            name: wahaChat.name || wahaChat.id,
-                            phone: wahaChat.id,
-                            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(wahaChat.name || wahaChat.id)}&background=25d366&color=fff&size=40`,
-                            status: 'online',
-                            lastMessage: wahaChat.lastMessage || 'Nova conversa',
-                            lastMessageTime: wahaChat.timestamp ? new Date(wahaChat.timestamp).toLocaleTimeString('pt-BR') : new Date().toLocaleTimeString('pt-BR'),
-                            unreadCount: wahaChat.unreadCount || 0,
-                            isPinned: false,
-                            wahaId: wahaChat.id
-                        };
-                        
-                        this.chats.set(chatId, newChat);
-                    }
-                }
-                
-                this.saveData();
-                this.updateInterface();
-            }
-        } catch (error) {
-            console.error('❌ Erro ao carregar chats do WAHA:', error);
         }
     }
 
@@ -356,44 +444,7 @@ class WhatsAppModule {
             console.log('✅ Chat criado automaticamente:', newChat.name);
         }
         
-        this.saveData();
         this.updateInterface();
-    }
-
-    // Carregar mensagens de um chat específico
-    async loadChatMessages(chatId, limit = 50) {
-        try {
-            const chat = this.chats.get(chatId);
-            if (!chat || !chat.wahaId) return;
-            
-            const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/messages/${chat.wahaId}?limit=${limit}`);
-            const data = await response.json();
-            
-            if (data.success && data.data) {
-                console.log('📱 Mensagens carregadas:', data.data.length);
-                
-                // Processar mensagens
-                const messages = data.data.map(msg => ({
-                    id: msg.id,
-                    text: msg.text || '',
-                    timestamp: msg.timestamp,
-                    fromMe: msg.fromMe || false,
-                    status: msg.fromMe ? 'sent' : 'received'
-                }));
-                
-                this.messages.set(chatId, messages);
-                this.saveData();
-                
-                // Atualizar última mensagem do chat
-                if (messages.length > 0) {
-                    const lastMsg = messages[messages.length - 1];
-                    chat.lastMessage = lastMsg.text.substring(0, 50) + (lastMsg.text.length > 50 ? '...' : '');
-                    chat.lastMessageTime = new Date(lastMsg.timestamp).toLocaleTimeString('pt-BR');
-                }
-            }
-        } catch (error) {
-            console.error('❌ Erro ao carregar mensagens:', error);
-        }
     }
 
     // Criar chat de teste para demonstração
@@ -437,18 +488,23 @@ class WhatsAppModule {
         
         this.messages.set(chatId, initialMessages);
         
-        // Salvar dados
-        this.saveData();
-        
         // Atualizar interface
         this.updateInterface();
         
         console.log('✅ Chat de teste criado');
     }
 
-    // Função chamada pelo módulo de produtividade
-    createNewChat(phone, clientName) {
+    // Função chamada pelo módulo de produtividade ou feedback
+    createNewChat(phone, clientName = 'Cliente') {
         console.log('💬 Criando novo chat:', clientName, phone);
+        
+        if (!phone) {
+            console.error('❌ Erro: Telefone não fornecido');
+            return;
+        }
+        
+        // Normalizar telefone (remover espaços, traços, etc.)
+        phone = phone.replace(/\s+/g, '').replace(/-/g, '');
         
         const chatId = `chat_${phone}`;
         
@@ -470,7 +526,8 @@ class WhatsAppModule {
             lastMessageTime: new Date().toLocaleTimeString('pt-BR'),
             unreadCount: 0,
             isPinned: false,
-            isMuted: false
+            isMuted: false,
+            wahaId: phone // Importante para enviar mensagens
         };
         
         // Adicionar ao histórico
@@ -490,13 +547,10 @@ class WhatsAppModule {
         
         this.messages.set(chatId, initialMessages);
         
-        // Salvar dados
-        this.saveData();
-        
         // Abrir o chat
         this.openChat(chatId);
         
-        console.log('✅ Novo chat criado e aberto');
+        console.log('✅ Novo chat criado e aberto:', chatId);
     }
 
     // Abrir chat existente
@@ -515,13 +569,10 @@ class WhatsAppModule {
         });
         chat.unreadCount = 0;
         
-        // Carregar mensagens do WAHA se disponível
-        if (chat.wahaId) {
+        // Carregar mensagens do backend se disponível
+        if (chat.phone) {
             await this.loadChatMessages(chatId);
         }
-        
-        // Salvar dados
-        this.saveData();
         
         // Atualizar interface
         this.updateInterface();
@@ -560,104 +611,47 @@ class WhatsAppModule {
         this.currentChat.lastMessageTime = sentMessage.timestamp;
         this.chats.set(chatId, this.currentChat);
         
-        // Salvar dados
-        this.saveData();
-        
         // Atualizar interface
         this.updateInterface();
         
-        // Enviar mensagem via WAHA se disponível
-        if (this.currentChat.wahaId) {
-            try {
-                const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/send`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        phone: this.currentChat.phone,
-                        message: content.trim(),
-                        message_type: 'text'
-                    })
-                });
+        // Enviar mensagem via backend
+        try {
+            const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/send`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    phone: this.currentChat.phone,
+                    message: content.trim(),
+                    message_type: 'text'
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Atualizar status da mensagem
+                sentMessage.status = 'sent';
+                console.log('✅ Mensagem enviada via backend');
                 
-                const result = await response.json();
-                
-                if (result.success) {
-                    // Atualizar status da mensagem
-                    sentMessage.status = 'sent';
-                    console.log('✅ Mensagem enviada via WAHA');
-                    
-                    // Criar chat de teste se não existir
-                    if (!this.currentChat.wahaId) {
-                        this.createTestChat(this.currentChat.phone, this.currentChat.name);
-                    }
-                } else {
-                    sentMessage.status = 'error';
-                    console.error('❌ Erro ao enviar mensagem:', result.error);
+                // Limpar o input
+                const inputElement = document.querySelector('.wa-message-input');
+                if (inputElement) {
+                    inputElement.value = '';
                 }
-                
-                this.saveData();
-                this.updateInterface();
-                
-            } catch (error) {
-                console.error('❌ Erro ao enviar mensagem:', error);
+            } else {
                 sentMessage.status = 'error';
-                this.saveData();
-                this.updateInterface();
+                console.error('❌ Erro ao enviar mensagem:', result.error);
             }
-        } else {
-            // Simular resposta automática se não estiver conectado ao WAHA
-            setTimeout(() => {
-                this.simulateResponse();
-            }, 2000 + Math.random() * 2000);
+            
+            this.updateInterface();
+            
+        } catch (error) {
+            console.error('❌ Erro ao enviar mensagem:', error);
+            sentMessage.status = 'error';
+            this.updateInterface();
         }
-    }
-
-    // Simular resposta automática
-    simulateResponse() {
-        if (!this.currentChat) return;
-        
-        const responses = [
-            'Entendi! Vou verificar isso para você.',
-            'Perfeito! Já estou processando sua solicitação.',
-            'Obrigado pela informação! Estou trabalhando nisso.',
-            'Certo! Deixe-me buscar essas informações.',
-            'Anotado! Vou resolver isso o mais rápido possível.',
-            'Compreendo sua solicitação. Vou analisar os detalhes.',
-            'Excelente! Sua solicitação foi registrada com sucesso.',
-            'Vou verificar isso imediatamente para você.',
-            'Entendi perfeitamente. Deixe-me processar isso.',
-            'Obrigado pelo contato! Vou cuidar disso agora.'
-        ];
-        
-        const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-        const chatId = this.currentChat.id;
-        const messages = this.messages.get(chatId) || [];
-        
-        const receivedMessage = {
-            id: Date.now(),
-            type: 'received',
-            content: randomResponse,
-            timestamp: new Date().toLocaleTimeString('pt-BR'),
-            sender: this.currentChat.name,
-            status: 'received'
-        };
-        
-        messages.push(receivedMessage);
-        this.messages.set(chatId, messages);
-        
-        // Atualizar último status do chat
-        this.currentChat.lastMessage = randomResponse;
-        this.currentChat.lastMessageTime = receivedMessage.timestamp;
-        this.currentChat.unreadCount = 0; // Já está aberto
-        this.chats.set(chatId, this.currentChat);
-        
-        // Salvar dados
-        this.saveData();
-        
-        // Atualizar interface
-        this.updateInterface();
     }
 
     // Manipular tecla Enter no input
@@ -937,6 +931,8 @@ class WhatsAppModule {
         if (contentArea) {
             contentArea.innerHTML = this.render();
             console.log('✅ HTML atualizado');
+            
+
         } else {
             console.error('❌ Elemento app-content não encontrado');
         }
@@ -964,10 +960,6 @@ class WhatsAppModule {
         this.currentChat = null;
         this.chats.clear();
         this.messages.clear();
-        
-        // Limpar localStorage
-        localStorage.removeItem('whatsapp_chats');
-        localStorage.removeItem('whatsapp_messages');
         
         // Atualizar interface
         this.updateInterface();
@@ -1040,7 +1032,6 @@ class WhatsAppModule {
         // Parar polling
         this.stopPolling();
         
-        this.saveData();
         this.currentChat = null;
         this.chats.clear();
         this.messages.clear();

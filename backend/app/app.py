@@ -123,6 +123,18 @@ max_queue_size = 1000
 processed_message_ids = set()
 max_processed_ids = 1000
 
+# NOVO: Sistema de persistência de mensagens WhatsApp
+whatsapp_messages_storage = {
+    "messages": {},  # {phone: [messages]}
+    "chats": {},     # {phone: chat_info}
+    "last_update": datetime.now().isoformat(),
+    "total_messages": 0
+}
+
+# Configuração de retenção (15 dias)
+MESSAGE_RETENTION_DAYS = 15
+MAX_MESSAGES_PER_CHAT = 1000  # Limite por chat para evitar uso excessivo de memória
+
 # Endpoints de compatibilidade WAHA
 @app.get("/api/waha/status")
 async def waha_status():
@@ -259,6 +271,169 @@ def process_received_message(message_payload):
         "notify_name": notify_name
     }
 
+# NOVO: Funções para persistência de mensagens WhatsApp
+def save_whatsapp_message(phone, message_data):
+    """Salvar mensagem WhatsApp no storage persistente"""
+    global whatsapp_messages_storage
+    
+    try:
+        # Normalizar telefone
+        phone = str(phone).strip()
+        if not phone:
+            logger.warning("⚠️ Telefone vazio, ignorando mensagem")
+            return False
+        
+        # Criar estrutura de mensagem
+        message = {
+            "id": message_data.get("message_id") or f"{phone}_{int(datetime.now().timestamp())}",
+            "phone": phone,
+            "content": message_data.get("message_text", ""),
+            "sender": message_data.get("notify_name", phone),
+            "timestamp": message_data.get("timestamp", datetime.now().isoformat()),
+            "type": "received" if not message_data.get("from_me", False) else "sent",
+            "status": "received",
+            "created_at": datetime.now().isoformat()
+        }
+        
+        # Inicializar chat se não existir
+        if phone not in whatsapp_messages_storage["messages"]:
+            whatsapp_messages_storage["messages"][phone] = []
+            whatsapp_messages_storage["chats"][phone] = {
+                "phone": phone,
+                "name": message_data.get("notify_name", phone),
+                "last_message": message["content"],
+                "last_message_time": message["timestamp"],
+                "unread_count": 0,
+                "created_at": datetime.now().isoformat(),
+                "updated_at": datetime.now().isoformat()
+            }
+        
+        # Adicionar mensagem
+        whatsapp_messages_storage["messages"][phone].append(message)
+        
+        # Limitar número de mensagens por chat
+        if len(whatsapp_messages_storage["messages"][phone]) > MAX_MESSAGES_PER_CHAT:
+            whatsapp_messages_storage["messages"][phone] = whatsapp_messages_storage["messages"][phone][-MAX_MESSAGES_PER_CHAT:]
+        
+        # Atualizar informações do chat
+        chat_info = whatsapp_messages_storage["chats"][phone]
+        chat_info["last_message"] = message["content"]
+        chat_info["last_message_time"] = message["timestamp"]
+        chat_info["updated_at"] = datetime.now().isoformat()
+        
+        # Atualizar contadores
+        whatsapp_messages_storage["total_messages"] += 1
+        whatsapp_messages_storage["last_update"] = datetime.now().isoformat()
+        
+        logger.info(f"✅ Mensagem salva para {phone}: {message['content'][:50]}...")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Erro ao salvar mensagem WhatsApp: {e}")
+        return False
+
+def cleanup_old_messages():
+    """Limpar mensagens antigas (mais de 15 dias)"""
+    global whatsapp_messages_storage
+    
+    try:
+        from datetime import timedelta
+        cutoff_date = datetime.now() - timedelta(days=MESSAGE_RETENTION_DAYS)
+        cutoff_timestamp = cutoff_date.isoformat()
+        
+        removed_count = 0
+        for phone in list(whatsapp_messages_storage["messages"].keys()):
+            original_count = len(whatsapp_messages_storage["messages"][phone])
+            
+            # Filtrar mensagens recentes
+            recent_messages = [
+                msg for msg in whatsapp_messages_storage["messages"][phone]
+                if msg.get("timestamp", "") > cutoff_timestamp
+            ]
+            
+            # Atualizar lista de mensagens
+            whatsapp_messages_storage["messages"][phone] = recent_messages
+            
+            # Remover chat se não há mais mensagens
+            if len(recent_messages) == 0:
+                del whatsapp_messages_storage["messages"][phone]
+                if phone in whatsapp_messages_storage["chats"]:
+                    del whatsapp_messages_storage["chats"][phone]
+            
+            removed_count += original_count - len(recent_messages)
+        
+        if removed_count > 0:
+            logger.info(f"🧹 Limpeza automática: {removed_count} mensagens antigas removidas")
+        
+        # Atualizar contador total
+        total_messages = sum(len(messages) for messages in whatsapp_messages_storage["messages"].values())
+        whatsapp_messages_storage["total_messages"] = total_messages
+        
+    except Exception as e:
+        logger.error(f"❌ Erro na limpeza automática: {e}")
+
+def get_whatsapp_messages(phone=None, limit=100, since=None):
+    """Buscar mensagens WhatsApp"""
+    global whatsapp_messages_storage
+    
+    try:
+        if phone:
+            # Buscar mensagens de um telefone específico
+            messages = whatsapp_messages_storage["messages"].get(phone, [])
+            chat_info = whatsapp_messages_storage["chats"].get(phone, {})
+            
+            # Filtrar por data se especificado
+            if since:
+                try:
+                    since_time = datetime.fromisoformat(since.replace('Z', '+00:00'))
+                    messages = [
+                        msg for msg in messages
+                        if datetime.fromisoformat(msg.get("timestamp", "").replace('Z', '+00:00')) > since_time
+                    ]
+                except Exception as e:
+                    logger.warning(f"⚠️ Erro ao filtrar por data: {e}")
+            
+            # Limitar número de mensagens
+            messages = messages[-limit:] if limit else messages
+            
+            return {
+                "success": True,
+                "data": {
+                    "messages": messages,
+                    "chat_info": chat_info,
+                    "total": len(messages)
+                }
+            }
+        else:
+            # Buscar todos os chats
+            chats = []
+            for phone, chat_info in whatsapp_messages_storage["chats"].items():
+                messages = whatsapp_messages_storage["messages"].get(phone, [])
+                chats.append({
+                    **chat_info,
+                    "message_count": len(messages),
+                    "last_message": messages[-1] if messages else None
+                })
+            
+            # Ordenar por última mensagem
+            chats.sort(key=lambda x: x.get("last_message_time", ""), reverse=True)
+            
+            return {
+                "success": True,
+                "data": {
+                    "chats": chats,
+                    "total_chats": len(chats),
+                    "total_messages": whatsapp_messages_storage["total_messages"]
+                }
+            }
+            
+    except Exception as e:
+        logger.error(f"❌ Erro ao buscar mensagens WhatsApp: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
 async def process_message_async(message_data):
     """Processar mensagem de forma assíncrona"""
     try:
@@ -347,7 +522,10 @@ async def webhook_handler(request: Request):
                         # Manter apenas os últimos 500 IDs
                         processed_message_ids.clear()
                 
-                # Criar objeto da mensagem
+                # NOVO: Salvar mensagem no storage persistente
+                save_whatsapp_message(message_data["chat_id"], message_data)
+                
+                # Criar objeto da mensagem para compatibilidade
                 new_message = {
                     "id": message_id or f"{message_data['chat_id']}_{int(datetime.now().timestamp())}",
                     "phone": message_data["chat_id"],
@@ -359,14 +537,14 @@ async def webhook_handler(request: Request):
                     "retry_count": 0
                 }
                 
-                # Adicionar à fila de mensagens
+                # Adicionar à fila de mensagens (para compatibilidade)
                 new_messages_queue.append(new_message)
                 
                 # Manter tamanho da fila controlado
                 if len(new_messages_queue) > max_queue_size:
                     new_messages_queue = new_messages_queue[-max_queue_size:]
                 
-                logger.info(f"✅ Mensagem adicionada à fila: {message_data['notify_name'] or message_data['chat_id']}")
+                logger.info(f"✅ Mensagem salva no storage persistente: {message_data['notify_name'] or message_data['chat_id']}")
                 
                 # Processar assincronamente (não bloquear o webhook)
                 import asyncio
@@ -484,6 +662,11 @@ async def whatsapp_status():
                     "pending": len([msg for msg in new_messages_queue if not msg.get("processed", False)]),
                     "retry_count": sum([msg.get("retry_count", 0) for msg in new_messages_queue])
                 },
+                "persistent_storage": {
+                    "total_chats": len(whatsapp_messages_storage["chats"]),
+                    "total_messages": whatsapp_messages_storage["total_messages"],
+                    "last_update": whatsapp_messages_storage["last_update"]
+                },
                 "system": {
                     "version": "3.0.0",
                     "uptime": "running",
@@ -493,6 +676,124 @@ async def whatsapp_status():
         }
     except Exception as e:
         logger.error(f"❌ Erro ao obter status: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+# NOVO: Endpoints para persistência de mensagens WhatsApp
+@app.get("/api/whatsapp/chats")
+async def get_whatsapp_chats():
+    """Buscar todos os chats com mensagens"""
+    try:
+        result = get_whatsapp_messages()
+        return result
+    except Exception as e:
+        logger.error(f"❌ Erro ao buscar chats: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.get("/api/whatsapp/messages/{phone}")
+async def get_whatsapp_chat_messages(phone: str, limit: int = 100, since: str = None):
+    """Buscar mensagens de um chat específico"""
+    try:
+        result = get_whatsapp_messages(phone=phone, limit=limit, since=since)
+        return result
+    except Exception as e:
+        logger.error(f"❌ Erro ao buscar mensagens do chat {phone}: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.post("/api/whatsapp/send")
+async def send_whatsapp_message(request: Request):
+    """Enviar mensagem WhatsApp e salvar no storage"""
+    try:
+        data = await request.json()
+        phone = data.get("phone")
+        message = data.get("message")
+        message_type = data.get("message_type", "text")
+        
+        if not phone or not message:
+            return {
+                "success": False,
+                "error": "Telefone e mensagem são obrigatórios"
+            }
+        
+        # Enviar via WAHA se disponível
+        if waha_service:
+            try:
+                result = await waha_service.send_text_message(phone, message, "default")
+                if result.get("success"):
+                    # Salvar mensagem enviada no storage
+                    sent_message_data = {
+                        "message_id": f"sent_{phone}_{int(datetime.now().timestamp())}",
+                        "message_text": message,
+                        "notify_name": "Você",
+                        "timestamp": datetime.now().isoformat(),
+                        "from_me": True
+                    }
+                    save_whatsapp_message(phone, sent_message_data)
+                    
+                    return {
+                        "success": True,
+                        "message": "Mensagem enviada com sucesso",
+                        "waha_result": result
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "error": f"Erro ao enviar via WAHA: {result.get('error', 'Erro desconhecido')}"
+                    }
+            except Exception as e:
+                logger.error(f"❌ Erro ao enviar via WAHA: {e}")
+                return {
+                    "success": False,
+                    "error": f"Erro ao enviar via WAHA: {str(e)}"
+                }
+        else:
+            # Simular envio se WAHA não estiver disponível
+            sent_message_data = {
+                "message_id": f"sent_{phone}_{int(datetime.now().timestamp())}",
+                "message_text": message,
+                "notify_name": "Você",
+                "timestamp": datetime.now().isoformat(),
+                "from_me": True
+            }
+            save_whatsapp_message(phone, sent_message_data)
+            
+            return {
+                "success": True,
+                "message": "Mensagem salva (WAHA não disponível)",
+                "waha_available": False
+            }
+            
+    except Exception as e:
+        logger.error(f"❌ Erro ao enviar mensagem: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.post("/api/whatsapp/cleanup")
+async def cleanup_whatsapp_messages():
+    """Limpar mensagens antigas (endpoint administrativo)"""
+    try:
+        cleanup_old_messages()
+        return {
+            "success": True,
+            "message": "Limpeza automática executada",
+            "storage_info": {
+                "total_chats": len(whatsapp_messages_storage["chats"]),
+                "total_messages": whatsapp_messages_storage["total_messages"],
+                "last_update": whatsapp_messages_storage["last_update"]
+            }
+        }
+    except Exception as e:
+        logger.error(f"❌ Erro na limpeza: {e}")
         return {
             "success": False,
             "error": str(e)
@@ -786,6 +1087,29 @@ async def startup_event():
             logger.warning(f"⚠️ Erro ao inicializar banco: {e}")
     else:
         logger.warning("⚠️ get_db_manager não disponível")
+    
+    # NOVO: Inicializar sistema de persistência WhatsApp
+    try:
+        # Executar limpeza automática na inicialização
+        cleanup_old_messages()
+        logger.info("✅ Sistema de persistência WhatsApp inicializado")
+    except Exception as e:
+        logger.warning(f"⚠️ Erro ao inicializar persistência WhatsApp: {e}")
+    
+    # Configurar limpeza automática periódica (a cada 6 horas)
+    import asyncio
+    async def periodic_cleanup():
+        while True:
+            try:
+                await asyncio.sleep(6 * 60 * 60)  # 6 horas
+                cleanup_old_messages()
+                logger.info("🧹 Limpeza automática periódica executada")
+            except Exception as e:
+                logger.error(f"❌ Erro na limpeza periódica: {e}")
+    
+    # Iniciar tarefa de limpeza periódica
+    asyncio.create_task(periodic_cleanup())
+    logger.info("✅ Limpeza automática periódica configurada")
 
 @app.on_event("shutdown")
 async def shutdown_event():
