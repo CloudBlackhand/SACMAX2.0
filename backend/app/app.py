@@ -319,18 +319,32 @@ async def get_new_messages(since: str = None):
     global new_messages_queue
     
     try:
+        logger.info(f"📡 Buscando novas mensagens. Fila atual: {len(new_messages_queue)} mensagens")
+        logger.info(f"📡 Parâmetro since: {since}")
+        
         # Se since foi fornecido, filtrar mensagens mais recentes
         if since:
             try:
                 since_time = datetime.fromisoformat(since.replace('Z', '+00:00'))
-                filtered_messages = [
-                    msg for msg in new_messages_queue 
-                    if datetime.fromisoformat(msg["received_at"].replace('Z', '+00:00')) > since_time
-                ]
-            except:
+                logger.info(f"📡 Filtrando mensagens após: {since_time}")
+                
+                filtered_messages = []
+                for msg in new_messages_queue:
+                    msg_time = datetime.fromisoformat(msg["received_at"].replace('Z', '+00:00'))
+                    if msg_time > since_time:
+                        filtered_messages.append(msg)
+                        logger.info(f"📡 Mensagem incluída: {msg['phone']} - {msg['message'][:20]}...")
+                    else:
+                        logger.info(f"📡 Mensagem filtrada (muito antiga): {msg['phone']} - {msg['message'][:20]}...")
+                        
+            except Exception as filter_error:
+                logger.error(f"❌ Erro no filtro: {filter_error}")
                 filtered_messages = new_messages_queue
         else:
             filtered_messages = new_messages_queue
+            logger.info(f"📡 Retornando todas as {len(filtered_messages)} mensagens")
+        
+        logger.info(f"📡 Retornando {len(filtered_messages)} mensagens para o frontend")
         
         return {
             "success": True,
@@ -338,7 +352,7 @@ async def get_new_messages(since: str = None):
             "data": filtered_messages
         }
     except Exception as e:
-        logger.error(f"Erro ao buscar novas mensagens: {e}")
+        logger.error(f"❌ Erro ao buscar novas mensagens: {e}")
         return {
             "success": False,
             "error": str(e),
