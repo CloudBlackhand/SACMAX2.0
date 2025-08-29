@@ -586,24 +586,31 @@ async def webhook_handler(request: Request):
 async def process_and_save_message(message_data):
     """Processar e salvar uma mensagem individual"""
     try:
-        # Verificar se a mensagem já foi processada (idempotência)
-        message_id = message_data.get("message_id")
-        if message_id and message_id in processed_message_ids:
-            logger.info(f"🔄 Mensagem já processada, ignorando: {message_id}")
-            return False
-        
         # Verificar se é mensagem válida (não vazia e não de nós mesmos)
         if not message_data["chat_id"] or not message_data["message_text"] or message_data.get("from_me", False):
+            logger.warning(f"⚠️ Mensagem inválida ignorada: {message_data}")
+            return False
+        
+        # Criar ID único baseado em conteúdo + timestamp para evitar duplicatas reais
+        message_id = message_data.get("message_id")
+        content_hash = f"{message_data['chat_id']}_{message_data['message_text']}_{message_data.get('timestamp', '')}"
+        
+        # Verificar se é uma duplicata real (mesmo conteúdo, mesmo timestamp)
+        if content_hash in processed_message_ids:
+            logger.info(f"🔄 Duplicata real ignorada: {content_hash[:50]}...")
             return False
         
         logger.info(f"📱 Processando mensagem de {message_data['chat_id']} ({message_data['notify_name']}): {message_data['message_text']}")
         
-        # Marcar mensagem como processada
-        if message_id:
-            processed_message_ids.add(message_id)
-            # Limpar IDs antigos se necessário
-            if len(processed_message_ids) > max_processed_ids:
-                processed_message_ids.clear()
+        # Marcar conteúdo como processado (não apenas o ID)
+        processed_message_ids.add(content_hash)
+        
+        # Limpar IDs antigos se necessário (manter apenas últimos 1000)
+        if len(processed_message_ids) > max_processed_ids:
+            # Manter apenas os últimos 500 hashes
+            processed_list = list(processed_message_ids)
+            processed_message_ids.clear()
+            processed_message_ids.update(processed_list[-500:])
         
         # Salvar mensagem no storage persistente
         save_success = save_whatsapp_message(message_data["chat_id"], message_data)
@@ -1000,6 +1007,33 @@ async def cleanup_whatsapp_messages():
         }
     except Exception as e:
         logger.error(f"❌ Erro na limpeza: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.post("/api/whatsapp/clear-cache")
+async def clear_processed_cache():
+    """Limpar cache de mensagens processadas"""
+    try:
+        global processed_message_ids, new_messages_queue
+        
+        # Limpar cache
+        processed_message_ids.clear()
+        new_messages_queue.clear()
+        
+        logger.info("🧹 Cache de mensagens processadas limpo")
+        
+        return {
+            "success": True,
+            "message": "Cache limpo com sucesso",
+            "cleared": {
+                "processed_ids": 0,
+                "message_queue": 0
+            }
+        }
+    except Exception as e:
+        logger.error(f"❌ Erro ao limpar cache: {e}")
         return {
             "success": False,
             "error": str(e)
