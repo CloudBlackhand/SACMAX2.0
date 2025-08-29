@@ -585,6 +585,8 @@ async def webhook_handler(request: Request):
 
 async def process_and_save_message(message_data):
     """Processar e salvar uma mensagem individual - SIMPLES COMO WHATSAPP"""
+    global new_messages_queue
+    
     try:
         # Verificar se é mensagem válida (não vazia e não de nós mesmos)
         if not message_data["chat_id"] or not message_data["message_text"] or message_data.get("from_me", False):
