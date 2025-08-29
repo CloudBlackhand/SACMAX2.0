@@ -359,6 +359,32 @@ async def get_new_messages(since: str = None):
             "data": []
         }
 
+@app.post("/api/whatsapp/confirm-messages")
+async def confirm_messages_processed(message_ids: List[str] = None):
+    """Endpoint para o frontend confirmar que processou as mensagens"""
+    global new_messages_queue
+    
+    try:
+        if message_ids:
+            # Remover mensagens específicas
+            new_messages_queue = [msg for msg in new_messages_queue if msg.get("id") not in message_ids]
+        else:
+            # Limpar toda a fila (frontend processou todas)
+            new_messages_queue.clear()
+        
+        logger.info(f"✅ Mensagens confirmadas como processadas. Fila restante: {len(new_messages_queue)}")
+        
+        return {
+            "success": True,
+            "remaining_count": len(new_messages_queue)
+        }
+    except Exception as e:
+        logger.error(f"❌ Erro ao confirmar mensagens: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
 @app.get("/health")
 async def health_check():
     """Verificação de saúde da API"""

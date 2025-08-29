@@ -22,6 +22,9 @@ class WhatsAppModule {
         this.pollingActive = false;
         this.lastMessageCheck = new Date();
         
+        // Controle de mensagens já processadas (evitar duplicatas)
+        this.processedMessages = new Set();
+        
         // Inicializar
         this.init();
     }
@@ -113,6 +116,9 @@ class WhatsAppModule {
                 
                 // Atualizar interface
                 this.updateInterface();
+                
+                // Confirmar que as mensagens foram processadas
+                await this.confirmMessagesProcessed();
             } else {
                 console.log('📱 Nenhuma nova mensagem encontrada');
             }
@@ -122,6 +128,26 @@ class WhatsAppModule {
             
         } catch (error) {
             console.error('❌ Erro ao verificar novas mensagens:', error);
+        }
+    }
+
+    // Confirmar que as mensagens foram processadas
+    async confirmMessagesProcessed() {
+        try {
+            const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/confirm-messages`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message_ids: [] }) // Limpar toda a fila
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('✅ Mensagens confirmadas como processadas:', result);
+            }
+        } catch (error) {
+            console.error('❌ Erro ao confirmar mensagens:', error);
         }
     }
 
@@ -139,6 +165,24 @@ class WhatsAppModule {
             if (!chatId || !messageText) {
                 console.warn('⚠️ Mensagem sem chatId ou messageText:', messageData);
                 return;
+            }
+            
+            // Criar ID único para a mensagem (evitar duplicatas)
+            const messageId = `${chatId}_${messageText}_${timestamp}`;
+            
+            // Verificar se a mensagem já foi processada
+            if (this.processedMessages.has(messageId)) {
+                console.log('🔄 Mensagem já processada, ignorando:', messageId);
+                return;
+            }
+            
+            // Marcar mensagem como processada
+            this.processedMessages.add(messageId);
+            
+            // Limpar mensagens antigas do Set (manter apenas as últimas 100)
+            if (this.processedMessages.size > 100) {
+                const messagesArray = Array.from(this.processedMessages);
+                this.processedMessages = new Set(messagesArray.slice(-50));
             }
             
             console.log(`📱 Criando chat para: ${chatId} (${senderName})`);
