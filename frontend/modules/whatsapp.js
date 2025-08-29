@@ -327,7 +327,9 @@ class WhatsAppModule {
                         unreadCount: backendChat.unread_count || 0,
                         isPinned: false,
                         wahaId: backendChat.phone,
-                        messageCount: backendChat.message_count || 0
+                        messageCount: backendChat.message_count || 0,
+                        createdAt: backendChat.created_at ? new Date(backendChat.created_at).getTime() : Date.now(),
+                        updatedAt: backendChat.updated_at ? new Date(backendChat.updated_at).getTime() : Date.now()
                     };
                     
                     this.chats.set(chatId, chat);
@@ -335,6 +337,8 @@ class WhatsAppModule {
                 
                 this.updateInterface();
                 console.log('✅ Chats carregados do backend');
+            } else {
+                console.warn('⚠️ Nenhum chat encontrado no backend ou erro na resposta:', data);
             }
         } catch (error) {
             console.error('❌ Erro ao carregar chats do backend:', error);
@@ -363,7 +367,8 @@ class WhatsAppModule {
                     timestamp: msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('pt-BR') : new Date().toLocaleTimeString('pt-BR'),
                     sender: msg.sender || chat.name,
                     status: msg.status || 'received',
-                    originalTimestamp: msg.timestamp
+                    originalTimestamp: msg.timestamp,
+                    createdAt: msg.created_at ? new Date(msg.created_at).getTime() : Date.now()
                 }));
                 
                 this.messages.set(chatId, messages);
@@ -373,9 +378,12 @@ class WhatsAppModule {
                     const lastMsg = messages[messages.length - 1];
                     chat.lastMessage = lastMsg.content.substring(0, 50) + (lastMsg.content.length > 50 ? '...' : '');
                     chat.lastMessageTime = lastMsg.timestamp;
+                    chat.messageCount = messages.length;
                 }
                 
                 console.log('✅ Mensagens carregadas do backend');
+            } else {
+                console.warn('⚠️ Nenhuma mensagem encontrada no backend ou erro na resposta:', data);
             }
         } catch (error) {
             console.error('❌ Erro ao carregar mensagens do backend:', error);
@@ -392,6 +400,16 @@ class WhatsAppModule {
             this.sessionStatus = this.isConnected ? 'connected' : 'disconnected';
             
             console.log('📱 Status WAHA:', data.data);
+            
+            // Verificar status do storage
+            if (data.success && data.data.persistent_storage) {
+                const storage = data.data.persistent_storage;
+                console.log('💾 Status Storage:', {
+                    total_chats: storage.total_chats,
+                    total_messages: storage.total_messages,
+                    last_update: storage.last_update
+                });
+            }
         } catch (error) {
             console.error('❌ Erro ao verificar conexão WAHA:', error);
             this.isConnected = false;

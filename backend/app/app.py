@@ -131,9 +131,10 @@ whatsapp_messages_storage = {
     "total_messages": 0
 }
 
-# Configuração de retenção (15 dias)
-MESSAGE_RETENTION_DAYS = 15
-MAX_MESSAGES_PER_CHAT = 1000  # Limite por chat para evitar uso excessivo de memória
+# Configuração de retenção (15 dias) - Configurável via env
+MESSAGE_RETENTION_DAYS = int(os.environ.get("WHATSAPP_RETENTION_DAYS", 15))
+MAX_MESSAGES_PER_CHAT = int(os.environ.get("WHATSAPP_MAX_MESSAGES_PER_CHAT", 1000))  # Limite por chat para evitar uso excessivo de memória
+WHATSAPP_STORAGE_ENABLED = os.environ.get("WHATSAPP_STORAGE_ENABLED", "true").lower() == "true"
 
 # Endpoints de compatibilidade WAHA
 @app.get("/api/waha/status")
@@ -276,6 +277,10 @@ def save_whatsapp_message(phone, message_data):
     """Salvar mensagem WhatsApp no storage persistente"""
     global whatsapp_messages_storage
     
+    if not WHATSAPP_STORAGE_ENABLED:
+        logger.info("⚠️ Storage WhatsApp desabilitado, ignorando mensagem")
+        return False
+    
     try:
         # Normalizar telefone
         phone = str(phone).strip()
@@ -307,6 +312,11 @@ def save_whatsapp_message(phone, message_data):
                 "created_at": datetime.now().isoformat(),
                 "updated_at": datetime.now().isoformat()
             }
+        else:
+            # Atualizar informações do chat existente
+            chat_info = whatsapp_messages_storage["chats"][phone]
+            chat_info["name"] = message_data.get("notify_name", chat_info.get("name", phone))
+            chat_info["updated_at"] = datetime.now().isoformat()
         
         # Adicionar mensagem
         whatsapp_messages_storage["messages"][phone].append(message)
@@ -325,7 +335,7 @@ def save_whatsapp_message(phone, message_data):
         whatsapp_messages_storage["total_messages"] += 1
         whatsapp_messages_storage["last_update"] = datetime.now().isoformat()
         
-        logger.info(f"✅ Mensagem salva para {phone}: {message['content'][:50]}...")
+        logger.info(f"✅ Mensagem salva para {phone}: {message['content'][:50]}... (Total: {len(whatsapp_messages_storage['messages'][phone])} mensagens)")
         return True
         
     except Exception as e:
@@ -336,12 +346,17 @@ def cleanup_old_messages():
     """Limpar mensagens antigas (mais de 15 dias)"""
     global whatsapp_messages_storage
     
+    if not WHATSAPP_STORAGE_ENABLED:
+        return
+    
     try:
         from datetime import timedelta
         cutoff_date = datetime.now() - timedelta(days=MESSAGE_RETENTION_DAYS)
         cutoff_timestamp = cutoff_date.isoformat()
         
         removed_count = 0
+        removed_chats = 0
+        
         for phone in list(whatsapp_messages_storage["messages"].keys()):
             original_count = len(whatsapp_messages_storage["messages"][phone])
             
@@ -359,15 +374,18 @@ def cleanup_old_messages():
                 del whatsapp_messages_storage["messages"][phone]
                 if phone in whatsapp_messages_storage["chats"]:
                     del whatsapp_messages_storage["chats"][phone]
+                    removed_chats += 1
             
             removed_count += original_count - len(recent_messages)
-        
-        if removed_count > 0:
-            logger.info(f"🧹 Limpeza automática: {removed_count} mensagens antigas removidas")
         
         # Atualizar contador total
         total_messages = sum(len(messages) for messages in whatsapp_messages_storage["messages"].values())
         whatsapp_messages_storage["total_messages"] = total_messages
+        whatsapp_messages_storage["last_update"] = datetime.now().isoformat()
+        
+        if removed_count > 0 or removed_chats > 0:
+            logger.info(f"🧹 Limpeza automática: {removed_count} mensagens e {removed_chats} chats removidos")
+            logger.info(f"📊 Storage atual: {len(whatsapp_messages_storage['chats'])} chats, {total_messages} mensagens")
         
     except Exception as e:
         logger.error(f"❌ Erro na limpeza automática: {e}")
@@ -375,6 +393,12 @@ def cleanup_old_messages():
 def get_whatsapp_messages(phone=None, limit=100, since=None):
     """Buscar mensagens WhatsApp"""
     global whatsapp_messages_storage
+    
+    if not WHATSAPP_STORAGE_ENABLED:
+        return {
+            "success": False,
+            "error": "Storage WhatsApp desabilitado"
+        }
     
     try:
         if phone:
@@ -395,6 +419,8 @@ def get_whatsapp_messages(phone=None, limit=100, since=None):
             
             # Limitar número de mensagens
             messages = messages[-limit:] if limit else messages
+            
+            logger.info(f"📱 Buscando mensagens para {phone}: {len(messages)} mensagens encontradas")
             
             return {
                 "success": True,
@@ -417,6 +443,8 @@ def get_whatsapp_messages(phone=None, limit=100, since=None):
             
             # Ordenar por última mensagem
             chats.sort(key=lambda x: x.get("last_message_time", ""), reverse=True)
+            
+            logger.info(f"📱 Buscando chats: {len(chats)} chats encontrados")
             
             return {
                 "success": True,
@@ -794,6 +822,40 @@ async def cleanup_whatsapp_messages():
         }
     except Exception as e:
         logger.error(f"❌ Erro na limpeza: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.get("/api/whatsapp/debug")
+async def debug_whatsapp_storage():
+    """Debug do storage WhatsApp (endpoint administrativo)"""
+    try:
+        return {
+            "success": True,
+            "data": {
+                "storage_enabled": WHATSAPP_STORAGE_ENABLED,
+                "retention_days": MESSAGE_RETENTION_DAYS,
+                "max_messages_per_chat": MAX_MESSAGES_PER_CHAT,
+                "storage": {
+                    "total_chats": len(whatsapp_messages_storage["chats"]),
+                    "total_messages": whatsapp_messages_storage["total_messages"],
+                    "last_update": whatsapp_messages_storage["last_update"],
+                    "chats": list(whatsapp_messages_storage["chats"].keys()),
+                    "chat_details": {
+                        phone: {
+                            "name": chat_info.get("name"),
+                            "message_count": len(whatsapp_messages_storage["messages"].get(phone, [])),
+                            "last_message": chat_info.get("last_message"),
+                            "last_message_time": chat_info.get("last_message_time")
+                        }
+                        for phone, chat_info in whatsapp_messages_storage["chats"].items()
+                    }
+                }
+            }
+        }
+    except Exception as e:
+        logger.error(f"❌ Erro no debug: {e}")
         return {
             "success": False,
             "error": str(e)
