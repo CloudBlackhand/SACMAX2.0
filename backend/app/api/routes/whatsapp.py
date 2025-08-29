@@ -40,7 +40,7 @@ def get_waha_service():
     global waha_service
     if waha_service is None:
         db_manager = get_db_manager()
-        waha_url = os.getenv("WAHA_URL", "https://waha-production-1c76.up.railway.app")
+        waha_url = os.getenv("WAHA_URL", "http://localhost:3000")
         waha_service = WahaService(waha_url, db_manager)
     return waha_service
 
@@ -127,7 +127,7 @@ async def get_messages(chat_id: str, limit: int = 50, session_name: str = "sacsm
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/send")
-async def send_message(request: MessageRequest, session_name: str = "default"):
+async def send_message(request: MessageRequest, session_name: str = "sacsmax"):
     """Enviar mensagem individual"""
     try:
         service = get_waha_service()

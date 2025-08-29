@@ -16,7 +16,7 @@ const SacsMaxConfig = {
     waha: {
         // URL do WAHA no Railway
         url: "https://waha-production-1c76.up.railway.app",
-        session_name: "sacsmax",
+        session_name: "default",
         timeout: 10000,
         // API v1 do WAHA
         api_version: "v1"
