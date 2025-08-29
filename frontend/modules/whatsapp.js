@@ -33,7 +33,7 @@ class WhatsAppModule {
         };
 
         // Inicializar
-        this.init();
+            this.init();
     }
 
     init() {
@@ -210,7 +210,10 @@ class WhatsAppModule {
             
             this.processedMessages.add(messageId);
             
-            // Criar ou atualizar chat
+            // Criar ou atualizar chat no backend
+            await this.createOrUpdateChatInBackend(chatId, messageText, senderName, timestamp);
+            
+            // Criar ou atualizar chat local
             await this.createOrUpdateChat(chatId, messageText, senderName, timestamp);
             
             // Adicionar mensagem ao histórico
@@ -231,6 +234,31 @@ class WhatsAppModule {
             
         } catch (error) {
             console.error('❌ Erro ao processar nova mensagem:', error);
+        }
+    }
+
+    // Criar ou atualizar chat no backend
+    async createOrUpdateChatInBackend(chatId, messageText, senderName, timestamp) {
+        try {
+            const phone = chatId.replace('chat_', '');
+            
+            // Tentar criar chat no backend se não existir
+            const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/create-chat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    phone: phone,
+                    name: senderName || phone
+                })
+            });
+            
+            if (response.ok) {
+                console.log('✅ Chat criado/atualizado no backend:', phone);
+            }
+        } catch (error) {
+            console.error('❌ Erro ao criar chat no backend:', error);
         }
     }
 
@@ -651,43 +679,43 @@ class WhatsAppModule {
         this.updateInterface();
         
         // Enviar mensagem via backend
-        try {
-            const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/send`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    phone: this.currentChat.phone,
-                    message: content.trim(),
-                    message_type: 'text'
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                // Atualizar status da mensagem
-                sentMessage.status = 'sent';
-                console.log('✅ Mensagem enviada via backend');
+            try {
+                const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/send`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        phone: this.currentChat.phone,
+                        message: content.trim(),
+                        message_type: 'text'
+                    })
+                });
                 
-                // Limpar o input
-                const inputElement = document.querySelector('.wa-message-input');
-                if (inputElement) {
-                    inputElement.value = '';
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Atualizar status da mensagem
+                    sentMessage.status = 'sent';
+                console.log('✅ Mensagem enviada via backend');
+                    
+                    // Limpar o input
+                    const inputElement = document.querySelector('.wa-message-input');
+                    if (inputElement) {
+                        inputElement.value = '';
+                    }
+                } else {
+                    sentMessage.status = 'error';
+                    console.error('❌ Erro ao enviar mensagem:', result.error);
                 }
-            } else {
+                
+                this.updateInterface();
+                
+            } catch (error) {
+                console.error('❌ Erro ao enviar mensagem:', error);
                 sentMessage.status = 'error';
-                console.error('❌ Erro ao enviar mensagem:', result.error);
+                this.updateInterface();
             }
-            
-            this.updateInterface();
-            
-        } catch (error) {
-            console.error('❌ Erro ao enviar mensagem:', error);
-            sentMessage.status = 'error';
-            this.updateInterface();
-        }
     }
 
     // Manipular tecla Enter no input

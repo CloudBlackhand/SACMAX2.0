@@ -406,13 +406,29 @@ def get_whatsapp_messages(phone=None, limit=100, since=None):
             # Filtrar por data se especificado
             if since:
                 try:
-                    since_time = datetime.fromisoformat(since.replace('Z', '+00:00'))
-                    messages = [
-                        msg for msg in messages
-                        if datetime.fromisoformat(msg.get("timestamp", "").replace('Z', '+00:00')) > since_time
-                    ]
+                    # Normalizar timestamp para evitar problemas de timezone
+                    since_str = since.replace('Z', '+00:00') if 'Z' in since else since
+                    since_time = datetime.fromisoformat(since_str)
+                    
+                    filtered_messages = []
+                    for msg in messages:
+                        try:
+                            msg_timestamp = msg.get("timestamp", "")
+                            if msg_timestamp:
+                                msg_str = msg_timestamp.replace('Z', '+00:00') if 'Z' in msg_timestamp else msg_timestamp
+                                msg_time = datetime.fromisoformat(msg_str)
+                                if msg_time > since_time:
+                                    filtered_messages.append(msg)
+                        except Exception as msg_e:
+                            logger.warning(f"⚠️ Erro ao processar timestamp da mensagem: {msg_e}")
+                            # Incluir mensagem mesmo com erro de timestamp
+                            filtered_messages.append(msg)
+                    
+                    messages = filtered_messages
                 except Exception as e:
-                    logger.warning(f"⚠️ Erro ao filtrar por data: {e}")
+                    logger.error(f"❌ Erro no filtro: {e}")
+                    # Em caso de erro, retornar todas as mensagens
+                    pass
             
             # Limitar número de mensagens
             messages = messages[-limit:] if limit else messages
@@ -705,10 +721,32 @@ async def whatsapp_status():
 # NOVO: Endpoints para persistência de mensagens WhatsApp
 @app.get("/api/whatsapp/chats")
 async def get_whatsapp_chats():
-    """Buscar todos os chats com mensagens"""
+    """Buscar todos os chats salvos no storage local"""
     try:
-        result = get_whatsapp_messages()
-        return result
+        # Usar apenas o storage local, não depender do WAHA
+        chats = []
+        for phone, chat_info in whatsapp_messages_storage["chats"].items():
+            messages = whatsapp_messages_storage["messages"].get(phone, [])
+            chats.append({
+                **chat_info,
+                "message_count": len(messages),
+                "last_message": messages[-1] if messages else None
+            })
+        
+        # Ordenar por última mensagem
+        chats.sort(key=lambda x: x.get("last_message_time", ""), reverse=True)
+        
+        logger.info(f"📱 Retornando {len(chats)} chats do storage local")
+        
+        return {
+            "success": True,
+            "data": {
+                "chats": chats,
+                "total_chats": len(chats),
+                "total_messages": whatsapp_messages_storage["total_messages"],
+                "source": "local_storage"
+            }
+        }
     except Exception as e:
         logger.error(f"❌ Erro ao buscar chats: {e}")
         return {
@@ -724,6 +762,54 @@ async def get_whatsapp_chat_messages(phone: str, limit: int = 100, since: str = 
         return result
     except Exception as e:
         logger.error(f"❌ Erro ao buscar mensagens do chat {phone}: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.post("/api/whatsapp/create-chat")
+async def create_whatsapp_chat(request: Request):
+    """Criar chat WhatsApp manualmente"""
+    try:
+        data = await request.json()
+        phone = data.get("phone")
+        name = data.get("name", phone)
+        
+        if not phone:
+            return {
+                "success": False,
+                "error": "Telefone é obrigatório"
+            }
+        
+        # Criar chat se não existir
+        if phone not in whatsapp_messages_storage["chats"]:
+            whatsapp_messages_storage["messages"][phone] = []
+            whatsapp_messages_storage["chats"][phone] = {
+                "phone": phone,
+                "name": name,
+                "last_message": "Chat criado",
+                "last_message_time": datetime.now().isoformat(),
+                "unread_count": 0,
+                "message_count": 0,
+                "created_at": datetime.now().isoformat(),
+                "updated_at": datetime.now().isoformat()
+            }
+            
+            logger.info(f"✅ Chat criado manualmente: {phone} ({name})")
+            
+            return {
+                "success": True,
+                "message": "Chat criado com sucesso",
+                "chat": whatsapp_messages_storage["chats"][phone]
+            }
+        else:
+            return {
+                "success": False,
+                "error": "Chat já existe"
+            }
+            
+    except Exception as e:
+        logger.error(f"❌ Erro ao criar chat: {e}")
         return {
             "success": False,
             "error": str(e)
