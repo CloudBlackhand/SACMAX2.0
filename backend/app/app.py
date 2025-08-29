@@ -469,7 +469,7 @@ def get_whatsapp_messages(phone=None, limit=100, since=None):
         return {
             "success": False,
             "error": str(e)
-        }
+    }
 
 async def process_message_async(message_data):
     """Processar mensagem de forma assíncrona"""
@@ -584,7 +584,7 @@ async def webhook_handler(request: Request):
         return {"status": "error", "message": str(e)}
 
 async def process_and_save_message(message_data):
-    """Processar e salvar uma mensagem individual - SEM RESTRIÇÕES"""
+    """Processar e salvar uma mensagem individual - SIMPLES COMO WHATSAPP"""
     try:
         # Verificar se é mensagem válida (não vazia e não de nós mesmos)
         if not message_data["chat_id"] or not message_data["message_text"] or message_data.get("from_me", False):
@@ -593,14 +593,13 @@ async def process_and_save_message(message_data):
         
         logger.info(f"📱 SALVANDO mensagem de {message_data['chat_id']} ({message_data['notify_name']}): {message_data['message_text']}")
         
-        # SALVAR SEMPRE - sem verificação de duplicatas
+        # SALVAR MENSAGEM DIRETAMENTE - SEM COMPLICAÇÕES
         save_success = save_whatsapp_message(message_data["chat_id"], message_data)
         
         if save_success:
             # Criar objeto da mensagem para compatibilidade
-            message_id = message_data.get("message_id")
             new_message = {
-                "id": message_id or f"{message_data['chat_id']}_{int(datetime.now().timestamp())}",
+                "id": message_data.get("message_id") or f"{message_data['chat_id']}_{int(datetime.now().timestamp())}",
                 "phone": message_data["chat_id"],
                 "message": message_data["message_text"],
                 "senderName": message_data["notify_name"] or message_data["chat_id"],
@@ -610,7 +609,7 @@ async def process_and_save_message(message_data):
                 "retry_count": 0
             }
             
-            # Adicionar à fila de mensagens (para compatibilidade)
+            # Adicionar à fila de mensagens
             new_messages_queue.append(new_message)
             
             # Manter tamanho da fila controlado
@@ -619,17 +618,17 @@ async def process_and_save_message(message_data):
             
             logger.info(f"✅ MENSAGEM SALVA COM SUCESSO: {message_data['notify_name'] or message_data['chat_id']}")
             
-            # Processar assincronamente (não bloquear o webhook)
+            # Processar assincronamente
             import asyncio
             asyncio.create_task(process_message_async(new_message))
             
             return True
         else:
-            logger.error(f"❌ FALHA AO SALVAR MENSAGEM: {message_data['chat_id']}")
+            logger.error(f"❌ FALHA AO SALVAR: {message_data['chat_id']}")
             return False
             
     except Exception as e:
-        logger.error(f"❌ ERRO AO PROCESSAR MENSAGEM: {e}")
+        logger.error(f"❌ Erro ao processar mensagem: {e}")
         return False
 
 @app.get("/api/whatsapp/new-messages")
