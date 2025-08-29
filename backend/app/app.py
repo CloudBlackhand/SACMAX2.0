@@ -645,20 +645,37 @@ async def get_new_messages(since: str = None):
         # Se since foi fornecido, filtrar mensagens mais recentes
         if since:
             try:
-                since_time = datetime.fromisoformat(since.replace('Z', '+00:00'))
+                # Normalizar timestamp para evitar problemas de timezone
+                since_str = since.replace('Z', '+00:00') if 'Z' in since else since
+                since_time = datetime.fromisoformat(since_str)
                 logger.info(f"📡 Filtrando mensagens após: {since_time}")
                 
                 filtered_messages = []
                 for msg in new_messages_queue:
-                    msg_time = datetime.fromisoformat(msg["received_at"].replace('Z', '+00:00'))
-                    if msg_time > since_time:
+                    try:
+                        # Normalizar timestamp da mensagem
+                        msg_timestamp = msg.get("received_at", "")
+                        if msg_timestamp:
+                            msg_str = msg_timestamp.replace('Z', '+00:00') if 'Z' in msg_timestamp else msg_timestamp
+                            msg_time = datetime.fromisoformat(msg_str)
+                            if msg_time > since_time:
+                                filtered_messages.append(msg)
+                                logger.info(f"📡 Mensagem incluída: {msg['phone']} - {msg['message'][:20]}...")
+                            else:
+                                logger.info(f"📡 Mensagem filtrada (muito antiga): {msg['phone']} - {msg['message'][:20]}...")
+                        else:
+                            # Se não tem timestamp, incluir a mensagem
+                            filtered_messages.append(msg)
+                            logger.info(f"📡 Mensagem sem timestamp incluída: {msg['phone']} - {msg['message'][:20]}...")
+                    except Exception as msg_error:
+                        logger.warning(f"⚠️ Erro ao processar timestamp da mensagem: {msg_error}")
+                        # Incluir mensagem mesmo com erro de timestamp
                         filtered_messages.append(msg)
-                        logger.info(f"📡 Mensagem incluída: {msg['phone']} - {msg['message'][:20]}...")
-                    else:
-                        logger.info(f"📡 Mensagem filtrada (muito antiga): {msg['phone']} - {msg['message'][:20]}...")
+                        logger.info(f"📡 Mensagem com erro de timestamp incluída: {msg['phone']} - {msg['message'][:20]}...")
                         
             except Exception as filter_error:
                 logger.error(f"❌ Erro no filtro: {filter_error}")
+                # Em caso de erro, retornar todas as mensagens
                 filtered_messages = new_messages_queue
         else:
             filtered_messages = new_messages_queue
