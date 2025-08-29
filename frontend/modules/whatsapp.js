@@ -335,13 +335,17 @@ class WhatsAppModule {
             console.log('📱 Carregando chats do backend...');
             
             const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/chats`);
+            console.log('📱 Response status:', response.status);
+            
             const data = await response.json();
+            console.log('📱 Data recebida:', data);
             
             if (data.success && data.data && data.data.chats) {
                 console.log(`📱 ${data.data.chats.length} chats carregados do backend`);
                 
                 // Processar chats do backend
                 for (const backendChat of data.data.chats) {
+                    console.log('📱 Processando chat:', backendChat);
                     const chatId = `chat_${backendChat.phone}`;
                     
                     const chat = {
@@ -359,10 +363,14 @@ class WhatsAppModule {
                     };
                     
                     this.chats.set(chatId, chat);
+                    console.log('📱 Chat adicionado:', chat.name);
                 }
                 
+                console.log('📱 Total de chats no Map:', this.chats.size);
                 this.updateInterface();
                 console.log('✅ Chats carregados do backend');
+            } else {
+                console.warn('⚠️ Nenhum chat encontrado ou resposta inválida:', data);
             }
         } catch (error) {
             console.error('❌ Erro ao carregar chats do backend:', error);
@@ -441,6 +449,15 @@ class WhatsAppModule {
             console.error('❌ Erro ao verificar estatísticas:', error);
         }
         return null;
+    }
+
+    // Forçar recarregamento de chats (debug)
+    async forceReloadChats() {
+        console.log('🔄 Forçando recarregamento de chats...');
+        this.chats.clear();
+        this.messages.clear();
+        await this.loadChatsFromBackend();
+        console.log('✅ Recarregamento forçado concluído');
     }
 
     // Criar chat automaticamente quando mensagem for recebida
