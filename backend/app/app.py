@@ -207,15 +207,38 @@ async def root():
         return HTMLResponse(content=f"<h1>Erro: {e}</h1>")
 
 @app.post("/")
-async def webhook_handler():
+async def webhook_handler(request: Request):
     """Webhook do WAHA para receber mensagens"""
     try:
         # Log do webhook recebido
         logger.info("📱 Webhook WAHA recebido")
         
-        # Por enquanto, apenas retornar sucesso
-        # Futuramente, processar mensagens recebidas
-        return {"status": "success", "message": "Webhook recebido"}
+        # Obter dados do webhook
+        webhook_data = await request.json()
+        logger.info(f"📱 Dados do webhook: {webhook_data}")
+        
+        # Processar mensagens recebidas
+        if webhook_data.get("event") == "messages.upsert":
+            messages = webhook_data.get("data", {}).get("messages", [])
+            
+            for message in messages:
+                try:
+                    # Extrair informações da mensagem
+                    chat_id = message.get("key", {}).get("remoteJid", "")
+                    message_text = message.get("message", {}).get("conversation", "")
+                    timestamp = message.get("messageTimestamp", "")
+                    from_me = message.get("key", {}).get("fromMe", False)
+                    
+                    if chat_id and message_text and not from_me:
+                        logger.info(f"📱 Mensagem recebida de {chat_id}: {message_text}")
+                        
+                        # Aqui você pode salvar no banco de dados ou processar
+                        # Por enquanto, apenas log
+                        
+                except Exception as msg_error:
+                    logger.error(f"❌ Erro ao processar mensagem: {msg_error}")
+        
+        return {"status": "success", "message": "Webhook processado"}
     except Exception as e:
         logger.error(f"❌ Erro no webhook: {e}")
         return {"status": "error", "message": str(e)}
