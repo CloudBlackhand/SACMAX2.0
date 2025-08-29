@@ -15,13 +15,15 @@
     "production": {
       "variables": {
         "RAILWAY_ENVIRONMENT": "production",
-        "NODE_ENV": "production"
+        "NODE_ENV": "production",
+        "WAHA_URL": "https://waha-production-1c76.up.railway.app"
       }
     },
     "development": {
       "variables": {
         "RAILWAY_ENVIRONMENT": "development",
-        "NODE_ENV": "development"
+        "NODE_ENV": "development",
+        "WAHA_URL": "https://waha-production-1c76.up.railway.app"
       }
     }
   }
