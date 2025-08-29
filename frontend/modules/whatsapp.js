@@ -13,6 +13,10 @@ class WhatsAppModule {
         this.searchTerm = '';
         this.filteredChats = [];
         
+        // Configuração WAHA
+        this.wahaUrl = "https://waha-production-1c76.up.railway.app";
+        this.sessionName = "sacsmax";
+        
         // Inicializar
         this.init();
     }
@@ -67,21 +71,21 @@ class WhatsAppModule {
         try {
             localStorage.setItem('whatsapp_chats', JSON.stringify(Array.from(this.chats.entries())));
             localStorage.setItem('whatsapp_messages', JSON.stringify(Array.from(this.messages.entries())));
-            } catch (error) {
+        } catch (error) {
             console.error('❌ Erro ao salvar dados:', error);
         }
     }
 
     async checkConnection() {
         try {
-            // Verificar status do WAHA
-            const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/status`);
+            // Verificar status do WAHA diretamente
+            const response = await fetch(`${this.wahaUrl}/api/status`);
             const data = await response.json();
             
-            this.isConnected = data.success && data.data.status === 'connected';
+            this.isConnected = data.status === 'connected' || data.status === 'ready';
             this.sessionStatus = this.isConnected ? 'connected' : 'disconnected';
             
-            console.log('📱 Status WAHA:', data.data);
+            console.log('📱 Status WAHA:', data);
         } catch (error) {
             console.error('❌ Erro ao verificar conexão WAHA:', error);
             this.isConnected = false;
@@ -92,14 +96,14 @@ class WhatsAppModule {
     // Carregar chats do WAHA
     async loadWahaChats() {
         try {
-            const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/chats`);
+            const response = await fetch(`${this.wahaUrl}/api/sessions/${this.sessionName}/chats`);
             const data = await response.json();
             
-            if (data.success && data.data) {
-                console.log('📱 Chats carregados do WAHA:', data.data.length);
+            if (data && Array.isArray(data)) {
+                console.log('📱 Chats carregados do WAHA:', data.length);
                 
                 // Processar chats do WAHA
-                for (const wahaChat of data.data) {
+                for (const wahaChat of data) {
                     const chatId = `chat_${wahaChat.id}`;
                     
                     if (!this.chats.has(chatId)) {
@@ -134,14 +138,14 @@ class WhatsAppModule {
             const chat = this.chats.get(chatId);
             if (!chat || !chat.wahaId) return;
             
-            const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/messages/${chat.wahaId}?limit=${limit}`);
+            const response = await fetch(`${this.wahaUrl}/api/sessions/${this.sessionName}/chats/${chat.wahaId}/messages?limit=${limit}`);
             const data = await response.json();
             
-            if (data.success && data.data) {
-                console.log('📱 Mensagens carregadas:', data.data.length);
+            if (data && Array.isArray(data)) {
+                console.log('📱 Mensagens carregadas:', data.length);
                 
                 // Processar mensagens
-                const messages = data.data.map(msg => ({
+                const messages = data.map(msg => ({
                     id: msg.id,
                     text: msg.text || '',
                     timestamp: msg.timestamp,
@@ -287,21 +291,20 @@ class WhatsAppModule {
         // Enviar mensagem via WAHA se disponível
         if (this.currentChat.wahaId) {
             try {
-                const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/send`, {
+                const response = await fetch(`${this.wahaUrl}/api/sessions/${this.sessionName}/send`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        phone: this.currentChat.phone,
-                        message: content.trim(),
-                        message_type: 'text'
+                        chatId: this.currentChat.wahaId,
+                        text: content.trim()
                     })
                 });
                 
                 const result = await response.json();
                 
-                if (result.success) {
+                if (result.success || result.id) {
                     // Atualizar status da mensagem
                     sentMessage.status = 'sent';
                     console.log('✅ Mensagem enviada via WAHA');
@@ -379,6 +382,7 @@ class WhatsAppModule {
             event.preventDefault();
             const input = event.target;
             this.sendMessage(input.value);
+            input.value = ''; // Limpar input após enviar
         }
     }
 
@@ -420,8 +424,8 @@ class WhatsAppModule {
                         </div>
                         <div class="wa-status-indicator ${this.isConnected ? 'connected' : 'disconnected'}">
                             ${this.isConnected ? '🟢 Conectado' : '🔴 Desconectado'}
+                        </div>
                     </div>
-                </div>
                 
                     <div class="wa-instructions">
                         <h3>Como usar:</h3>
@@ -455,7 +459,7 @@ class WhatsAppModule {
     // Interface principal do WhatsApp Web
     renderMainInterface() {
         return `
-                <div class="wa-main-container">
+            <div class="wa-main-container">
                 <!-- Sidebar -->
                 <div class="wa-sidebar ${this.showSidebar ? 'show' : 'hide'}">
                     <!-- Header da Sidebar -->
@@ -464,7 +468,7 @@ class WhatsAppModule {
                             <img src="https://ui-avatars.com/api/?name=SacsMax&background=25d366&color=fff&size=40" alt="SacsMax" class="wa-user-avatar">
                             <div class="wa-user-details">
                                 <div class="wa-user-name">SacsMax</div>
-                                <div class="wa-user-status">online</div>
+                                <div class="wa-user-status">${this.isConnected ? 'online' : 'offline'}</div>
                             </div>
                         </div>
                         <div class="wa-sidebar-actions">
@@ -481,21 +485,21 @@ class WhatsAppModule {
                     </div>
 
                     <!-- Busca -->
-                        <div class="wa-search-container">
-                            <div class="wa-search-box">
-                                <span class="wa-search-icon">🔍</span>
+                    <div class="wa-search-container">
+                        <div class="wa-search-box">
+                            <span class="wa-search-icon">🔍</span>
                             <input type="text" 
                                    class="wa-search-input" 
                                    placeholder="Pesquisar ou começar uma nova conversa"
                                    oninput="whatsappModule.searchChats(this.value)">
-                            </div>
                         </div>
+                    </div>
                         
                     <!-- Lista de Chats -->
                     <div class="wa-chats-list">
                         ${this.renderChatsList()}
-                        </div>
                     </div>
+                </div>
                     
                 <!-- Área do Chat -->
                 <div class="wa-chat-area">
@@ -529,7 +533,7 @@ class WhatsAppModule {
                     <div class="wa-chat-header">
                         <div class="wa-chat-name">${chat.name}</div>
                         <div class="wa-chat-time">${chat.lastMessageTime}</div>
-                </div>
+                    </div>
                     <div class="wa-chat-preview">
                         <div class="wa-chat-message">${chat.lastMessage}</div>
                         ${chat.unreadCount > 0 ? `<div class="wa-unread-badge">${chat.unreadCount}</div>` : ''}
@@ -552,8 +556,8 @@ class WhatsAppModule {
                         <div class="wa-contact-details">
                             <div class="wa-contact-name">${this.currentChat.name}</div>
                             <div class="wa-contact-status">${this.currentChat.status}</div>
+                        </div>
                     </div>
-                </div>
                     <div class="wa-chat-actions">
                         <button class="wa-action-btn" title="Buscar">
                             <span>🔍</span>
@@ -561,26 +565,26 @@ class WhatsAppModule {
                         <button class="wa-action-btn" title="Menu">
                             <span>⋮</span>
                         </button>
+                    </div>
                 </div>
-            </div>
             
                 <!-- Área de Mensagens -->
                 <div class="wa-messages-area">
-            <div class="wa-messages-container">
+                    <div class="wa-messages-container">
                         ${this.renderMessages(messages)}
                     </div>
-            </div>
+                </div>
             
                 <!-- Input de Mensagem -->
                 <div class="wa-message-input-container">
                     <div class="wa-input-wrapper">
                         <button class="wa-input-btn" title="Anexar">
                             <span>📎</span>
-                    </button>
+                        </button>
                         <input type="text" 
                                class="wa-message-input" 
                                placeholder="Digite uma mensagem"
-                           onkeypress="whatsappModule.handleMessageKeyPress(event)">
+                               onkeypress="whatsappModule.handleMessageKeyPress(event)">
                         <button class="wa-input-btn" title="Emoji">
                             <span>😊</span>
                         </button>
@@ -619,7 +623,7 @@ class WhatsAppModule {
 
         return messages.map(message => `
             <div class="wa-message ${message.type}">
-                    <div class="wa-message-content">
+                <div class="wa-message-content">
                     <div class="wa-message-text">${message.content}</div>
                     <div class="wa-message-time">
                         ${message.timestamp}
@@ -740,7 +744,7 @@ const whatsappStyles = `
 }
 
 .wa-sidebar-actions {
-        display: flex;
+    display: flex;
     gap: 8px;
 }
 
@@ -760,176 +764,176 @@ const whatsappStyles = `
 }
 
 /* Busca */
-    .wa-search-container {
+.wa-search-container {
     padding: 8px 12px;
     background: white;
     border-bottom: 1px solid #e9edef;
-    }
+}
 
-    .wa-search-box {
-        display: flex;
-        align-items: center;
+.wa-search-box {
+    display: flex;
+    align-items: center;
     background: #f0f2f5;
-        border-radius: 8px;
-        padding: 8px 12px;
+    border-radius: 8px;
+    padding: 8px 12px;
     gap: 8px;
-    }
+}
 
-    .wa-search-icon {
+.wa-search-icon {
     color: #54656f;
     font-size: 16px;
-    }
+}
 
-    .wa-search-input {
+.wa-search-input {
     flex: 1;
-        border: none;
-        background: transparent;
-        outline: none;
+    border: none;
+    background: transparent;
+    outline: none;
     font-size: 15px;
     color: #111b21;
-    }
+}
 
 .wa-search-input::placeholder {
     color: #667781;
 }
 
 /* Lista de Chats */
-    .wa-chats-list {
-        flex: 1;
-        overflow-y: auto;
-    }
+.wa-chats-list {
+    flex: 1;
+    overflow-y: auto;
+}
 
-    .wa-chat-item {
-        display: flex;
-        padding: 12px 16px;
+.wa-chat-item {
+    display: flex;
+    padding: 12px 16px;
     gap: 12px;
-        cursor: pointer;
-        transition: background-color 0.2s;
+    cursor: pointer;
+    transition: background-color 0.2s;
     border-bottom: 1px solid #f0f2f5;
-    }
+}
 
-    .wa-chat-item:hover {
+.wa-chat-item:hover {
     background: #f5f6f6;
-    }
+}
 
-    .wa-chat-item.active {
+.wa-chat-item.active {
     background: #f0f2f5;
-    }
+}
 
-    .wa-chat-avatar {
-        position: relative;
+.wa-chat-avatar {
+    position: relative;
     flex-shrink: 0;
 }
 
 .wa-chat-avatar img {
     width: 49px;
     height: 49px;
-        border-radius: 50%;
-    }
+    border-radius: 50%;
+}
 
-    .wa-chat-status {
-        position: absolute;
-        bottom: 2px;
-        right: 2px;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        border: 2px solid white;
-    }
+.wa-chat-status {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid white;
+}
 
-    .wa-chat-status.online {
+.wa-chat-status.online {
     background: #25d366;
-    }
+}
 
-    .wa-chat-status.offline {
+.wa-chat-status.offline {
     background: #667781;
-    }
+}
 
-    .wa-chat-info {
-        flex: 1;
-        min-width: 0;
-    }
+.wa-chat-info {
+    flex: 1;
+    min-width: 0;
+}
 
-    .wa-chat-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 4px;
-    }
+.wa-chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
 
-    .wa-chat-name {
-        font-weight: 600;
+.wa-chat-name {
+    font-weight: 600;
     font-size: 16px;
     color: #111b21;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    }
+}
 
-    .wa-chat-time {
-        font-size: 12px;
+.wa-chat-time {
+    font-size: 12px;
     color: #667781;
     flex-shrink: 0;
-    }
+}
 
-    .wa-chat-preview {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
+.wa-chat-preview {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
 
-    .wa-chat-message {
+.wa-chat-message {
     font-size: 14px;
     color: #667781;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        flex: 1;
-    }
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+}
 
-    .wa-unread-badge {
-        background: #25d366;
-        color: white;
-        border-radius: 50%;
-        min-width: 20px;
-        height: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        font-weight: 600;
-        margin-left: 8px;
+.wa-unread-badge {
+    background: #25d366;
+    color: white;
+    border-radius: 50%;
+    min-width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 8px;
     flex-shrink: 0;
-    }
+}
 
 /* Área do Chat */
-    .wa-chat-area {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        background: #efeae2;
-    }
+.wa-chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #efeae2;
+}
 
 /* Chat Container */
-    .wa-chat-container {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-    }
+.wa-chat-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
 
 /* Chat Header */
-    .wa-chat-header {
+.wa-chat-header {
     background: #f0f2f5;
     padding: 10px 16px;
-        display: flex;
-        justify-content: space-between;
+    display: flex;
+    justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid #e9edef;
-    }
+}
 
 .wa-chat-contact-info {
-        display: flex;
-        align-items: center;
+    display: flex;
+    align-items: center;
     gap: 12px;
 }
 
@@ -962,15 +966,15 @@ const whatsappStyles = `
 
 /* Messages Area */
 .wa-messages-area {
-        flex: 1;
-        overflow-y: auto;
+    flex: 1;
+    overflow-y: auto;
     padding: 20px;
     background: #efeae2;
     background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="%23ffffff" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="%23ffffff" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="%23ffffff" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="%23ffffff" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="%23ffffff" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
 }
 
 .wa-messages-container {
-        display: flex;
+    display: flex;
     flex-direction: column;
     gap: 8px;
 }
@@ -987,25 +991,25 @@ const whatsappStyles = `
 }
 
 /* Messages */
-    .wa-message {
-        display: flex;
+.wa-message {
+    display: flex;
     margin-bottom: 8px;
-    }
+}
 
 .wa-message.sent {
     justify-content: flex-end;
-    }
+}
 
 .wa-message.received {
     justify-content: flex-start;
-    }
+}
 
-    .wa-message-content {
-        max-width: 65%;
+.wa-message-content {
+    max-width: 65%;
     padding: 6px 7px 8px 9px;
     border-radius: 7.5px;
-        position: relative;
-    }
+    position: relative;
+}
 
 .wa-message.sent .wa-message-content {
     background: #d9fdd3;
@@ -1018,29 +1022,29 @@ const whatsappStyles = `
     color: #111b21;
     border-bottom-left-radius: 2px;
     box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
-    }
+}
 
-    .wa-message-text {
+.wa-message-text {
     font-size: 14.2px;
     line-height: 19px;
     margin-bottom: 4px;
-        word-wrap: break-word;
-    }
+    word-wrap: break-word;
+}
 
-    .wa-message-time {
-        font-size: 11px;
+.wa-message-time {
+    font-size: 11px;
     color: #667781;
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
     gap: 4px;
 }
 
 .wa-message.received .wa-message-time {
     justify-content: flex-start;
-    }
+}
 
-    .wa-message-status {
+.wa-message-status {
     font-size: 12px;
 }
 
@@ -1061,32 +1065,32 @@ const whatsappStyles = `
     background: #f0f2f5;
     padding: 10px 16px;
     border-top: 1px solid #e9edef;
-    }
+}
 
-    .wa-input-wrapper {
-        display: flex;
-        align-items: flex-end;
+.wa-input-wrapper {
+    display: flex;
+    align-items: flex-end;
     background: white;
     border-radius: 8px;
     padding: 8px 12px;
-        gap: 8px;
-    }
+    gap: 8px;
+}
 
-    .wa-input-btn {
-        background: none;
-        border: none;
+.wa-input-btn {
+    background: none;
+    border: none;
     font-size: 24px;
-        padding: 8px;
-        border-radius: 50%;
+    padding: 8px;
+    border-radius: 50%;
     cursor: pointer;
-        transition: background-color 0.2s;
+    transition: background-color 0.2s;
     color: #54656f;
     display: flex;
     align-items: center;
     justify-content: center;
-    }
+}
 
-    .wa-input-btn:hover {
+.wa-input-btn:hover {
     background: #f0f2f5;
 }
 
@@ -1100,16 +1104,16 @@ const whatsappStyles = `
 
 .wa-send-btn:hover {
     background: #128c7e !important;
-    }
+}
 
-    .wa-message-input {
+.wa-message-input {
     flex: 1;
-        border: none;
-        outline: none;
+    border: none;
+    outline: none;
     font-size: 15px;
     padding: 9px 12px;
     background: transparent;
-        resize: none;
+    resize: none;
     max-height: 100px;
     min-height: 20px;
     line-height: 20px;
@@ -1127,18 +1131,18 @@ const whatsappStyles = `
 }
 
 .wa-empty-chat {
-        display: flex;
+    display: flex;
     flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
     color: #667781;
-        text-align: center;
+    text-align: center;
 }
 
 .wa-empty-icon, .wa-empty-chat-icon {
-        font-size: 48px;
-        margin-bottom: 16px;
+    font-size: 48px;
+    margin-bottom: 16px;
     opacity: 0.5;
 }
 
@@ -1153,25 +1157,25 @@ const whatsappStyles = `
 
 /* Welcome Screen */
 .wa-welcome-container {
-        display: flex;
-        justify-content: center;
+    display: flex;
+    justify-content: center;
     align-items: center;
     min-height: 80vh;
     background: #f0f2f5;
     padding: 20px;
-    }
+}
 
-    .wa-welcome-content {
+.wa-welcome-content {
     background: white;
     border-radius: 12px;
     padding: 40px;
-        text-align: center;
+    text-align: center;
     max-width: 500px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    }
+}
 
-    .wa-welcome-icon {
-        font-size: 64px;
+.wa-welcome-icon {
+    font-size: 64px;
     margin-bottom: 20px;
 }
 
@@ -1186,19 +1190,19 @@ const whatsappStyles = `
     color: #667781;
     font-size: 16px;
     margin-bottom: 30px;
-        line-height: 1.5;
-    }
+    line-height: 1.5;
+}
 
 .wa-status-card {
     background: #f8f9fa;
-        border-radius: 8px;
+    border-radius: 8px;
     padding: 20px;
     margin-bottom: 30px;
 }
 
 .wa-status-header {
-        display: flex;
-        align-items: center;
+    display: flex;
+    align-items: center;
     margin-bottom: 10px;
 }
 
@@ -1221,11 +1225,11 @@ const whatsappStyles = `
 
 .wa-status-indicator.connected {
     background: #25d366;
-        color: white;
+    color: white;
 }
 
 .wa-status-indicator.disconnected {
-        background: #dc3545;
+    background: #dc3545;
     color: white;
 }
 
@@ -1249,17 +1253,17 @@ const whatsappStyles = `
 }
 
 .wa-features {
-        display: flex;
+    display: flex;
     flex-direction: column;
-        gap: 15px;
-    }
+    gap: 15px;
+}
 
 .wa-feature {
-        display: flex;
-        align-items: center;
+    display: flex;
+    align-items: center;
     padding: 12px;
     background: #f8f9fa;
-        border-radius: 8px;
+    border-radius: 8px;
 }
 
 .wa-feature-icon {
