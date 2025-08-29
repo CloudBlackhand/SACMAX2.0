@@ -18,8 +18,8 @@ const SacsMaxConfig = {
         url: "https://waha-production-1c76.up.railway.app",
         session_name: "sacsmax",
         timeout: 10000,
-        // API v2 do WAHA
-        api_version: "v2"
+        // API v1 do WAHA
+        api_version: "v1"
     },
     
     // Configurações de sistema
@@ -53,30 +53,6 @@ async function apiRequest(endpoint, options = {}) {
     }
 }
 
-// Função para fazer requisições diretas ao WAHA
-async function wahaRequest(endpoint, options = {}) {
-    const url = `${SacsMaxConfig.waha.url}/api/${SacsMaxConfig.waha.api_version}${endpoint}`;
-    const defaultOptions = {
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        timeout: 15000
-    };
-    
-    try {
-        const response = await fetch(url, { ...defaultOptions, ...options });
-        
-        if (!response.ok) {
-            throw new Error(`WAHA HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        return await response.json();
-    } catch (error) {
-        console.error(`Erro na requisição WAHA para ${endpoint}:`, error);
-        throw error;
-    }
-}
-
 // Função para verificar saúde do backend
 async function checkBackendHealth() {
     try {
@@ -84,17 +60,6 @@ async function checkBackendHealth() {
         return health.status === 'healthy';
     } catch (error) {
         console.error('Backend não está respondendo:', error);
-        return false;
-    }
-}
-
-// Função para verificar saúde do WAHA
-async function checkWahaHealth() {
-    try {
-        const health = await wahaRequest('/sessions');
-        return Array.isArray(health) || health.status === 'ready';
-    } catch (error) {
-        console.error('WAHA não está respondendo:', error);
         return false;
     }
 }
@@ -122,8 +87,8 @@ async function checkSystemConnectivity() {
         
         // Verificar WAHA
         try {
-            const wahaHealth = await wahaRequest('/sessions');
-            results.waha = Array.isArray(wahaHealth) || wahaHealth.status === 'ready';
+            const wahaHealth = await apiRequest('/api/waha/status');
+            results.waha = wahaHealth.status === 'connected';
         } catch (e) {
             console.warn('WAHA não disponível:', e);
         }
@@ -138,7 +103,5 @@ async function checkSystemConnectivity() {
 // Exportar para uso global
 window.SacsMaxConfig = SacsMaxConfig;
 window.apiRequest = apiRequest;
-window.wahaRequest = wahaRequest;
 window.checkBackendHealth = checkBackendHealth;
-window.checkWahaHealth = checkWahaHealth;
 window.checkSystemConnectivity = checkSystemConnectivity;
