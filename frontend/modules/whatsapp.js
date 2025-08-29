@@ -99,14 +99,6 @@ class WhatsAppModule {
                     this.processNewMessage(message);
                 });
                 
-                // Limpar mensagens processadas do backend
-                await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/clear-messages`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
                 // Atualizar interface
                 this.updateInterface();
             }
@@ -122,11 +114,20 @@ class WhatsAppModule {
     // Processar nova mensagem recebida
     processNewMessage(messageData) {
         try {
-            // Extrair informações da mensagem
-            const chatId = messageData.chat_id || messageData.from || messageData.phone;
-            const messageText = messageData.text || messageData.body || messageData.message || '';
-            const senderName = messageData.sender_name || messageData.pushName || messageData.senderName || 'Desconhecido';
-            const timestamp = messageData.timestamp || messageData.received_at || new Date().toISOString();
+            console.log('📱 Processando nova mensagem:', messageData);
+            
+            // Extrair informações da mensagem (formato do webhook WAHA)
+            const chatId = messageData.phone || messageData.chat_id || messageData.from || '';
+            const messageText = messageData.message || messageData.body || messageData.text || '';
+            const senderName = messageData.senderName || messageData.notifyName || 'Desconhecido';
+            const timestamp = messageData.received_at || messageData.timestamp || new Date().toISOString();
+            
+            if (!chatId || !messageText) {
+                console.warn('⚠️ Mensagem sem chatId ou messageText:', messageData);
+                return;
+            }
+            
+            console.log(`📱 Criando chat para: ${chatId} (${senderName})`);
             
             // Criar ou atualizar o chat
             this.createChatFromMessage(chatId, messageText, senderName);

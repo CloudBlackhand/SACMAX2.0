@@ -242,7 +242,7 @@ async def webhook_handler(request: Request):
         message_data = None
         
         # Processar eventos de mensagem direta
-        if webhook_data.get("event") == "message":
+        if webhook_data.get("event") == "message" or webhook_data.get("event") == "message.any":
             payload = webhook_data.get("payload", {})
             message_data = process_received_message(payload)
         
@@ -297,6 +297,38 @@ async def webhook_handler(request: Request):
     except Exception as e:
         logger.error(f"❌ Erro no webhook: {e}")
         return {"status": "error", "message": str(e)}
+
+@app.get("/api/whatsapp/new-messages")
+async def get_new_messages(since: str = None):
+    """Endpoint para o frontend buscar novas mensagens recebidas"""
+    global new_messages_queue
+    
+    try:
+        # Se since foi fornecido, filtrar mensagens mais recentes
+        if since:
+            try:
+                since_time = datetime.fromisoformat(since.replace('Z', '+00:00'))
+                filtered_messages = [
+                    msg for msg in new_messages_queue 
+                    if datetime.fromisoformat(msg["received_at"].replace('Z', '+00:00')) > since_time
+                ]
+            except:
+                filtered_messages = new_messages_queue
+        else:
+            filtered_messages = new_messages_queue
+        
+        return {
+            "success": True,
+            "count": len(filtered_messages),
+            "data": filtered_messages
+        }
+    except Exception as e:
+        logger.error(f"Erro ao buscar novas mensagens: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "data": []
+        }
 
 @app.get("/health")
 async def health_check():
