@@ -132,6 +132,55 @@ class WhatsAppModule {
         }
     }
 
+    // Criar chat automaticamente quando mensagem for recebida
+    createChatFromMessage(phone, message, senderName = null) {
+        console.log('💬 Criando chat automático para:', phone, senderName);
+        
+        const chatId = `chat_${phone}`;
+        
+        // Verificar se o chat já existe
+        if (this.chats.has(chatId)) {
+            console.log('📱 Chat já existe, atualizando última mensagem');
+            const existingChat = this.chats.get(chatId);
+            existingChat.lastMessage = message;
+            existingChat.lastMessageTime = new Date().toLocaleTimeString('pt-BR');
+            existingChat.unreadCount = (existingChat.unreadCount || 0) + 1;
+            this.chats.set(chatId, existingChat);
+        } else {
+            // Criar novo chat
+            const newChat = {
+                id: chatId,
+                name: senderName || phone,
+                phone: phone,
+                avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(senderName || phone)}&background=25d366&color=fff&size=40`,
+                status: 'online',
+                lastMessage: message,
+                lastMessageTime: new Date().toLocaleTimeString('pt-BR'),
+                unreadCount: 1,
+                isPinned: false,
+                wahaId: phone
+            };
+            
+            this.chats.set(chatId, newChat);
+            
+            // Adicionar mensagem recebida
+            const messages = [{
+                id: Date.now(),
+                type: 'received',
+                content: message,
+                timestamp: new Date().toLocaleTimeString('pt-BR'),
+                sender: senderName || phone,
+                status: 'received'
+            }];
+            
+            this.messages.set(chatId, messages);
+            console.log('✅ Chat criado automaticamente:', newChat.name);
+        }
+        
+        this.saveData();
+        this.updateInterface();
+    }
+
     // Carregar mensagens de um chat específico
     async loadChatMessages(chatId, limit = 50) {
         try {

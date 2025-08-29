@@ -218,25 +218,29 @@ async def webhook_handler(request: Request):
         logger.info(f"📱 Dados do webhook: {webhook_data}")
         
         # Processar mensagens recebidas
-        if webhook_data.get("event") == "messages.upsert":
-            messages = webhook_data.get("data", {}).get("messages", [])
+        if webhook_data.get("event") == "message":
+            payload = webhook_data.get("payload", {})
             
-            for message in messages:
-                try:
-                    # Extrair informações da mensagem
-                    chat_id = message.get("key", {}).get("remoteJid", "")
-                    message_text = message.get("message", {}).get("conversation", "")
-                    timestamp = message.get("messageTimestamp", "")
-                    from_me = message.get("key", {}).get("fromMe", False)
+            try:
+                # Extrair informações da mensagem
+                chat_id = payload.get("from", "")
+                message_text = payload.get("body", "")
+                timestamp = payload.get("timestamp", "")
+                from_me = payload.get("fromMe", False)
+                notify_name = payload.get("_data", {}).get("notifyName", "")
+                
+                if chat_id and message_text and not from_me:
+                    logger.info(f"📱 Mensagem recebida de {chat_id} ({notify_name}): {message_text}")
                     
-                    if chat_id and message_text and not from_me:
-                        logger.info(f"📱 Mensagem recebida de {chat_id}: {message_text}")
-                        
-                        # Aqui você pode salvar no banco de dados ou processar
-                        # Por enquanto, apenas log
-                        
-                except Exception as msg_error:
-                    logger.error(f"❌ Erro ao processar mensagem: {msg_error}")
+                    # Criar chat automaticamente se não existir
+                    # Por enquanto, apenas log - o frontend criará o chat quando acessado
+                    logger.info(f"💬 Chat {chat_id} deve ser criado automaticamente no frontend")
+                    
+                    # Aqui você pode salvar no banco de dados ou processar
+                    # Por enquanto, apenas log
+                    
+            except Exception as msg_error:
+                logger.error(f"❌ Erro ao processar mensagem: {msg_error}")
         
         return {"status": "success", "message": "Webhook processado"}
     except Exception as e:
