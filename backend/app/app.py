@@ -119,6 +119,10 @@ except ImportError as e:
 new_messages_queue = []
 max_queue_size = 1000
 
+# Controle de mensagens já processadas (idempotência)
+processed_message_ids = set()
+max_processed_ids = 1000
+
 # Endpoints de compatibilidade WAHA
 @app.get("/api/waha/status")
 async def waha_status():
@@ -219,6 +223,18 @@ def process_received_message(message_payload):
     timestamp = message_payload.get("timestamp")
     from_me = message_payload.get("fromMe", False)
     
+    # Extrair ID único da mensagem do WAHA
+    message_id = None
+    if "id" in message_payload:
+        if isinstance(message_payload["id"], dict):
+            message_id = message_payload["id"].get("_serialized", "")
+        else:
+            message_id = str(message_payload["id"])
+    
+    # Se não encontrou ID, criar um baseado no conteúdo
+    if not message_id:
+        message_id = f"{chat_id}_{message_text}_{timestamp}"
+    
     # Extrair notify_name da estrutura aninhada do WAHA
     notify_name = ""
     if "_data" in message_payload:
@@ -232,10 +248,11 @@ def process_received_message(message_payload):
     elif not timestamp:
         timestamp = datetime.now().isoformat()
     
-    logger.info(f"🔍 Dados extraídos: chat_id={chat_id}, message={message_text}, notify_name={notify_name}")
+    logger.info(f"🔍 Dados extraídos: chat_id={chat_id}, message_id={message_id}, message={message_text}, notify_name={notify_name}")
     
     return {
         "chat_id": chat_id,
+        "message_id": message_id,
         "message_text": message_text,
         "timestamp": timestamp,
         "from_me": from_me,
@@ -314,11 +331,25 @@ async def webhook_handler(request: Request):
         # Processar a mensagem se encontrada
         if message_data and message_data["chat_id"] and message_data["message_text"] and not message_data["from_me"]:
             try:
+                # Verificar se a mensagem já foi processada (idempotência)
+                message_id = message_data.get("message_id")
+                if message_id and message_id in processed_message_ids:
+                    logger.info(f"🔄 Mensagem já processada, ignorando: {message_id}")
+                    return {"status": "success", "message": "Mensagem já processada"}
+                
                 logger.info(f"📱 Mensagem recebida de {message_data['chat_id']} ({message_data['notify_name']}): {message_data['message_text']}")
+                
+                # Marcar mensagem como processada
+                if message_id:
+                    processed_message_ids.add(message_id)
+                    # Limpar IDs antigos se necessário
+                    if len(processed_message_ids) > max_processed_ids:
+                        # Manter apenas os últimos 500 IDs
+                        processed_message_ids.clear()
                 
                 # Criar objeto da mensagem
                 new_message = {
-                    "id": f"{message_data['chat_id']}_{int(datetime.now().timestamp())}",
+                    "id": message_id or f"{message_data['chat_id']}_{int(datetime.now().timestamp())}",
                     "phone": message_data["chat_id"],
                     "message": message_data["message_text"],
                     "senderName": message_data["notify_name"] or message_data["chat_id"],
