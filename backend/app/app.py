@@ -591,26 +591,37 @@ async def process_and_save_message(message_data):
             logger.warning(f"⚠️ Mensagem inválida ignorada: {message_data}")
             return False
         
-        # Criar ID único baseado em conteúdo + timestamp para evitar duplicatas reais
+        # Criar ID único baseado em timestamp para permitir mensagens repetidas
         message_id = message_data.get("message_id")
-        content_hash = f"{message_data['chat_id']}_{message_data['message_text']}_{message_data.get('timestamp', '')}"
+        unique_id = f"{message_data['chat_id']}_{message_data['message_text']}_{datetime.now().timestamp()}"
         
-        # Verificar se é uma duplicata real (mesmo conteúdo, mesmo timestamp)
-        if content_hash in processed_message_ids:
-            logger.info(f"🔄 Duplicata real ignorada: {content_hash[:50]}...")
-            return False
+        # Verificar se é uma duplicata muito recente (últimos 5 segundos)
+        current_time = datetime.now().timestamp()
+        recent_duplicates = [
+            hash_id for hash_id in processed_message_ids 
+            if hash_id.startswith(f"{message_data['chat_id']}_{message_data['message_text']}_")
+        ]
+        
+        # Se há duplicatas muito recentes, ignorar
+        for duplicate in recent_duplicates:
+            try:
+                duplicate_time = float(duplicate.split('_')[-1])
+                if current_time - duplicate_time < 5:  # 5 segundos
+                    logger.info(f"🔄 Duplicata muito recente ignorada: {message_data['message_text'][:20]}...")
+                    return False
+            except:
+                pass
         
         logger.info(f"📱 Processando mensagem de {message_data['chat_id']} ({message_data['notify_name']}): {message_data['message_text']}")
+        logger.info(f"🔍 Debug - unique_id: {unique_id}")
+        logger.info(f"🔍 Debug - processed_ids count: {len(processed_message_ids)}")
         
-        # Marcar conteúdo como processado (não apenas o ID)
-        processed_message_ids.add(content_hash)
+        # Marcar como processado
+        processed_message_ids.add(unique_id)
         
-        # Limpar IDs antigos se necessário (manter apenas últimos 1000)
+        # Limpar IDs antigos se necessário
         if len(processed_message_ids) > max_processed_ids:
-            # Manter apenas os últimos 500 hashes
-            processed_list = list(processed_message_ids)
             processed_message_ids.clear()
-            processed_message_ids.update(processed_list[-500:])
         
         # Salvar mensagem no storage persistente
         save_success = save_whatsapp_message(message_data["chat_id"], message_data)
