@@ -241,6 +241,36 @@ def process_received_message(message_payload):
         "notify_name": notify_name
     }
 
+async def process_message_async(message_data):
+    """Processar mensagem de forma assíncrona"""
+    try:
+        logger.info(f"🔄 Processando mensagem assincronamente: {message_data['phone']}")
+        
+        # Salvar no banco se disponível
+        if waha_service:
+            try:
+                await waha_service._save_message_as_feedback(
+                    message_data["phone"], message_data["message"], "received", 
+                    contact_info=None, timestamp=message_data["timestamp"]
+                )
+                logger.info(f"✅ Mensagem salva no banco: {message_data['phone']}")
+            except Exception as e:
+                logger.error(f"❌ Erro ao salvar mensagem no banco: {e}")
+                # Implementar retry se necessário
+                if message_data["retry_count"] < 3:
+                    message_data["retry_count"] += 1
+                    logger.info(f"🔄 Tentativa {message_data['retry_count']} de salvar mensagem")
+                    await asyncio.sleep(5)  # Aguardar 5 segundos antes de tentar novamente
+                    await process_message_async(message_data)
+        
+        # Marcar como processada
+        message_data["processed"] = True
+        logger.info(f"✅ Mensagem processada com sucesso: {message_data['phone']}")
+        
+    except Exception as e:
+        logger.error(f"❌ Erro no processamento assíncrono: {e}")
+        message_data["processed"] = False
+
 @app.post("/")
 async def webhook_handler(request: Request):
     """Webhook do WAHA para receber mensagens"""
@@ -249,6 +279,14 @@ async def webhook_handler(request: Request):
     try:
         # Log do webhook recebido
         logger.info("📱 Webhook WAHA recebido")
+        
+        # Verificar autenticação (opcional - pode ser habilitada via env)
+        webhook_secret = os.getenv("WEBHOOK_SECRET")
+        if webhook_secret:
+            auth_header = request.headers.get("authorization")
+            if not auth_header or auth_header != f"Bearer {webhook_secret}":
+                logger.warning("⚠️ Webhook sem autenticação válida")
+                return {"status": "error", "message": "Unauthorized"}, 401
         
         # Obter dados do webhook
         webhook_data = await request.json()
@@ -279,11 +317,14 @@ async def webhook_handler(request: Request):
                 
                 # Criar objeto da mensagem
                 new_message = {
+                    "id": f"{message_data['chat_id']}_{int(datetime.now().timestamp())}",
                     "phone": message_data["chat_id"],
                     "message": message_data["message_text"],
                     "senderName": message_data["notify_name"] or message_data["chat_id"],
                     "timestamp": message_data["timestamp"],
-                    "received_at": datetime.now().isoformat()
+                    "received_at": datetime.now().isoformat(),
+                    "processed": False,
+                    "retry_count": 0
                 }
                 
                 # Adicionar à fila de mensagens
@@ -295,15 +336,9 @@ async def webhook_handler(request: Request):
                 
                 logger.info(f"✅ Mensagem adicionada à fila: {message_data['notify_name'] or message_data['chat_id']}")
                 
-                # Salvar no banco se disponível
-                if waha_service:
-                    try:
-                        await waha_service._save_message_as_feedback(
-                            message_data["chat_id"], message_data["message_text"], "received", 
-                            contact_info=None, timestamp=message_data["timestamp"]
-                        )
-                    except Exception as e:
-                        logger.error(f"Erro ao salvar mensagem no banco: {e}")
+                # Processar assincronamente (não bloquear o webhook)
+                import asyncio
+                asyncio.create_task(process_message_async(new_message))
                         
             except Exception as msg_error:
                 logger.error(f"❌ Erro ao processar mensagem: {msg_error}")
@@ -392,8 +427,44 @@ async def health_check():
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "version": "3.0.0",
-        "waha_available": waha_service is not None
+        "waha_available": waha_service is not None,
+        "message_queue_size": len(new_messages_queue),
+        "processed_messages": len([msg for msg in new_messages_queue if msg.get("processed", False)]),
+        "pending_messages": len([msg for msg in new_messages_queue if not msg.get("processed", False)])
     }
+
+@app.get("/api/whatsapp/status")
+async def whatsapp_status():
+    """Status detalhado do sistema WhatsApp"""
+    try:
+        waha_status = "disconnected"
+        if waha_service:
+            status_result = await waha_service.check_waha_status()
+            waha_status = status_result.get("status", "unknown")
+        
+        return {
+            "success": True,
+            "data": {
+                "waha_status": waha_status,
+                "message_queue": {
+                    "total": len(new_messages_queue),
+                    "processed": len([msg for msg in new_messages_queue if msg.get("processed", False)]),
+                    "pending": len([msg for msg in new_messages_queue if not msg.get("processed", False)]),
+                    "retry_count": sum([msg.get("retry_count", 0) for msg in new_messages_queue])
+                },
+                "system": {
+                    "version": "3.0.0",
+                    "uptime": "running",
+                    "last_webhook": datetime.now().isoformat()
+                }
+            }
+        }
+    except Exception as e:
+        logger.error(f"❌ Erro ao obter status: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 @app.get("/api/health")
 async def api_health():
