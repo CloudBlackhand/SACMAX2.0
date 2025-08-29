@@ -193,22 +193,10 @@ async def get_contact_info(phone: str):
 async def clear_processed_messages(message_ids: List[str] = None):
     """Limpar mensagens processadas da fila"""
     try:
-        import sys
-        import os
-        sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-        
-        from app import new_messages_queue
-        
-        if message_ids:
-            # Remover mensagens específicas (se implementarmos IDs)
-            pass
-        else:
-            # Limpar toda a fila
-            new_messages_queue.clear()
-        
+        # Endpoint movido para app.py para evitar import circular
         return {
             "success": True,
-            "message": "Mensagens limpas com sucesso"
+            "message": "Endpoint movido para app.py"
         }
         
     except Exception as e:
