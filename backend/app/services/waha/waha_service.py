@@ -65,7 +65,7 @@ class WahaService:
             self.logger.error(f"Erro ao obter screenshot: {e}")
             return None
 
-    async def send_text_message(self, chat_id: str, text: str, session_name: str = "sacsmax") -> Dict[str, Any]:
+    async def send_text_message(self, chat_id: str, text: str, session_name: str = "default") -> Dict[str, Any]:
         """Enviar mensagem de texto"""
         try:
             response = requests.post(
@@ -86,7 +86,7 @@ class WahaService:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    async def get_contacts(self, session_name: str = "sacsmax") -> Dict[str, Any]:
+    async def get_contacts(self, session_name: str = "default") -> Dict[str, Any]:
         """Obter contatos"""
         try:
             response = requests.get(
