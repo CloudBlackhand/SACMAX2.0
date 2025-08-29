@@ -200,3 +200,4 @@ Após o deploy, seu sistema estará disponível em:
 - **WAHA**: Integrado automaticamente
 
 **🚀 Sistema SacsMax + WAHA funcionando no Railway!**
+

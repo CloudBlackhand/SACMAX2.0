@@ -103,10 +103,11 @@ try:
     app.include_router(waha_router)
     
     # Incluir rotas do WhatsApp
-    app.include_router(whatsapp_router, prefix="/api")
+    app.include_router(whatsapp_router, prefix="/api/whatsapp")
     
     # Instanciar serviço WAHA
-    waha_service = WahaService()
+    waha_url = os.getenv("WAHA_URL", "https://waha-production-1c76.up.railway.app")
+    waha_service = WahaService(waha_url)
     
     logger.info("✅ WAHA e WhatsApp integrados com sucesso!")
 except ImportError as e:

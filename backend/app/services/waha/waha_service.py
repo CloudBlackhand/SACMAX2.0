@@ -25,7 +25,7 @@ class WahaService:
     async def check_waha_status(self) -> Dict[str, Any]:
         """Verificar status do WAHA"""
         try:
-            response = requests.get(f"{self.waha_url}/api/status", timeout=5)
+            response = requests.get(f"{self.waha_url}/api/server/status", timeout=5)
             if response.status_code == 200:
                 return {"status": "connected", "data": response.json()}
             else:
