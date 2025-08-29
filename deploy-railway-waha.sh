@@ -62,3 +62,4 @@ echo "3. Configure WAHA"
 echo ""
 echo "🎉 Sistema pronto para uso!"
 
+
