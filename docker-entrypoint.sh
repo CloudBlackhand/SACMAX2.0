@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Script de inicialização para SacsMax
-# Gerencia backend Python e servidor WhatsApp Node.js
+# Gerencia backend Python e WAHA via Docker
 
 set -e
 

@@ -2,7 +2,7 @@
 """
 SacsMax - Sistema de Gestão de SAC
 Script de inicialização otimizado para Railway
-Versão 2.2 - Backend + Frontend (WhatsApp apenas em desenvolvimento)
+Versão 2.2 - Backend + Frontend (WAHA via Docker)
 """
 
 import os
@@ -107,8 +107,6 @@ def start_backend():
     except Exception as e:
         logger.error(f"❌ Erro ao iniciar servidor backend: {e}")
         return None
-
-
 
 def serve_frontend():
     """Servir frontend estático"""

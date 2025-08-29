@@ -5,18 +5,18 @@
 ## ✨ **Novidades da Versão 2.1.0**
 
 ### 🔥 **WhatsApp em Tempo Real**
-- **WebSocket**: Comunicação instantânea como WhatsApp Web real
+- **WAHA Integration**: Comunicação via WhatsApp HTTP API
 - **Recebimento Automático**: Mensagens aparecem instantaneamente no chat
 - **Sincronização Completa**: Todos os chats e mensagens sincronizados
 - **Interface Real**: Interface idêntica ao WhatsApp Web
-- **Controle Manual**: WhatsApp server iniciado via módulo Settings
+- **Controle Manual**: WAHA iniciado via Docker
 
 ### 🎯 **Como Funciona (Versão Otimizada para Railway)**
 
 1. **🚀 Sistema Inicia**: Backend + Frontend automaticamente
-2. **⚙️ Configurar WhatsApp**: Vá para módulo Settings
-3. **📱 Iniciar WhatsApp**: Clique em "Iniciar WhatsApp Server"
-4. **🔗 Conectar**: Escaneie o QR Code
+2. **🐳 WAHA via Docker**: Container WAHA rodando separadamente
+3. **⚙️ Configurar WhatsApp**: Vá para módulo Settings
+4. **🔗 Conectar**: Configure WAHA e autentique
 5. **💬 Usar**: Sistema completo funcionando
 
 ## 🏗️ **Arquitetura do Sistema (Otimizada)**
@@ -27,14 +27,14 @@
 │   (JavaScript)  │                 │  (FastAPI)      │
 └─────────────────┘                 └─────────────────┘
          │                                   │
-         │ HTTP API                          │ Process Control
+         │ HTTP API                          │ HTTP API
          ▼                                   ▼
 ┌─────────────────┐                 ┌─────────────────┐
-│   WhatsApp      │                 │   WhatsApp      │
-│   (Módulo)      │                 │   Server        │
+│   WAHA          │                 │   WAHA          │
+│   (Docker)      │                 │   Service       │
 └─────────────────┘                 └─────────────────┘
          │                                   │
-         │ WebSocket                         │ WhatsApp API
+         │ WhatsApp API                      │ WhatsApp API
          ▼                                   ▼
 ┌─────────────────┐                 ┌─────────────────┐
 │   Interface     │                 │   WhatsApp      │
@@ -48,9 +48,6 @@
 ```bash
 # Python
 pip install -r requirements.txt
-
-# Node.js (opcional - apenas para desenvolvimento local)
-npm install
 ```
 
 ### 2. Iniciar o Sistema
@@ -59,51 +56,48 @@ npm install
 python railway_startup.py
 ```
 
-### 3. Configurar WhatsApp
+### 3. Configurar WAHA
 1. Acesse: http://localhost:5000
 2. Vá para o módulo **Settings**
-3. Clique em **"Iniciar WhatsApp Server"**
-4. Escaneie o QR Code com seu WhatsApp
+3. Configure **WAHA** via Docker
+4. Autentique seu WhatsApp
 
 ### 4. Usar o Sistema
 - **Frontend**: http://localhost:5000
 - **Backend API**: http://localhost:5000/docs
-- **WhatsApp**: http://localhost:3001 (após iniciar via Settings)
+- **WAHA**: http://localhost:3000 (via Docker)
 
 ## 📱 Como Usar o WhatsApp
 
-### **Método Recomendado (Via Settings)**
+### **Método Recomendado (Via Docker)**
 1. Acesse o sistema em http://localhost:5000
 2. Vá para o módulo **Settings**
-3. Na seção **WhatsApp Server Control**:
-   - Clique em **"Iniciar WhatsApp Server"**
-   - Aguarde a mensagem de sucesso
-   - Clique em **"Gerar QR Code"**
-   - Escaneie o QR Code com seu WhatsApp
+3. Na seção **WAHA Configuration**:
+   - Configure WAHA via Docker
+   - Autentique seu WhatsApp
+   - Teste a conexão
 4. Vá para o módulo **WhatsApp** para usar
 
-### **Método Manual (Desenvolvimento)**
+### **Método Docker Compose**
 ```bash
-# Em outro terminal
-node whatsapp-server-simple.js
+# Iniciar sistema completo
+docker-compose up -d
 ```
 
 ## 🔧 Arquitetura Simplificada
 
 ```
-Frontend (5000) ←→ Backend (5000)
-     │
-     └─→ WhatsApp Server (3001) [Manual]
+Frontend (5000) ←→ Backend (5000) ←→ WAHA (3000) [Docker]
 ```
 
 - **Frontend**: Interface do usuário
 - **Backend**: API REST + Controle de processos
-- **WhatsApp Server**: Iniciado manualmente via Settings
+- **WAHA**: Container Docker para WhatsApp
 
 ## 📊 **Módulos do Sistema**
 
 ### **1. 📱 WhatsApp (Tempo Real)**
-- Conexão WebSocket em tempo real
+- Conexão WAHA em tempo real
 - Interface idêntica ao WhatsApp Web
 - Recebimento automático de mensagens
 - Envio de mensagens
@@ -140,44 +134,41 @@ Frontend (5000) ←→ Backend (5000)
 - Logs do sistema
 
 ### **7. ⚙️ Configurações**
-- Controle do WhatsApp Server
+- Controle do WAHA
 - Configurações do sistema
 - Logs e monitoramento
 - Backup e restauração
 
 ## 🔌 **APIs Disponíveis**
 
+### **WAHA API**
+```bash
+# Status do WAHA
+GET /api/waha/status
+
+# Criar sessão
+POST /api/waha/sessions
+
+# Screenshot
+GET /api/waha/screenshot
+
+# Enviar mensagem
+POST /api/waha/send-message
+
+# Obter contatos
+GET /api/waha/contacts
+```
+
 ### **WhatsApp API**
 ```bash
 # Status do WhatsApp
 GET /api/whatsapp/status
 
-# Iniciar sessão
-POST /api/whatsapp/start
-
-# Obter QR Code
-GET /api/whatsapp/qr
-
-# Enviar mensagem
-POST /api/send-message
-
 # Obter chats
-GET /api/chats
+GET /api/whatsapp/chats
 
 # Obter mensagens
-GET /api/messages/{contact_id}
-```
-
-### **WhatsApp Server Control**
-```bash
-# Iniciar servidor WhatsApp
-POST /api/whatsapp-server/start
-
-# Parar servidor WhatsApp
-POST /api/whatsapp-server/stop
-
-# Status do servidor
-GET /api/whatsapp-server/status
+GET /api/whatsapp/messages/{contact_id}
 ```
 
 ### **Produtividade API**
@@ -226,7 +217,7 @@ sacsmax/
 │   │   └── services/       # Serviços
 │   ├── database_config.py  # Configuração do banco
 │   └── requirements.txt    # Dependências Python
-├── whatsapp-server-simple.js # Servidor WhatsApp
+├── docker-compose.yml      # Configuração Docker
 ├── railway_startup.py      # Script de inicialização
 ├── Procfile               # Configuração Railway
 └── README.md              # Documentação
@@ -235,8 +226,7 @@ sacsmax/
 ### **Tecnologias Utilizadas**
 - **Frontend**: JavaScript puro, HTML5, CSS3
 - **Backend**: FastAPI (Python)
-- **WhatsApp**: whatsapp-web.js (Node.js)
-- **WebSocket**: ws (Node.js)
+- **WhatsApp**: WAHA (Docker)
 - **Banco**: PostgreSQL
 - **Deploy**: Railway
 
@@ -262,11 +252,8 @@ sacsmax/
 # Verificar status geral
 GET /api/health
 
-# Verificar WhatsApp
-GET /api/whatsapp/status
-
-# Verificar servidor WhatsApp
-GET /api/whatsapp-server/status
+# Verificar WAHA
+GET /api/waha/status
 
 # Verificar banco de dados
 GET /api/stats
@@ -274,7 +261,7 @@ GET /api/stats
 
 ### **Logs**
 - **Backend**: Logs detalhados no console
-- **WhatsApp**: Logs de conexão e mensagens
+- **WAHA**: Logs de conexão e mensagens
 - **Frontend**: Logs de erro no console do navegador
 
 ## 🚀 **Deploy no Railway**
@@ -289,6 +276,7 @@ GET /api/stats
 DATABASE_URL=postgresql://...
 NODE_ENV=production
 PYTHON_ENV=production
+WAHA_URL=http://waha:3000
 ```
 
 ### **3. Deploy Automático**
@@ -299,7 +287,7 @@ PYTHON_ENV=production
 ### **4. Acessar Sistema**
 - **Frontend**: URL gerada pelo Railway
 - **API**: URL + /docs para documentação
-- **WhatsApp**: Conectar via Settings → WhatsApp Server Control
+- **WAHA**: Configurar via Settings
 
 ## 🤝 **Contribuição**
 
@@ -324,14 +312,14 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 
 ### **Problemas Comuns**
 
-**WhatsApp não conecta:**
-1. Verifique se o WhatsApp Server foi iniciado via Settings
-2. Verifique se o QR Code foi escaneado
+**WAHA não conecta:**
+1. Verifique se o container WAHA está rodando
+2. Verifique se a autenticação foi feita
 3. Aguarde alguns segundos para conexão
-4. Verifique logs do servidor WhatsApp
+4. Verifique logs do WAHA
 
 **Mensagens não aparecem:**
-1. Verifique conexão WebSocket
+1. Verifique conexão WAHA
 2. Recarregue a página
 3. Verifique logs do frontend
 
@@ -340,11 +328,11 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 2. Verifique conexão com PostgreSQL
 3. Verifique logs do backend
 
-**WhatsApp Server não inicia:**
-1. Verifique se o Node.js está instalado
-2. Verifique se o arquivo whatsapp-server-simple.js existe
-3. Verifique logs do backend
-4. Tente iniciar manualmente: `node whatsapp-server-simple.js`
+**WAHA não inicia:**
+1. Verifique se o Docker está rodando
+2. Verifique se o docker-compose.yml está correto
+3. Verifique logs do Docker
+4. Tente reiniciar: `docker-compose restart`
 
 ### **Contato**
 - **Email**: suporte@sacsmax.com
@@ -361,10 +349,10 @@ O SacsMax está pronto para revolucionar seu atendimento ao cliente com WhatsApp
 
 ### **📋 Checklist de Inicialização**
 - [ ] Sistema iniciado (Backend + Frontend)
-- [ ] WhatsApp Server iniciado via Settings
-- [ ] QR Code escaneado
+- [ ] WAHA configurado via Docker
+- [ ] WhatsApp autenticado
 - [ ] Conexão estabelecida
 - [ ] Sistema funcionando!
 
-**🎯 Sistema otimizado para Railway - Sem conflitos de processos!**
+**🎯 Sistema otimizado para Railway - WAHA via Docker!**
 

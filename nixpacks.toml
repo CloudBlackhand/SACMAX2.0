@@ -1,13 +1,13 @@
 [phases.setup]
-aptPkgs = ["python3-pip"]
+nixPkgs = ["python3", "pip"]
 
 [phases.install]
-cmds = ["pip install -r requirements.txt", "npm install"]
+cmds = ["pip install -r requirements.txt"]
 
 [phases.build]
-cmds = ["echo 'Build complete for Python and Node.js'"]
+cmds = ["echo 'Build completed'"]
 
 [start]
-cmd = "python3 railway_startup.py & node whatsapp-server-simple.js"
+cmd = "python3 railway_startup.py"
 
 

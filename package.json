@@ -1,25 +1,17 @@
 {
-  "name": "sacsmax-whatsapp",
+  "name": "sacsmax",
   "version": "2.0.0",
-  "description": "Sistema de Gestão de SAC com WhatsApp em tempo real",
-  "main": "whatsapp-server-simple.js",
+  "description": "Sistema de Gestão de SAC com WAHA",
+  "main": "railway_startup.py",
   "scripts": {
-    "start": "node whatsapp-server-simple.js",
-    "dev": "node whatsapp-server-simple.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "qrcode": "^1.5.4",
-    "whatsapp-web.js": "^1.32.0",
-    "ws": "^8.14.2"
+    "start": "python3 railway_startup.py",
+    "dev": "python3 railway_startup.py"
   },
   "keywords": [
-    "whatsapp",
     "sacsmax",
-    "real-time",
-    "websocket"
+    "whatsapp",
+    "waha",
+    "railway"
   ],
   "author": "SacsMax Team",
   "license": "MIT"
