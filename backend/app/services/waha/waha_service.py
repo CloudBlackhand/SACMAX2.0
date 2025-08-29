@@ -101,7 +101,7 @@ class WahaService:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    async def get_chats(self, session_name: str = "sacsmax") -> Dict[str, Any]:
+    async def get_chats(self, session_name: str = "default") -> Dict[str, Any]:
         """Obter chats/conversas"""
         try:
             response = requests.get(
@@ -116,7 +116,7 @@ class WahaService:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    async def get_messages(self, chat_id: str, limit: int = 50, session_name: str = "sacsmax") -> Dict[str, Any]:
+    async def get_messages(self, chat_id: str, limit: int = 50, session_name: str = "default") -> Dict[str, Any]:
         """Obter mensagens de um chat específico"""
         try:
             response = requests.get(

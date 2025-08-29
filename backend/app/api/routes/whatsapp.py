@@ -88,7 +88,7 @@ async def get_screenshot(session_name: str = "sacsmax"):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/contacts")
-async def get_contacts(session_name: str = "sacsmax"):
+async def get_contacts(session_name: str = "default"):
     """Obter contatos do WhatsApp"""
     try:
         service = get_waha_service()
@@ -101,7 +101,7 @@ async def get_contacts(session_name: str = "sacsmax"):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/chats")
-async def get_chats(session_name: str = "sacsmax"):
+async def get_chats(session_name: str = "default"):
     """Obter chats/conversas"""
     try:
         service = get_waha_service()
@@ -114,7 +114,7 @@ async def get_chats(session_name: str = "sacsmax"):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/messages/{chat_id}")
-async def get_messages(chat_id: str, limit: int = 50, session_name: str = "sacsmax"):
+async def get_messages(chat_id: str, limit: int = 50, session_name: str = "default"):
     """Obter mensagens de um chat específico"""
     try:
         service = get_waha_service()
@@ -127,7 +127,7 @@ async def get_messages(chat_id: str, limit: int = 50, session_name: str = "sacsm
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/send")
-async def send_message(request: MessageRequest, session_name: str = "sacsmax"):
+async def send_message(request: MessageRequest, session_name: str = "default"):
     """Enviar mensagem individual"""
     try:
         service = get_waha_service()
