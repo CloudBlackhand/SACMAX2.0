@@ -17,6 +17,11 @@ class WhatsAppModule {
         this.wahaUrl = "https://waha-production-1c76.up.railway.app";
         this.sessionName = "sacsmax";
         
+        // Polling para novas mensagens
+        this.pollingInterval = null;
+        this.pollingActive = false;
+        this.lastMessageCheck = new Date();
+        
         // Inicializar
         this.init();
     }
@@ -37,12 +42,127 @@ class WhatsAppModule {
     }
 
     async initializeWaha() {
+        // Solicitar permissão para notificações
+        await this.requestNotificationPermission();
+        
         // Verificar conexão
         await this.checkConnection();
         
         // Se conectado, carregar chats do WAHA
         if (this.isConnected) {
             await this.loadWahaChats();
+            // Iniciar polling para novas mensagens
+            this.startPolling();
+        }
+    }
+
+    // Iniciar polling para novas mensagens
+    startPolling() {
+        if (this.pollingActive) return;
+        
+        console.log('🔄 Iniciando polling para novas mensagens...');
+        this.pollingActive = true;
+        
+        this.pollingInterval = setInterval(async () => {
+            if (this.isConnected) {
+                await this.checkForNewMessages();
+            }
+        }, 5000); // Verificar a cada 5 segundos
+    }
+
+    // Parar polling
+    stopPolling() {
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+            this.pollingActive = false;
+            console.log('⏹️ Polling parado');
+        }
+    }
+
+    // Verificar novas mensagens
+    async checkForNewMessages() {
+        if (!this.pollingActive) return;
+        
+        try {
+            // Buscar novas mensagens do backend usando o novo endpoint
+            const sinceParam = this.lastMessageCheck ? `?since=${this.lastMessageCheck.toISOString()}` : '';
+            const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/new-messages${sinceParam}`);
+            if (!response.ok) return;
+            
+            const data = await response.json();
+            if (data.success && data.data && data.data.length > 0) {
+                console.log(`📱 Encontradas ${data.count || data.data.length} novas mensagens`);
+                
+                // Processar cada mensagem nova
+                data.data.forEach(message => {
+                    this.processNewMessage(message);
+                });
+                
+                // Limpar mensagens processadas do backend
+                await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/clear-messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                // Atualizar interface
+                this.updateInterface();
+            }
+            
+            // Atualizar timestamp da última verificação
+            this.lastMessageCheck = new Date();
+            
+        } catch (error) {
+            console.error('❌ Erro ao verificar novas mensagens:', error);
+        }
+    }
+
+    // Processar nova mensagem recebida
+    processNewMessage(messageData) {
+        try {
+            // Extrair informações da mensagem
+            const chatId = messageData.chat_id || messageData.from || messageData.phone;
+            const messageText = messageData.text || messageData.body || messageData.message || '';
+            const senderName = messageData.sender_name || messageData.pushName || messageData.senderName || 'Desconhecido';
+            const timestamp = messageData.timestamp || messageData.received_at || new Date().toISOString();
+            
+            // Criar ou atualizar o chat
+            this.createChatFromMessage(chatId, messageText, senderName);
+            
+            // Se for o chat atual, adicionar mensagem diretamente
+            const fullChatId = `chat_${chatId}`;
+            if (this.currentChat && this.currentChat.id === fullChatId) {
+                const messages = this.messages.get(fullChatId) || [];
+                const newMessage = {
+                    id: Date.now(),
+                    type: 'received',
+                    content: messageText,
+                    timestamp: new Date(timestamp).toLocaleTimeString('pt-BR'),
+                    sender: senderName,
+                    status: 'received'
+                };
+                
+                messages.push(newMessage);
+                this.messages.set(fullChatId, messages);
+                
+                // Scroll para a última mensagem
+                setTimeout(() => {
+                    const messagesArea = document.querySelector('.wa-messages-area');
+                    if (messagesArea) {
+                        messagesArea.scrollTop = messagesArea.scrollHeight;
+                    }
+                }, 100);
+            }
+            
+            // Mostrar notificação (se suportado pelo navegador)
+            this.showNotification(senderName, messageText, chatId);
+            
+            console.log('✅ Nova mensagem processada:', { chatId, senderName, messageText });
+            
+        } catch (error) {
+            console.error('❌ Erro ao processar nova mensagem:', error);
         }
     }
 
@@ -774,9 +894,93 @@ class WhatsAppModule {
         console.log('✅ Interface atualizada');
     }
 
+    // Limpar dados
+    clearData() {
+        console.log('🗑️ Limpando dados do WhatsApp...');
+        
+        // Parar polling
+        this.stopPolling();
+        
+        // Limpar estado
+        this.currentChat = null;
+        this.chats.clear();
+        this.messages.clear();
+        
+        // Limpar localStorage
+        localStorage.removeItem('whatsapp_chats');
+        localStorage.removeItem('whatsapp_messages');
+        
+        // Atualizar interface
+        this.updateInterface();
+        
+        console.log('✅ Dados limpos');
+    }
+
+    // Solicitar permissão para notificações
+    async requestNotificationPermission() {
+        if ('Notification' in window) {
+            if (Notification.permission === 'default') {
+                try {
+                    const permission = await Notification.requestPermission();
+                    if (permission === 'granted') {
+                        console.log('✅ Permissão para notificações concedida');
+                        
+                        // Mostrar notificação de teste
+                        new Notification('SacsMax WhatsApp', {
+                            body: 'Notificações ativadas! Você receberá alertas de novas mensagens.',
+                            icon: '/static/images/whatsapp-icon.png'
+                        });
+                    } else {
+                        console.warn('⚠️ Permissão para notificações negada');
+                    }
+                } catch (error) {
+                    console.error('❌ Erro ao solicitar permissão para notificações:', error);
+                }
+            } else if (Notification.permission === 'granted') {
+                console.log('✅ Permissão para notificações já concedida');
+            }
+        } else {
+            console.warn('⚠️ Notificações não suportadas neste navegador');
+        }
+    }
+    
+    // Mostrar notificação de nova mensagem
+    showNotification(senderName, messageText, chatId) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+            const notification = new Notification(`Nova mensagem de ${senderName}`, {
+                body: messageText.length > 100 ? messageText.substring(0, 100) + '...' : messageText,
+                icon: '/static/images/whatsapp-icon.png',
+                badge: '/static/images/whatsapp-badge.png',
+                tag: `whatsapp-${chatId}`, // Evita notificações duplicadas
+                requireInteraction: false,
+                silent: false
+            });
+            
+            // Fechar notificação automaticamente após 5 segundos
+            setTimeout(() => {
+                notification.close();
+            }, 5000);
+            
+            // Ao clicar na notificação, focar no chat
+            notification.onclick = () => {
+                window.focus();
+                // Selecionar o chat correspondente
+                const chatElement = document.querySelector(`[data-chat-id="chat_${chatId}"]`);
+                if (chatElement) {
+                    chatElement.click();
+                }
+                notification.close();
+            };
+        }
+    }
+
     // Destruir módulo
     destroy() {
         console.log('🛑 Destruindo módulo WhatsApp...');
+        
+        // Parar polling
+        this.stopPolling();
+        
         this.saveData();
         this.currentChat = null;
         this.chats.clear();

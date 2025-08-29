@@ -114,6 +114,10 @@ except ImportError as e:
     logger.warning(f"⚠️ WAHA/WhatsApp não disponível: {e}")
     waha_service = None
 
+# Armazenamento temporário para mensagens recebidas
+new_messages_queue = []
+max_queue_size = 1000
+
 # Endpoints de compatibilidade WAHA
 @app.get("/api/waha/status")
 async def waha_status():
@@ -209,6 +213,8 @@ async def root():
 @app.post("/")
 async def webhook_handler(request: Request):
     """Webhook do WAHA para receber mensagens"""
+    global new_messages_queue
+    
     try:
         # Log do webhook recebido
         logger.info("📱 Webhook WAHA recebido")
@@ -232,12 +238,33 @@ async def webhook_handler(request: Request):
                 if chat_id and message_text and not from_me:
                     logger.info(f"📱 Mensagem recebida de {chat_id} ({notify_name}): {message_text}")
                     
-                    # Criar chat automaticamente se não existir
-                    # Por enquanto, apenas log - o frontend criará o chat quando acessado
-                    logger.info(f"💬 Chat {chat_id} deve ser criado automaticamente no frontend")
+                    # Criar objeto da mensagem
+                    new_message = {
+                        "phone": chat_id,
+                        "message": message_text,
+                        "senderName": notify_name or chat_id,
+                        "timestamp": timestamp or datetime.now().isoformat(),
+                        "received_at": datetime.now().isoformat()
+                    }
                     
-                    # Aqui você pode salvar no banco de dados ou processar
-                    # Por enquanto, apenas log
+                    # Adicionar à fila de mensagens
+                    new_messages_queue.append(new_message)
+                    
+                    # Manter tamanho da fila controlado
+                    if len(new_messages_queue) > max_queue_size:
+                        new_messages_queue = new_messages_queue[-max_queue_size:]
+                    
+                    logger.info(f"✅ Mensagem adicionada à fila: {notify_name or chat_id}")
+                    
+                    # Salvar no banco se disponível
+                    if waha_service:
+                        try:
+                            await waha_service._save_message_as_feedback(
+                                chat_id, message_text, "received", 
+                                contact_info=None, timestamp=timestamp
+                            )
+                        except Exception as e:
+                            logger.error(f"Erro ao salvar mensagem no banco: {e}")
                     
             except Exception as msg_error:
                 logger.error(f"❌ Erro ao processar mensagem: {msg_error}")

@@ -182,6 +182,75 @@ async def get_contact_info(phone: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/new-messages")
+async def get_new_messages(since: str = None):
+    """Obter mensagens não lidas/novas desde um timestamp específico"""
+    try:
+        from datetime import datetime
+        import sys
+        import os
+        sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        
+        # Importar a fila de mensagens do app principal
+        from app import new_messages_queue
+        
+        # Filtrar mensagens por timestamp se fornecido
+        filtered_messages = []
+        
+        if since:
+            try:
+                since_datetime = datetime.fromisoformat(since.replace('Z', '+00:00'))
+                for message in new_messages_queue:
+                    message_time = datetime.fromisoformat(message['received_at'].replace('Z', '+00:00'))
+                    if message_time > since_datetime:
+                        filtered_messages.append(message)
+            except ValueError:
+                # Se o timestamp for inválido, retornar todas as mensagens
+                filtered_messages = new_messages_queue.copy()
+        else:
+            filtered_messages = new_messages_queue.copy()
+        
+        return {
+            "success": True,
+            "data": filtered_messages,
+            "count": len(filtered_messages)
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "data": []
+        }
+
+@router.post("/clear-messages")
+async def clear_processed_messages(message_ids: List[str] = None):
+    """Limpar mensagens processadas da fila"""
+    try:
+        import sys
+        import os
+        sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        
+        from app import new_messages_queue
+        
+        if message_ids:
+            # Remover mensagens específicas (se implementarmos IDs)
+            pass
+        else:
+            # Limpar toda a fila
+            new_messages_queue.clear()
+        
+        return {
+            "success": True,
+            "message": "Mensagens limpas com sucesso"
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
 @router.get("/produtividade/contacts")
 async def get_produtividade_contacts():
     """Obter contatos da tabela de produtividade para disparo"""
