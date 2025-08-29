@@ -212,16 +212,31 @@ async def root():
 
 def process_received_message(message_payload):
     """Helper function to process message data from different event types"""
+    # Extrair dados da estrutura WAHA
     chat_id = message_payload.get("from")
     message_text = message_payload.get("body")
     timestamp = message_payload.get("timestamp")
     from_me = message_payload.get("fromMe", False)
-    notify_name = message_payload.get("_data", {}).get("notifyName", "") or message_payload.get("notifyName", "")
+    
+    # Extrair notify_name da estrutura aninhada do WAHA
+    notify_name = ""
+    if "_data" in message_payload:
+        notify_name = message_payload["_data"].get("notifyName", "")
+    if not notify_name:
+        notify_name = message_payload.get("notifyName", "")
+    
+    # Converter timestamp se necessário
+    if timestamp and isinstance(timestamp, int):
+        timestamp = datetime.fromtimestamp(timestamp).isoformat()
+    elif not timestamp:
+        timestamp = datetime.now().isoformat()
+    
+    logger.info(f"🔍 Dados extraídos: chat_id={chat_id}, message={message_text}, notify_name={notify_name}")
     
     return {
         "chat_id": chat_id,
         "message_text": message_text,
-        "timestamp": timestamp or datetime.now().isoformat(),
+        "timestamp": timestamp,
         "from_me": from_me,
         "notify_name": notify_name
     }

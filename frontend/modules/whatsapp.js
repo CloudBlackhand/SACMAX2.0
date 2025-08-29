@@ -48,11 +48,13 @@ class WhatsAppModule {
         // Verificar conexão
         await this.checkConnection();
         
+        // Iniciar polling para novas mensagens independentemente da conexão
+        // (o backend pode receber webhooks mesmo se o frontend não estiver "conectado")
+        this.startPolling();
+        
         // Se conectado, carregar chats do WAHA
         if (this.isConnected) {
             await this.loadWahaChats();
-            // Iniciar polling para novas mensagens
-            this.startPolling();
         }
     }
 
@@ -64,9 +66,7 @@ class WhatsAppModule {
         this.pollingActive = true;
         
         this.pollingInterval = setInterval(async () => {
-            if (this.isConnected) {
-                await this.checkForNewMessages();
-            }
+            await this.checkForNewMessages();
         }, 5000); // Verificar a cada 5 segundos
     }
 
@@ -85,12 +85,24 @@ class WhatsAppModule {
         if (!this.pollingActive) return;
         
         try {
+            console.log('🔄 Verificando novas mensagens...');
+            
             // Buscar novas mensagens do backend usando o novo endpoint
             const sinceParam = this.lastMessageCheck ? `?since=${this.lastMessageCheck.toISOString()}` : '';
-            const response = await fetch(`${SacsMaxConfig.backend.current}/api/whatsapp/new-messages${sinceParam}`);
-            if (!response.ok) return;
+            const url = `${SacsMaxConfig.backend.current}/api/whatsapp/new-messages${sinceParam}`;
+            console.log('📡 Fazendo requisição para:', url);
+            
+            const response = await fetch(url);
+            console.log('📡 Resposta do servidor:', response.status, response.statusText);
+            
+            if (!response.ok) {
+                console.warn('⚠️ Resposta não OK:', response.status);
+                return;
+            }
             
             const data = await response.json();
+            console.log('📡 Dados recebidos:', data);
+            
             if (data.success && data.data && data.data.length > 0) {
                 console.log(`📱 Encontradas ${data.count || data.data.length} novas mensagens`);
                 
@@ -101,6 +113,8 @@ class WhatsAppModule {
                 
                 // Atualizar interface
                 this.updateInterface();
+            } else {
+                console.log('📱 Nenhuma nova mensagem encontrada');
             }
             
             // Atualizar timestamp da última verificação
