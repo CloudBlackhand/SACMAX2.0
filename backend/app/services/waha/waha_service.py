@@ -104,16 +104,24 @@ class WahaService:
     async def get_chats(self, session_name: str = "default") -> Dict[str, Any]:
         """Obter chats/conversas"""
         try:
-            response = requests.get(
-                f"{self.waha_url}/api/chats",
-                params={"session": session_name},
-                timeout=10
-            )
+            url = f"{self.waha_url}/api/chats"
+            params = {"session": session_name}
+            
+            self.logger.info(f"🔍 Buscando chats: {url} com params: {params}")
+            
+            response = requests.get(url, params=params, timeout=10)
+            
+            self.logger.info(f"📱 Resposta WAHA chats: {response.status_code}")
+            
             if response.status_code == 200:
-                return {"status": "success", "data": response.json()}
+                data = response.json()
+                self.logger.info(f"📱 Chats encontrados: {len(data) if isinstance(data, list) else 'N/A'}")
+                return {"status": "success", "data": data}
             else:
+                self.logger.error(f"❌ Erro WAHA chats: {response.status_code} - {response.text}")
                 return {"status": "error", "message": f"Status {response.status_code}"}
         except Exception as e:
+            self.logger.error(f"❌ Exceção WAHA chats: {str(e)}")
             return {"status": "error", "message": str(e)}
 
     async def get_messages(self, chat_id: str, limit: int = 50, session_name: str = "default") -> Dict[str, Any]:
