@@ -584,50 +584,21 @@ async def webhook_handler(request: Request):
         return {"status": "error", "message": str(e)}
 
 async def process_and_save_message(message_data):
-    """Processar e salvar uma mensagem individual"""
+    """Processar e salvar uma mensagem individual - SEM RESTRIÇÕES"""
     try:
         # Verificar se é mensagem válida (não vazia e não de nós mesmos)
         if not message_data["chat_id"] or not message_data["message_text"] or message_data.get("from_me", False):
             logger.warning(f"⚠️ Mensagem inválida ignorada: {message_data}")
             return False
         
-        # Criar ID único baseado em timestamp para permitir mensagens repetidas
-        message_id = message_data.get("message_id")
-        unique_id = f"{message_data['chat_id']}_{message_data['message_text']}_{datetime.now().timestamp()}"
+        logger.info(f"📱 SALVANDO mensagem de {message_data['chat_id']} ({message_data['notify_name']}): {message_data['message_text']}")
         
-        # Verificar se é uma duplicata muito recente (últimos 5 segundos)
-        current_time = datetime.now().timestamp()
-        recent_duplicates = [
-            hash_id for hash_id in processed_message_ids 
-            if hash_id.startswith(f"{message_data['chat_id']}_{message_data['message_text']}_")
-        ]
-        
-        # Se há duplicatas muito recentes, ignorar
-        for duplicate in recent_duplicates:
-            try:
-                duplicate_time = float(duplicate.split('_')[-1])
-                if current_time - duplicate_time < 5:  # 5 segundos
-                    logger.info(f"🔄 Duplicata muito recente ignorada: {message_data['message_text'][:20]}...")
-                    return False
-            except:
-                pass
-        
-        logger.info(f"📱 Processando mensagem de {message_data['chat_id']} ({message_data['notify_name']}): {message_data['message_text']}")
-        logger.info(f"🔍 Debug - unique_id: {unique_id}")
-        logger.info(f"🔍 Debug - processed_ids count: {len(processed_message_ids)}")
-        
-        # Marcar como processado
-        processed_message_ids.add(unique_id)
-        
-        # Limpar IDs antigos se necessário
-        if len(processed_message_ids) > max_processed_ids:
-            processed_message_ids.clear()
-        
-        # Salvar mensagem no storage persistente
+        # SALVAR SEMPRE - sem verificação de duplicatas
         save_success = save_whatsapp_message(message_data["chat_id"], message_data)
         
         if save_success:
             # Criar objeto da mensagem para compatibilidade
+            message_id = message_data.get("message_id")
             new_message = {
                 "id": message_id or f"{message_data['chat_id']}_{int(datetime.now().timestamp())}",
                 "phone": message_data["chat_id"],
@@ -646,7 +617,7 @@ async def process_and_save_message(message_data):
             if len(new_messages_queue) > max_queue_size:
                 new_messages_queue = new_messages_queue[-max_queue_size:]
             
-            logger.info(f"✅ Mensagem salva: {message_data['notify_name'] or message_data['chat_id']}")
+            logger.info(f"✅ MENSAGEM SALVA COM SUCESSO: {message_data['notify_name'] or message_data['chat_id']}")
             
             # Processar assincronamente (não bloquear o webhook)
             import asyncio
@@ -654,11 +625,11 @@ async def process_and_save_message(message_data):
             
             return True
         else:
-            logger.error(f"❌ Falha ao salvar mensagem: {message_data['chat_id']}")
+            logger.error(f"❌ FALHA AO SALVAR MENSAGEM: {message_data['chat_id']}")
             return False
             
     except Exception as e:
-        logger.error(f"❌ Erro ao processar mensagem: {e}")
+        logger.error(f"❌ ERRO AO PROCESSAR MENSAGEM: {e}")
         return False
 
 @app.get("/api/whatsapp/new-messages")
