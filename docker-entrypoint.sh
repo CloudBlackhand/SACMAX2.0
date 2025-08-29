@@ -40,7 +40,7 @@ check_waha() {
 start_backend() {
     echo "🐍 Iniciando backend Python..."
     cd /app
-    python3 railway_startup.py &
+    python3 backend/main.py &
     BACKEND_PID=$!
     echo "✅ Backend Python iniciado (PID: $BACKEND_PID)"
 }
