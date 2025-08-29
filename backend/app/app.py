@@ -503,7 +503,7 @@ async def process_message_async(message_data):
 
 @app.post("/")
 async def webhook_handler(request: Request):
-    """Webhook do WAHA para receber mensagens"""
+    """Webhook do WAHA - Captura TODAS as mensagens automaticamente"""
     global new_messages_queue
     
     try:
@@ -522,78 +522,126 @@ async def webhook_handler(request: Request):
         webhook_data = await request.json()
         logger.info(f"📱 Dados do webhook: {webhook_data}")
         
-        message_data = None
+        # Processar TODOS os tipos de eventos de mensagem
+        messages_processed = 0
         
-        # Processar eventos de mensagem direta
+        # 1. Eventos de mensagem direta
         if webhook_data.get("event") == "message" or webhook_data.get("event") == "message.any":
             payload = webhook_data.get("payload", {})
             message_data = process_received_message(payload)
+            if message_data and message_data["chat_id"] and message_data["message_text"]:
+                success = await process_and_save_message(message_data)
+                if success:
+                    messages_processed += 1
         
-        # Processar eventos engine com unread_count (contém lastMessage)
+        # 2. Eventos engine com múltiplas mensagens
         elif webhook_data.get("event") == "engine.event":
             payload = webhook_data.get("payload", {})
+            
+            # Processar unread_count (última mensagem)
             if payload.get("event") == "unread_count":
-                # O lastMessage está em payload.data.lastMessage
                 data = payload.get("data", {})
                 last_message = data.get("lastMessage")
                 if last_message:
                     logger.info(f"🔍 Processando lastMessage: {last_message}")
                     message_data = process_received_message(last_message)
+                    if message_data and message_data["chat_id"] and message_data["message_text"]:
+                        success = await process_and_save_message(message_data)
+                        if success:
+                            messages_processed += 1
+            
+            # Processar outras mensagens no payload se existirem
+            if "messages" in payload.get("data", {}):
+                for msg in payload["data"]["messages"]:
+                    message_data = process_received_message(msg)
+                    if message_data and message_data["chat_id"] and message_data["message_text"]:
+                        success = await process_and_save_message(message_data)
+                        if success:
+                            messages_processed += 1
         
-        # Processar a mensagem se encontrada
-        if message_data and message_data["chat_id"] and message_data["message_text"] and not message_data["from_me"]:
-            try:
-                # Verificar se a mensagem já foi processada (idempotência)
-                message_id = message_data.get("message_id")
-                if message_id and message_id in processed_message_ids:
-                    logger.info(f"🔄 Mensagem já processada, ignorando: {message_id}")
-                    return {"status": "success", "message": "Mensagem já processada"}
-                
-                logger.info(f"📱 Mensagem recebida de {message_data['chat_id']} ({message_data['notify_name']}): {message_data['message_text']}")
-                
-                # Marcar mensagem como processada
-                if message_id:
-                    processed_message_ids.add(message_id)
-                    # Limpar IDs antigos se necessário
-                    if len(processed_message_ids) > max_processed_ids:
-                        # Manter apenas os últimos 500 IDs
-                        processed_message_ids.clear()
-                
-                # NOVO: Salvar mensagem no storage persistente
-                save_whatsapp_message(message_data["chat_id"], message_data)
-                
-                # Criar objeto da mensagem para compatibilidade
-                new_message = {
-                    "id": message_id or f"{message_data['chat_id']}_{int(datetime.now().timestamp())}",
-                    "phone": message_data["chat_id"],
-                    "message": message_data["message_text"],
-                    "senderName": message_data["notify_name"] or message_data["chat_id"],
-                    "timestamp": message_data["timestamp"],
-                    "received_at": datetime.now().isoformat(),
-                    "processed": False,
-                    "retry_count": 0
-                }
-                
-                # Adicionar à fila de mensagens (para compatibilidade)
-                new_messages_queue.append(new_message)
-                
-                # Manter tamanho da fila controlado
-                if len(new_messages_queue) > max_queue_size:
-                    new_messages_queue = new_messages_queue[-max_queue_size:]
-                
-                logger.info(f"✅ Mensagem salva no storage persistente: {message_data['notify_name'] or message_data['chat_id']}")
-                
-                # Processar assincronamente (não bloquear o webhook)
-                import asyncio
-                asyncio.create_task(process_message_async(new_message))
-                        
-            except Exception as msg_error:
-                logger.error(f"❌ Erro ao processar mensagem: {msg_error}")
+        # 3. Processar mensagens em lote se existirem
+        if "messages" in webhook_data:
+            for msg in webhook_data["messages"]:
+                message_data = process_received_message(msg)
+                if message_data and message_data["chat_id"] and message_data["message_text"]:
+                    success = await process_and_save_message(message_data)
+                    if success:
+                        messages_processed += 1
         
-        return {"status": "success", "message": "Webhook processado"}
+        # 4. Processar mensagem única se existir
+        if "message" in webhook_data:
+            message_data = process_received_message(webhook_data["message"])
+            if message_data and message_data["chat_id"] and message_data["message_text"]:
+                success = await process_and_save_message(message_data)
+                if success:
+                    messages_processed += 1
+        
+        logger.info(f"✅ Webhook processado: {messages_processed} mensagens salvas")
+        return {"status": "success", "message": f"{messages_processed} mensagens processadas"}
+        
     except Exception as e:
         logger.error(f"❌ Erro no webhook: {e}")
         return {"status": "error", "message": str(e)}
+
+async def process_and_save_message(message_data):
+    """Processar e salvar uma mensagem individual"""
+    try:
+        # Verificar se a mensagem já foi processada (idempotência)
+        message_id = message_data.get("message_id")
+        if message_id and message_id in processed_message_ids:
+            logger.info(f"🔄 Mensagem já processada, ignorando: {message_id}")
+            return False
+        
+        # Verificar se é mensagem válida (não vazia e não de nós mesmos)
+        if not message_data["chat_id"] or not message_data["message_text"] or message_data.get("from_me", False):
+            return False
+        
+        logger.info(f"📱 Processando mensagem de {message_data['chat_id']} ({message_data['notify_name']}): {message_data['message_text']}")
+        
+        # Marcar mensagem como processada
+        if message_id:
+            processed_message_ids.add(message_id)
+            # Limpar IDs antigos se necessário
+            if len(processed_message_ids) > max_processed_ids:
+                processed_message_ids.clear()
+        
+        # Salvar mensagem no storage persistente
+        save_success = save_whatsapp_message(message_data["chat_id"], message_data)
+        
+        if save_success:
+            # Criar objeto da mensagem para compatibilidade
+            new_message = {
+                "id": message_id or f"{message_data['chat_id']}_{int(datetime.now().timestamp())}",
+                "phone": message_data["chat_id"],
+                "message": message_data["message_text"],
+                "senderName": message_data["notify_name"] or message_data["chat_id"],
+                "timestamp": message_data["timestamp"],
+                "received_at": datetime.now().isoformat(),
+                "processed": False,
+                "retry_count": 0
+            }
+            
+            # Adicionar à fila de mensagens (para compatibilidade)
+            new_messages_queue.append(new_message)
+            
+            # Manter tamanho da fila controlado
+            if len(new_messages_queue) > max_queue_size:
+                new_messages_queue = new_messages_queue[-max_queue_size:]
+            
+            logger.info(f"✅ Mensagem salva: {message_data['notify_name'] or message_data['chat_id']}")
+            
+            # Processar assincronamente (não bloquear o webhook)
+            import asyncio
+            asyncio.create_task(process_message_async(new_message))
+            
+            return True
+        else:
+            logger.error(f"❌ Falha ao salvar mensagem: {message_data['chat_id']}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"❌ Erro ao processar mensagem: {e}")
+        return False
 
 @app.get("/api/whatsapp/new-messages")
 async def get_new_messages(since: str = None):
@@ -755,11 +803,28 @@ async def get_whatsapp_chats():
         }
 
 @app.get("/api/whatsapp/messages/{phone}")
-async def get_whatsapp_chat_messages(phone: str, limit: int = 100, since: str = None):
-    """Buscar mensagens de um chat específico"""
+async def get_whatsapp_chat_messages(phone: str, limit: int = 100, since: str = None, include_sent: bool = True):
+    """Buscar mensagens de um chat específico (incluindo enviadas)"""
     try:
         result = get_whatsapp_messages(phone=phone, limit=limit, since=since)
+        
+        if result["success"] and include_sent:
+            # Garantir que mensagens enviadas também sejam incluídas
+            messages = result["data"]["messages"]
+            
+            # Ordenar por timestamp
+            messages.sort(key=lambda x: x.get("timestamp", ""))
+            
+            # Limitar se necessário
+            if limit:
+                messages = messages[-limit:]
+            
+            result["data"]["messages"] = messages
+            result["data"]["total"] = len(messages)
+        
+        logger.info(f"📱 Retornando {result['data']['total']} mensagens para {phone}")
         return result
+        
     except Exception as e:
         logger.error(f"❌ Erro ao buscar mensagens do chat {phone}: {e}")
         return {
@@ -866,52 +931,49 @@ async def send_whatsapp_message(request: Request):
                 "error": "Telefone e mensagem são obrigatórios"
             }
         
+        # Criar dados da mensagem enviada
+        sent_message_data = {
+            "message_id": f"sent_{phone}_{int(datetime.now().timestamp())}",
+            "chat_id": phone,
+            "message_text": message,
+            "notify_name": "Você",
+            "timestamp": datetime.now().isoformat(),
+            "from_me": True
+        }
+        
         # Enviar via WAHA se disponível
+        waha_success = False
         if waha_service:
             try:
                 result = await waha_service.send_text_message(phone, message, "default")
-                if result.get("success"):
-                    # Salvar mensagem enviada no storage
-                    sent_message_data = {
-                        "message_id": f"sent_{phone}_{int(datetime.now().timestamp())}",
-                        "message_text": message,
-                        "notify_name": "Você",
-                        "timestamp": datetime.now().isoformat(),
-                        "from_me": True
-                    }
-                    save_whatsapp_message(phone, sent_message_data)
-                    
-                    return {
-                        "success": True,
-                        "message": "Mensagem enviada com sucesso",
-                        "waha_result": result
-                    }
+                waha_success = result.get("success", False)
+                
+                if waha_success:
+                    logger.info(f"✅ Mensagem enviada via WAHA: {phone}")
                 else:
-                    return {
-                        "success": False,
-                        "error": f"Erro ao enviar via WAHA: {result.get('error', 'Erro desconhecido')}"
-                    }
+                    logger.error(f"❌ Erro ao enviar via WAHA: {result.get('error', 'Erro desconhecido')}")
+                    
             except Exception as e:
                 logger.error(f"❌ Erro ao enviar via WAHA: {e}")
-                return {
-                    "success": False,
-                    "error": f"Erro ao enviar via WAHA: {str(e)}"
-                }
-        else:
-            # Simular envio se WAHA não estiver disponível
-            sent_message_data = {
-                "message_id": f"sent_{phone}_{int(datetime.now().timestamp())}",
-                "message_text": message,
-                "notify_name": "Você",
-                "timestamp": datetime.now().isoformat(),
-                "from_me": True
-            }
-            save_whatsapp_message(phone, sent_message_data)
+        
+        # SEMPRE salvar mensagem enviada no storage (independente do WAHA)
+        save_success = save_whatsapp_message(phone, sent_message_data)
+        
+        if save_success:
+            logger.info(f"✅ Mensagem enviada salva no storage: {phone}")
             
             return {
                 "success": True,
-                "message": "Mensagem salva (WAHA não disponível)",
-                "waha_available": False
+                "message": "Mensagem enviada e salva com sucesso",
+                "waha_success": waha_success,
+                "storage_saved": True,
+                "message_id": sent_message_data["message_id"]
+            }
+        else:
+            return {
+                "success": False,
+                "error": "Erro ao salvar mensagem no storage",
+                "waha_success": waha_success
             }
             
     except Exception as e:
@@ -945,20 +1007,48 @@ async def cleanup_whatsapp_messages():
 
 @app.get("/api/whatsapp/stats")
 async def get_whatsapp_stats():
-    """Obter estatísticas do sistema de mensagens"""
+    """Obter estatísticas completas do sistema de mensagens"""
     try:
+        # Calcular estatísticas detalhadas
+        total_received = 0
+        total_sent = 0
+        chats_with_messages = 0
+        
+        for phone, messages in whatsapp_messages_storage["messages"].items():
+            if messages:
+                chats_with_messages += 1
+                for msg in messages:
+                    if msg.get("type") == "sent" or msg.get("from_me"):
+                        total_sent += 1
+                    else:
+                        total_received += 1
+        
         return {
             "success": True,
             "data": {
-                "total_chats": len(whatsapp_messages_storage["chats"]),
-                "total_messages": whatsapp_messages_storage["total_messages"],
-                "memory_usage_mb": whatsapp_messages_storage["memory_usage"],
-                "last_update": whatsapp_messages_storage["last_update"],
+                "storage": {
+                    "total_chats": len(whatsapp_messages_storage["chats"]),
+                    "chats_with_messages": chats_with_messages,
+                    "total_messages": whatsapp_messages_storage["total_messages"],
+                    "messages_received": total_received,
+                    "messages_sent": total_sent,
+                    "memory_usage_mb": whatsapp_messages_storage["memory_usage"],
+                    "last_update": whatsapp_messages_storage["last_update"]
+                },
+                "queue": {
+                    "pending_messages": len(new_messages_queue),
+                    "processed_ids": len(processed_message_ids)
+                },
                 "limits": {
                     "max_messages_per_chat": MAX_MESSAGES_PER_CHAT,
                     "max_total_messages": MAX_TOTAL_MESSAGES,
                     "retention_days": MESSAGE_RETENTION_DAYS,
                     "max_memory_mb": MAX_MEMORY_USAGE_MB
+                },
+                "system": {
+                    "webhook_active": True,
+                    "persistence_enabled": True,
+                    "auto_cleanup_enabled": True
                 }
             }
         }
