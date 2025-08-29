@@ -206,6 +206,20 @@ async def root():
     except Exception as e:
         return HTMLResponse(content=f"<h1>Erro: {e}</h1>")
 
+@app.post("/")
+async def webhook_handler():
+    """Webhook do WAHA para receber mensagens"""
+    try:
+        # Log do webhook recebido
+        logger.info("📱 Webhook WAHA recebido")
+        
+        # Por enquanto, apenas retornar sucesso
+        # Futuramente, processar mensagens recebidas
+        return {"status": "success", "message": "Webhook recebido"}
+    except Exception as e:
+        logger.error(f"❌ Erro no webhook: {e}")
+        return {"status": "error", "message": str(e)}
+
 @app.get("/health")
 async def health_check():
     """Verificação de saúde da API"""
