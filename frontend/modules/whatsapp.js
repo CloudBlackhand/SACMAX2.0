@@ -168,6 +168,56 @@ class WhatsAppModule {
         }
     }
 
+    // Criar chat de teste para demonstração
+    createTestChat(phone, clientName) {
+        console.log('💬 Criando chat de teste:', clientName, phone);
+        
+        const chatId = `chat_${phone}`;
+        
+        // Verificar se o chat já existe
+        if (this.chats.has(chatId)) {
+            console.log('📱 Chat de teste já existe');
+            return;
+        }
+        
+        const newChat = {
+            id: chatId,
+            name: clientName || 'Teste',
+            phone: phone,
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(clientName || 'Teste')}&background=25d366&color=fff&size=40`,
+            status: 'online',
+            lastMessage: 'Mensagem de teste enviada',
+            lastMessageTime: new Date().toLocaleTimeString('pt-BR'),
+            unreadCount: 0,
+            isPinned: false,
+            wahaId: phone // Usar o telefone como ID do WAHA
+        };
+        
+        this.chats.set(chatId, newChat);
+        
+        // Inicializar mensagens
+        const initialMessages = [
+            {
+                id: Date.now(),
+                type: 'sent',
+                content: 'Teste do SacsMax - Sistema funcionando! 🚀',
+                timestamp: new Date().toLocaleTimeString('pt-BR'),
+                sender: 'Você',
+                status: 'sent'
+            }
+        ];
+        
+        this.messages.set(chatId, initialMessages);
+        
+        // Salvar dados
+        this.saveData();
+        
+        // Atualizar interface
+        this.updateInterface();
+        
+        console.log('✅ Chat de teste criado');
+    }
+
     // Função chamada pelo módulo de produtividade
     createNewChat(phone, clientName) {
         console.log('💬 Criando novo chat:', clientName, phone);
@@ -309,6 +359,11 @@ class WhatsAppModule {
                     // Atualizar status da mensagem
                     sentMessage.status = 'sent';
                     console.log('✅ Mensagem enviada via WAHA');
+                    
+                    // Criar chat de teste se não existir
+                    if (!this.currentChat.wahaId) {
+                        this.createTestChat(this.currentChat.phone, this.currentChat.name);
+                    }
                 } else {
                     sentMessage.status = 'error';
                     console.error('❌ Erro ao enviar mensagem:', result.error);
