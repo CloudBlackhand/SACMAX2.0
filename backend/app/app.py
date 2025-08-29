@@ -210,6 +210,22 @@ async def root():
     except Exception as e:
         return HTMLResponse(content=f"<h1>Erro: {e}</h1>")
 
+def process_received_message(message_payload):
+    """Helper function to process message data from different event types"""
+    chat_id = message_payload.get("from")
+    message_text = message_payload.get("body")
+    timestamp = message_payload.get("timestamp")
+    from_me = message_payload.get("fromMe", False)
+    notify_name = message_payload.get("_data", {}).get("notifyName", "") or message_payload.get("notifyName", "")
+    
+    return {
+        "chat_id": chat_id,
+        "message_text": message_text,
+        "timestamp": timestamp or datetime.now().isoformat(),
+        "from_me": from_me,
+        "notify_name": notify_name
+    }
+
 @app.post("/")
 async def webhook_handler(request: Request):
     """Webhook do WAHA para receber mensagens"""
@@ -223,49 +239,54 @@ async def webhook_handler(request: Request):
         webhook_data = await request.json()
         logger.info(f"📱 Dados do webhook: {webhook_data}")
         
-        # Processar mensagens recebidas
+        message_data = None
+        
+        # Processar eventos de mensagem direta
         if webhook_data.get("event") == "message":
             payload = webhook_data.get("payload", {})
-            
+            message_data = process_received_message(payload)
+        
+        # Processar eventos engine com unread_count (contém lastMessage)
+        elif webhook_data.get("event") == "engine.event":
+            payload = webhook_data.get("payload", {})
+            if payload.get("event") == "unread_count":
+                last_message = payload.get("lastMessage")
+                if last_message:
+                    message_data = process_received_message(last_message)
+        
+        # Processar a mensagem se encontrada
+        if message_data and message_data["chat_id"] and message_data["message_text"] and not message_data["from_me"]:
             try:
-                # Extrair informações da mensagem
-                chat_id = payload.get("from", "")
-                message_text = payload.get("body", "")
-                timestamp = payload.get("timestamp", "")
-                from_me = payload.get("fromMe", False)
-                notify_name = payload.get("_data", {}).get("notifyName", "")
+                logger.info(f"📱 Mensagem recebida de {message_data['chat_id']} ({message_data['notify_name']}): {message_data['message_text']}")
                 
-                if chat_id and message_text and not from_me:
-                    logger.info(f"📱 Mensagem recebida de {chat_id} ({notify_name}): {message_text}")
-                    
-                    # Criar objeto da mensagem
-                    new_message = {
-                        "phone": chat_id,
-                        "message": message_text,
-                        "senderName": notify_name or chat_id,
-                        "timestamp": timestamp or datetime.now().isoformat(),
-                        "received_at": datetime.now().isoformat()
-                    }
-                    
-                    # Adicionar à fila de mensagens
-                    new_messages_queue.append(new_message)
-                    
-                    # Manter tamanho da fila controlado
-                    if len(new_messages_queue) > max_queue_size:
-                        new_messages_queue = new_messages_queue[-max_queue_size:]
-                    
-                    logger.info(f"✅ Mensagem adicionada à fila: {notify_name or chat_id}")
-                    
-                    # Salvar no banco se disponível
-                    if waha_service:
-                        try:
-                            await waha_service._save_message_as_feedback(
-                                chat_id, message_text, "received", 
-                                contact_info=None, timestamp=timestamp
-                            )
-                        except Exception as e:
-                            logger.error(f"Erro ao salvar mensagem no banco: {e}")
-                    
+                # Criar objeto da mensagem
+                new_message = {
+                    "phone": message_data["chat_id"],
+                    "message": message_data["message_text"],
+                    "senderName": message_data["notify_name"] or message_data["chat_id"],
+                    "timestamp": message_data["timestamp"],
+                    "received_at": datetime.now().isoformat()
+                }
+                
+                # Adicionar à fila de mensagens
+                new_messages_queue.append(new_message)
+                
+                # Manter tamanho da fila controlado
+                if len(new_messages_queue) > max_queue_size:
+                    new_messages_queue = new_messages_queue[-max_queue_size:]
+                
+                logger.info(f"✅ Mensagem adicionada à fila: {message_data['notify_name'] or message_data['chat_id']}")
+                
+                # Salvar no banco se disponível
+                if waha_service:
+                    try:
+                        await waha_service._save_message_as_feedback(
+                            message_data["chat_id"], message_data["message_text"], "received", 
+                            contact_info=None, timestamp=message_data["timestamp"]
+                        )
+                    except Exception as e:
+                        logger.error(f"Erro ao salvar mensagem no banco: {e}")
+                        
             except Exception as msg_error:
                 logger.error(f"❌ Erro ao processar mensagem: {msg_error}")
         
