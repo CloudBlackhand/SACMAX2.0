@@ -127,7 +127,7 @@ async def get_messages(chat_id: str, limit: int = 50, session_name: str = "sacsm
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/send")
-async def send_message(request: MessageRequest, session_name: str = "sacsmax"):
+async def send_message(request: MessageRequest, session_name: str = "default"):
     """Enviar mensagem individual"""
     try:
         service = get_waha_service()
