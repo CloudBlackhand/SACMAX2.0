@@ -1,0 +1,35 @@
+{
+  "name": "sacsmax-frontend",
+  "version": "1.0.0",
+  "description": "Frontend do sistema SacsMax - Sistema de Gestão de SAC",
+  "main": "main.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "npx serve -s . -l $PORT",
+    "dev": "npx serve -s . -l 3000",
+    "build": "echo 'Frontend estático - não requer build'",
+    "test": "echo 'Testes não implementados'"
+  },
+  "keywords": [
+    "sac",
+    "whatsapp",
+    "chatbot",
+    "gestão",
+    "contatos",
+    "frontend"
+  ],
+  "author": "SacsMax Team",
+  "license": "MIT",
+  "dependencies": {
+    "serve": "^14.2.4"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sacsmax/frontend.git"
+  },
+  "homepage": "https://sacsmax.railway.app"
+}

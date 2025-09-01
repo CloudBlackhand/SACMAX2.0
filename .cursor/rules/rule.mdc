@@ -1,0 +1,32 @@
+---
+alwaysApply: true
+---
+
+# Regras de Desenvolvimento – SacsMax
+
+1. **Nunca criar código de exemplo ou simulação.**  
+   Todo código gerado deve ser funcional, real e pronto para produção.  
+   Evite comentários do tipo “// exemplo” ou variáveis fictícias como `foo`, `bar`, `sample`, `mock`, etc.
+
+2. **Sem dados falsos ou placeholders.**  
+   Não utilize dados de teste, QR-codes de exemplo, tokens fictícios ou qualquer informação que não exista de fato no sistema.
+
+3. **Integração real com APIs e serviços.**  
+   Sempre que uma integração for solicitada (WhatsApp, banco de dados, APIs externas), implemente a chamada real, tratando erros e respostas autênticas.
+
+4. **Evite `setTimeout` ou simuladores de comportamento.**  
+   Se for necessário aguardar uma resposta real (ex.: conexão WhatsApp), utilize promessas, eventos ou polling real, jamais `Math.random()` ou simulações.
+
+5. **Logs e notificações devem refletir o estado real do sistema.**  
+   Mensagens como “Simulando conexão…” ou “Mock de dados carregado” são proibidas.
+
+6. **Arquivos de configuração devem conter apenas valores válidos e reais.**  
+   Nunca insira URLs de exemplo, chaves fake ou credenciais temporárias.
+
+7. **Código gerado deve ser imediatamente executável no Railway.**  
+   Certifique-se de que todas as dependências, variáveis de ambiente e portas estejam corretamente configuradas para deploy real.
+
+8. **Revisão obrigatória antes de entregar.**  
+   Verifique se não há nenhum trecho de código que possa ser interpretado como “apenas demonstrativo”.
+
+Aplica-se a todos os arquivos do projeto, sem exceção

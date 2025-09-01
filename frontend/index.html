@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SacsMax - Sistema de Gestão de SAC</title>
+    <meta name="description" content="Sistema completo de gestão de SAC com WhatsApp, bot automático e gerenciamento de contatos">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📞</text></svg>">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+</head>
+<body>
+    <!-- Container para login e aplicação -->
+    <div id="app">
+        <!-- A aplicação será carregada dinamicamente pelo JavaScript -->
+    </div>
+    
+    <!-- Biblioteca QR Code -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <!-- Configuração centralizada -->
+    <script src="config.js"></script>
+    
+    <!-- Carregar módulos -->
+    <script src="modules/excel.js"></script>
+    <script src="modules/bot.js"></script>
+    <script src="modules/produtividade.js"></script>
+    <script src="modules/messages.js"></script>
+    <script src="modules/feedback.js"></script>
+    <script src="modules/settings.js"></script>
+    <script src="modules/whatsapp.js"></script>
+    <!-- Carregar aplicação principal -->
+    <script src="main.js?v=2.2"></script>
+</body>
+</html>

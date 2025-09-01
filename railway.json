@@ -1,0 +1,30 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile"
+  },
+  "deploy": {
+    "startCommand": "docker-entrypoint.sh",
+    "healthcheckPath": "/api/health",
+    "healthcheckTimeout": 300,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  },
+  "environments": {
+    "production": {
+      "variables": {
+        "RAILWAY_ENVIRONMENT": "production",
+        "NODE_ENV": "production",
+        "WAHA_URL": "https://waha-production-1c76.up.railway.app"
+      }
+    },
+    "development": {
+      "variables": {
+        "RAILWAY_ENVIRONMENT": "development",
+        "NODE_ENV": "development",
+        "WAHA_URL": "https://waha-production-1c76.up.railway.app"
+      }
+    }
+  }
+}
