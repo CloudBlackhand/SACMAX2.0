@@ -4,18 +4,18 @@ const SacsMaxConfig = {
     backend: {
         // Em desenvolvimento local
         local: "http://localhost:5000",
-        // Em produção (Railway) - usar URL relativa para funcionar em qualquer domínio
-        production: window.location.origin,
+        // Em produção (Railway) - usar URL do backend
+        production: "https://sacmax20-production.up.railway.app",
         // URL atual baseada no ambiente
         current: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
             ? "http://localhost:5000" 
-            : window.location.origin
+            : "https://sacmax20-production.up.railway.app"
     },
     
     // Configurações WAHA
     waha: {
         // URL do WAHA no Railway
-        url: "https://waha-production-1c76.up.railway.app",
+        url: "https://waha-production-e3dd.up.railway.app",
         session_name: "default",
         timeout: 10000,
         // API v1 do WAHA
