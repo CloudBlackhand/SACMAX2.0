@@ -184,8 +184,8 @@ class WhatsAppPersistenceService:
                 error_msg = f"Dados insuficientes para salvar mensagem - ID: {message_id}, Phone: {chat_phone}, Content: {bool(content)}"
                 logger.error(error_msg)
                 
-                # Salvar erro para análise posterior
-                await self._save_failed_message(message_data, error_msg)
+                # Salvar erro para análise posterior (síncrono)
+                self._save_failed_message_sync(message_data, error_msg)
                 return False
             
             # Converter timestamp
@@ -494,8 +494,8 @@ class WhatsAppPersistenceService:
             logger.error(f"❌ Erro ao obter estatísticas: {e}")
             return {'total_chats': 0, 'total_messages': 0, 'error': str(e)}
 
-    async def _save_failed_message(self, message_data: Dict, error_msg: str):
-        """Salvar mensagem que falhou para análise posterior"""
+    def _save_failed_message_sync(self, message_data: Dict, error_msg: str):
+        """Salvar mensagem que falhou para análise posterior (versão síncrona)"""
         try:
             if not self.db_manager:
                 return
@@ -524,6 +524,10 @@ class WhatsAppPersistenceService:
             
         except Exception as e:
             logger.error(f"❌ Erro ao salvar mensagem falhada: {e}")
+
+    async def _save_failed_message(self, message_data: Dict, error_msg: str):
+        """Salvar mensagem que falhou para análise posterior (versão assíncrona)"""
+        self._save_failed_message_sync(message_data, error_msg)
 
     def retry_failed_messages(self, limit: int = 10) -> int:
         """Tentar reprocessar mensagens que falharam"""
