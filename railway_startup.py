@@ -49,7 +49,7 @@ def check_dependencies():
 def check_database_connection():
     """Verificar conexão com banco de dados"""
     try:
-        from backend.database_config import db_manager, init_database
+        from database_config import db_manager, init_database
         
         # Tentar inicializar o banco
         if db_manager and db_manager.is_connected():
@@ -74,22 +74,22 @@ def start_backend():
         
         # Verificar se estamos no Railway
         if IS_RAILWAY:
-            # No Railway, usar uvicorn diretamente
-            backend_process = subprocess.Popen([
-                sys.executable, '-m', 'uvicorn', 
-                'backend.app.app:app', 
-                '--host', '0.0.0.0', 
-                '--port', str(PORT)
-            ])
+                    # No Railway, usar uvicorn diretamente
+        backend_process = subprocess.Popen([
+            sys.executable, '-m', 'uvicorn', 
+            'app.app:app', 
+            '--host', '0.0.0.0', 
+            '--port', str(PORT)
+        ])
         else:
-            # Em desenvolvimento local
-            backend_process = subprocess.Popen([
-                sys.executable, '-m', 'uvicorn', 
-                'backend.app.app:app', 
-                '--host', '0.0.0.0', 
-                '--port', str(PORT),
-                '--reload'
-            ])
+                    # Em desenvolvimento local
+        backend_process = subprocess.Popen([
+            sys.executable, '-m', 'uvicorn', 
+            'app.app:app', 
+            '--host', '0.0.0.0', 
+            '--port', str(PORT),
+            '--reload'
+        ])
         
         # Aguardar um pouco para verificar se iniciou
         time.sleep(5)
@@ -173,7 +173,7 @@ def main():
     
     # Executar migração das tabelas WhatsApp
     try:
-        from backend.migrate_whatsapp_tables import main as migrate_whatsapp
+        from migrate_whatsapp_tables import main as migrate_whatsapp
         logger.info("🗄️ Executando migração WhatsApp...")
         migration_success = migrate_whatsapp()
         if migration_success:
