@@ -111,7 +111,6 @@ class WhatsAppPersistenceService:
             
             # Preparar dados do chat
             name = chat_data.get('name', phone)
-            avatar_url = chat_data.get('avatar', '')
             status = chat_data.get('status', 'online')
             last_message = chat_data.get('last_message', '')
             last_message_time = chat_data.get('last_message_time')
@@ -128,15 +127,14 @@ class WhatsAppPersistenceService:
             elif not last_message_time:
                 last_message_time = datetime.now()
             
-            # Query UPSERT (INSERT ou UPDATE)
+            # Query UPSERT (INSERT ou UPDATE) - sem avatar_url
             upsert_query = """
                 INSERT INTO whatsapp_chats (
-                    phone, name, avatar_url, status, last_message, 
+                    phone, name, status, last_message, 
                     last_message_time, unread_count, is_pinned, is_muted, updated_at
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
                 ON CONFLICT (phone) DO UPDATE SET
                     name = EXCLUDED.name,
-                    avatar_url = EXCLUDED.avatar_url,
                     status = EXCLUDED.status,
                     last_message = EXCLUDED.last_message,
                     last_message_time = EXCLUDED.last_message_time,
@@ -147,7 +145,7 @@ class WhatsAppPersistenceService:
             """
             
             values = (
-                phone, name, avatar_url, status, last_message,
+                phone, name, status, last_message,
                 last_message_time, unread_count, is_pinned, is_muted
             )
             
@@ -273,13 +271,12 @@ class WhatsAppPersistenceService:
                 return []
             
             query = """
-                SELECT phone, name, avatar_url, status, last_message, 
-                       last_message_time, unread_count, is_pinned, is_muted,
-                       created_at, updated_at
-                FROM whatsapp_chats 
-                ORDER BY last_message_time DESC NULLS LAST
-                LIMIT %s
-            """
+                 SELECT phone, name, last_message, last_message_time, 
+                        unread_count, created_at, updated_at
+                 FROM whatsapp_chats 
+                 ORDER BY last_message_time DESC NULLS LAST
+                 LIMIT %s
+             """
             
             results = self.db_manager.fetch_all(query, (limit,))
             
@@ -288,15 +285,11 @@ class WhatsAppPersistenceService:
                 chat = {
                     'phone': row[0],
                     'name': row[1] or row[0],  # Fallback para phone se name for None
-                    'avatar': row[2] or f"https://ui-avatars.com/api/?name={row[1] or row[0]}&background=25d366&color=fff&size=40",
-                    'status': row[3] or 'online',
-                    'last_message': row[4] or 'Nova conversa',
-                    'last_message_time': row[5].isoformat() if row[5] else datetime.now().isoformat(),
-                    'unread_count': row[6] or 0,
-                    'is_pinned': row[7] or False,
-                    'is_muted': row[8] or False,
-                    'created_at': row[9].isoformat() if row[9] else None,
-                    'updated_at': row[10].isoformat() if row[10] else None
+                    'last_message': row[2] or 'Nova conversa',
+                    'last_message_time': row[3].isoformat() if row[3] else datetime.now().isoformat(),
+                    'unread_count': row[4] or 0,
+                    'created_at': row[5].isoformat() if row[5] else None,
+                    'updated_at': row[6].isoformat() if row[6] else None
                 }
                 chats.append(chat)
             
