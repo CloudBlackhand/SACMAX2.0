@@ -235,45 +235,47 @@ class ExcelModule {
         this.showProgress();
         
         try {
-            // Simula processamento do arquivo
-            await this.simulateFileProcessing();
+            // Processar arquivo Excel REAL usando backend
+            const formData = new FormData();
+            formData.append('file', file);
             
-            // Dados mock para demonstração
+            const response = await fetch(`${SacsMaxConfig.backend.current}/api/excel/process`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Erro ao processar arquivo: ${response.status} ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            
+            if (!result.success) {
+                throw new Error(result.error || 'Erro desconhecido ao processar arquivo');
+            }
+            
+            // Usar dados REAIS do backend
             this.processedData = {
-                sheets: ['Planilha1', 'Planilha2'],
-                headers: ['Nome', 'Telefone', 'Email', 'Empresa', 'Cargo'],
-                data: [
-                    ['João Silva', '(11) 99999-9999', 'joao@email.com', 'Empresa A', 'Gerente'],
-                    ['Maria Santos', '(11) 88888-8888', 'maria@email.com', 'Empresa B', 'Analista'],
-                    ['Pedro Costa', '(11) 77777-7777', 'pedro@email.com', 'Empresa C', 'Diretor'],
-                    ['Ana Oliveira', '(11) 66666-6666', 'ana@email.com', 'Empresa D', 'Coordenadora'],
-                    ['Carlos Lima', '(11) 55555-5555', 'carlos@email.com', 'Empresa E', 'Supervisor']
-                ]
+                sheets: result.data.sheets || [],
+                headers: result.data.headers || [],
+                data: result.data.rows || [],
+                totalRows: result.data.totalRows || 0,
+                fileName: file.name
             };
+            
+            console.log(`✅ Arquivo processado: ${this.processedData.totalRows} registros encontrados`);
             
             this.populateProcessingOptions();
             this.hideProgress();
             
         } catch (error) {
             this.hideProgress();
+            console.error('❌ Erro ao processar Excel:', error);
             throw error;
         }
     }
 
-    async simulateFileProcessing() {
-        return new Promise((resolve) => {
-            let progress = 0;
-            const interval = setInterval(() => {
-                progress += Math.random() * 20;
-                if (progress >= 100) {
-                    progress = 100;
-                    clearInterval(interval);
-                    resolve();
-                }
-                this.updateProgress(progress);
-            }, 200);
-        });
-    }
+    // Método removido - processamento real substituiu a simulação
 
     showProgress() {
         const progress = document.getElementById('upload-progress');

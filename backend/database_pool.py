@@ -96,35 +96,58 @@ class DatabasePool:
     
     @contextmanager
     def get_connection(self):
-        """Obter conexão do pool com gerenciamento automático"""
+        """Obter conexão do pool com gerenciamento automático e retry"""
         conn = None
-        try:
-            if not self.pool:
-                # Tentar reconectar se pool não existe
-                self._reconnect()
-            
-            if self.pool:
-                conn = self.pool.getconn()
-                if conn:
-                    # Verificar se conexão está ativa
-                    if not self._is_connection_alive(conn):
-                        self.pool.putconn(conn, close=True)
-                        conn = self.pool.getconn()
-                    
-                    yield conn
-                else:
-                    raise Exception("Não foi possível obter conexão do pool")
-            else:
-                raise Exception("Pool de conexões não disponível")
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                if not self.pool:
+                    logger.info(f"Pool não existe, tentando reconectar (tentativa {retry_count + 1})")
+                    self._reconnect()
                 
-        except Exception as e:
-            logger.error(f"Erro ao obter conexão: {e}")
-            # Tentar reconectar
-            self._reconnect()
-            raise e
+                if self.pool:
+                    try:
+                        conn = self.pool.getconn()
+                        if conn:
+                            # Verificar se conexão está ativa
+                            if not self._is_connection_alive(conn):
+                                logger.warning("Conexão morta detectada, obtendo nova")
+                                self.pool.putconn(conn, close=True)
+                                conn = self.pool.getconn()
+                            
+                            if conn and self._is_connection_alive(conn):
+                                yield conn
+                                return
+                            else:
+                                raise Exception("Conexão obtida não está funcionando")
+                        else:
+                            raise Exception("Pool retornou conexão None")
+                    except Exception as pool_error:
+                        logger.error(f"Erro ao obter conexão do pool: {pool_error}")
+                        raise pool_error
+                else:
+                    raise Exception("Pool de conexões não foi criado")
+                    
+            except Exception as e:
+                retry_count += 1
+                logger.error(f"Erro na tentativa {retry_count}: {e}")
+                
+                if retry_count >= max_retries:
+                    logger.error(f"Falha após {max_retries} tentativas")
+                    raise Exception(f"Falha ao obter conexão após {max_retries} tentativas: {e}")
+                
+                # Aguardar antes de tentar novamente
+                import time
+                time.sleep(1 * retry_count)  # Backoff exponencial
+                
         finally:
             if conn and self.pool:
-                self.pool.putconn(conn)
+                try:
+                    self.pool.putconn(conn)
+                except Exception as e:
+                    logger.error(f"Erro ao retornar conexão ao pool: {e}")
     
     def _is_connection_alive(self, conn):
         """Verificar se conexão está ativa"""

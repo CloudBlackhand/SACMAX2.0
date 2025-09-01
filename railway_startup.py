@@ -165,11 +165,24 @@ def main():
         logger.error("❌ Dependências não atendidas")
         return False
     
-    # Verificar banco de dados (opcional no Railway)
+    # Verificar banco de dados e executar migrações
     if not IS_RAILWAY:
         check_database_connection()
     else:
         logger.info("ℹ️ Verificação de banco de dados pulada no Railway")
+    
+    # Executar migração das tabelas WhatsApp
+    try:
+        from backend.migrate_whatsapp_tables import main as migrate_whatsapp
+        logger.info("🗄️ Executando migração WhatsApp...")
+        migration_success = migrate_whatsapp()
+        if migration_success:
+            logger.info("✅ Migração WhatsApp concluída")
+        else:
+            logger.warning("⚠️ Migração WhatsApp falhou, mas continuando...")
+    except Exception as e:
+        logger.warning(f"⚠️ Erro na migração WhatsApp: {e}")
+        logger.info("ℹ️ Sistema continuará funcionando sem persistência PostgreSQL")
     
     # Configurar frontend
     serve_frontend()

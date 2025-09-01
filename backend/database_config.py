@@ -111,16 +111,21 @@ def get_db_connection():
         return conn
         
     except Exception as e:
-        # Fallback para URL hardcoded do Railway (desenvolvimento local)
+        # Último fallback - tentar com URL de desenvolvimento se configurada
         try:
-            railway_url = "postgresql://postgres:MbVOkkTYrVOlJXGTKiVHGVOfCjaixYdv@nozomi.proxy.rlwy.net:49949/railway"
-            conn = psycopg2.connect(railway_url)
-            logger.info("✅ Conectado ao banco PostgreSQL do Railway via URL hardcoded")
-            return conn
+            development_url = os.environ.get('DEVELOPMENT_DATABASE_URL')
+            if development_url:
+                conn = psycopg2.connect(development_url)
+                logger.info("✅ Conectado ao banco PostgreSQL via DEVELOPMENT_DATABASE_URL")
+                return conn
+            else:
+                logger.error(f"❌ Nenhuma configuração de banco disponível")
+                logger.error(f"❌ Configure DATABASE_URL ou DATABASE_PUBLIC_URL")
+                raise Exception("Configuração de banco de dados não encontrada")
         except Exception as e2:
             logger.error(f"❌ Erro ao conectar ao banco: {e}")
             logger.error(f"❌ Erro no fallback: {e2}")
-            raise e
+            raise Exception("Falha total na conexão com banco de dados")
 
 def test_connection():
     """Testar conexão com banco"""

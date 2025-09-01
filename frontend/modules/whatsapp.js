@@ -79,16 +79,42 @@ class WhatsAppModule {
         this.startPolling();
     }
 
-    // Iniciar polling para novas mensagens
+    // Iniciar polling inteligente para novas mensagens
     startPolling() {
         if (this.pollingActive) return;
         
-        console.log('🔄 Iniciando polling para novas mensagens...');
+        console.log('🔄 Iniciando polling inteligente para novas mensagens...');
         this.pollingActive = true;
+        this.pollingInterval = this.cacheConfig.refreshInterval;
+        this.consecutiveEmptyPolls = 0;
         
-        this.pollingInterval = setInterval(async () => {
-            await this.checkForNewMessages();
-        }, this.cacheConfig.refreshInterval);
+        this.scheduleNextPoll();
+    }
+    
+    // Agendar próximo poll com backoff inteligente
+    scheduleNextPoll() {
+        if (!this.pollingActive) return;
+        
+        setTimeout(async () => {
+            if (!this.pollingActive) return;
+            
+            const hasNewMessages = await this.checkForNewMessages();
+            
+            // Ajustar intervalo baseado na atividade
+            if (hasNewMessages) {
+                // Se há atividade, reduzir intervalo
+                this.pollingInterval = Math.max(2000, this.pollingInterval * 0.8);
+                this.consecutiveEmptyPolls = 0;
+            } else {
+                // Se não há atividade, aumentar intervalo gradualmente
+                this.consecutiveEmptyPolls++;
+                if (this.consecutiveEmptyPolls > 3) {
+                    this.pollingInterval = Math.min(30000, this.pollingInterval * 1.2);
+                }
+            }
+            
+            this.scheduleNextPoll();
+        }, this.pollingInterval);
     }
 
     // Parar polling
@@ -103,7 +129,7 @@ class WhatsAppModule {
 
     // Verificar novas mensagens
     async checkForNewMessages() {
-        if (!this.pollingActive) return;
+        if (!this.pollingActive) return false;
         
         try {
             console.log('🔄 Verificando novas mensagens...');
@@ -112,11 +138,13 @@ class WhatsAppModule {
             const sinceParam = this.lastMessageCheck ? `?since=${this.lastMessageCheck.toISOString()}` : '';
             const url = `${SacsMaxConfig.backend.current}/api/whatsapp/new-messages${sinceParam}`;
             
-            const response = await fetch(url);
+            const response = await fetch(url, {
+                signal: AbortSignal.timeout(8000) // Timeout de 8 segundos
+            });
             
             if (!response.ok) {
                 console.warn('⚠️ Resposta não OK:', response.status);
-                return;
+                return false;
             }
             
             const data = await response.json();
@@ -134,13 +162,24 @@ class WhatsAppModule {
                 
                 // Confirmar que as mensagens foram processadas
                 await this.confirmMessagesProcessed();
+                
+                // Atualizar timestamp da última verificação
+                this.lastMessageCheck = new Date();
+                
+                return true; // Indica que houve atividade
             }
             
             // Atualizar timestamp da última verificação
             this.lastMessageCheck = new Date();
+            return false; // Não houve atividade
             
         } catch (error) {
-            console.error('❌ Erro ao verificar novas mensagens:', error);
+            if (error.name === 'AbortError') {
+                console.warn('⏰ Timeout ao verificar mensagens');
+            } else {
+                console.error('❌ Erro ao verificar novas mensagens:', error);
+            }
+            return false;
         }
     }
 

@@ -14,12 +14,14 @@ import uvicorn
 import os
 import json
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 import threading
 import time
 from pathlib import Path
 import logging
 import pandas as pd
+import asyncio
+from collections import defaultdict, deque
 
 # Configuração de logging
 logging.basicConfig(level=logging.INFO)
@@ -27,13 +29,12 @@ logger = logging.getLogger(__name__)
 
 # Importações condicionais para evitar erros
 import sys
-import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 try:
     from excel_to_database import ExcelToDatabaseConverter
     from database_config import get_db_manager, init_database, close_database
-    from feedback_analyzer import feedback_analyzer
+
     from app.services.excel_service import ExcelService
     from app.services.sentiment_analyzer import sentiment_analyzer
     from app.services.feedback_service import feedback_service
@@ -42,7 +43,7 @@ except ImportError as e:
     print(f" Erro de importação: {e}")
     ExcelToDatabaseConverter = None
     get_db_manager = None
-    feedback_analyzer = None
+
     ExcelService = None
     sentiment_analyzer = None
     feedback_service = None
@@ -115,28 +116,47 @@ except ImportError as e:
     logger.warning(f"⚠️ WAHA/WhatsApp não disponível: {e}")
     waha_service = None
 
-# Armazenamento temporário para mensagens recebidas
-new_messages_queue = []
-max_queue_size = 1000
+# Sistema limpo - tudo direto no PostgreSQL
+# new_messages_queue removido - usamos PostgreSQL
 
 # Controle de mensagens já processadas (idempotência)
 processed_message_ids = set()
 max_processed_ids = 1000
 
-# NOVO: Sistema de persistência de mensagens WhatsApp
-whatsapp_messages_storage = {
-    "messages": {},  # {phone: [messages]}
-    "chats": {},     # {phone: chat_info}
-    "last_update": datetime.now().isoformat(),
-    "total_messages": 0,
-    "memory_usage": 0  # Controle de uso de memória
-}
+# Rate limiting para webhooks
+rate_limit_storage = defaultdict(lambda: deque(maxlen=100))
 
-# Configuração de retenção e memória
-MESSAGE_RETENTION_DAYS = 15
-MAX_MESSAGES_PER_CHAT = 500  # Reduzido para melhor controle de memória
-MAX_TOTAL_MESSAGES = 10000   # Limite total de mensagens no sistema
-MAX_MEMORY_USAGE_MB = 100    # Limite de memória em MB
+async def check_rate_limit(client_ip: str, current_time: float, max_requests: int = 100, window_seconds: int = 60) -> bool:
+    """Verificar rate limit por IP"""
+    try:
+        requests_queue = rate_limit_storage[client_ip]
+        
+        # Remover requests antigos (fora da janela de tempo)
+        while requests_queue and current_time - requests_queue[0] > window_seconds:
+            requests_queue.popleft()
+        
+        # Verificar se excedeu o limite
+        if len(requests_queue) >= max_requests:
+            return False
+        
+        # Adicionar request atual
+        requests_queue.append(current_time)
+        return True
+        
+    except Exception as e:
+        logger.error(f"Erro no rate limiting: {e}")
+        return True  # Em caso de erro, permitir o request
+
+# Importar serviço de persistência WhatsApp limpo
+try:
+    from app.services.whatsapp_persistence_service import WhatsAppPersistenceService
+    from database_config import get_db_manager
+    db_manager = get_db_manager()
+    whatsapp_persistence = WhatsAppPersistenceService(db_manager)
+    logger.info("✅ Serviço de persistência WhatsApp inicializado")
+except ImportError as e:
+    whatsapp_persistence = None
+    logger.warning(f"⚠️ Serviço de persistência WhatsApp não disponível: {e}")
 
 # Endpoints de compatibilidade WAHA
 @app.get("/api/waha/status")
@@ -274,11 +294,11 @@ def process_received_message(message_payload):
         "notify_name": notify_name
     }
 
-# NOVO: Funções para persistência de mensagens WhatsApp
-def save_whatsapp_message(phone, message_data):
-    """Salvar mensagem WhatsApp no storage persistente"""
-    global whatsapp_messages_storage
     
+
+# NOVO: Funções para persistência de mensagens WhatsApp (PostgreSQL + Memoria)
+def save_whatsapp_message(phone, message_data):
+    """Salvar mensagem WhatsApp apenas no PostgreSQL (sistema limpo)"""
     try:
         # Normalizar telefone
         phone = str(phone).strip()
@@ -286,190 +306,42 @@ def save_whatsapp_message(phone, message_data):
             logger.warning("⚠️ Telefone vazio, ignorando mensagem")
             return False
         
-        # Verificar limite total de mensagens
-        if whatsapp_messages_storage["total_messages"] >= MAX_TOTAL_MESSAGES:
-            logger.warning("⚠️ Limite total de mensagens atingido, executando limpeza...")
-            cleanup_old_messages()
+        # Verificar se o serviço está disponível
+        if not whatsapp_persistence:
+            logger.error("❌ Serviço de persistência não disponível")
+            return False
         
-        # Criar estrutura de mensagem
+        # Criar estrutura de mensagem limpa para PostgreSQL
         message = {
-            "id": message_data.get("message_id") or f"{phone}_{int(datetime.now().timestamp())}",
-            "phone": phone,
+            "message_id": message_data.get("message_id") or f"{phone}_{int(datetime.now().timestamp())}",
+            "chat_phone": phone,
             "content": message_data.get("message_text", ""),
             "sender": message_data.get("notify_name", phone),
-            "timestamp": message_data.get("timestamp", datetime.now().isoformat()),
-            "type": "received" if not message_data.get("from_me", False) else "sent",
+            "message_type": "text",
+            "direction": "sent" if message_data.get("from_me", False) else "received",
             "status": "received",
-            "created_at": datetime.now().isoformat()
+            "timestamp": datetime.now(),
+            "waha_data": message_data
         }
         
-        # Inicializar chat se não existir
-        if phone not in whatsapp_messages_storage["messages"]:
-            whatsapp_messages_storage["messages"][phone] = []
-            whatsapp_messages_storage["chats"][phone] = {
-                "phone": phone,
-                "name": message_data.get("notify_name", phone),
-                "last_message": message["content"],
-                "last_message_time": message["timestamp"],
-                "unread_count": 1,  # Iniciar com 1 mensagem não lida
-                "message_count": 0,
-                "created_at": datetime.now().isoformat(),
-                "updated_at": datetime.now().isoformat()
-            }
+        # Salvar no PostgreSQL
+        success = whatsapp_persistence.save_message(message)
+        if success:
+            logger.info(f"✅ Mensagem salva: {phone} - {message['content'][:50]}...")
+            return True
         else:
-            # Incrementar contador de não lidas apenas para mensagens recebidas
-            if not message_data.get("from_me", False):
-                whatsapp_messages_storage["chats"][phone]["unread_count"] = (
-                    whatsapp_messages_storage["chats"][phone].get("unread_count", 0) + 1
-                )
-        
-        # Adicionar mensagem
-        whatsapp_messages_storage["messages"][phone].append(message)
-        
-        # Limitar número de mensagens por chat
-        if len(whatsapp_messages_storage["messages"][phone]) > MAX_MESSAGES_PER_CHAT:
-            whatsapp_messages_storage["messages"][phone] = whatsapp_messages_storage["messages"][phone][-MAX_MESSAGES_PER_CHAT:]
-        
-        # Atualizar informações do chat
-        chat_info = whatsapp_messages_storage["chats"][phone]
-        chat_info["last_message"] = message["content"]
-        chat_info["last_message_time"] = message["timestamp"]
-        chat_info["message_count"] = len(whatsapp_messages_storage["messages"][phone])
-        chat_info["updated_at"] = datetime.now().isoformat()
-        
-        # Atualizar contadores
-        whatsapp_messages_storage["total_messages"] += 1
-        whatsapp_messages_storage["last_update"] = datetime.now().isoformat()
-        
-        # Calcular uso de memória aproximado
-        import sys
-        storage_size = sys.getsizeof(whatsapp_messages_storage)
-        whatsapp_messages_storage["memory_usage"] = storage_size / (1024 * 1024)  # MB
-        
-        logger.info(f"✅ Mensagem salva para {phone}: {message['content'][:50]}... (Memória: {whatsapp_messages_storage['memory_usage']:.2f}MB)")
-        return True
+            logger.error(f"❌ Falha ao salvar mensagem: {phone}")
+            return False
         
     except Exception as e:
         logger.error(f"❌ Erro ao salvar mensagem WhatsApp: {e}")
         return False
 
-def cleanup_old_messages():
-    """Limpar mensagens antigas (mais de 15 dias)"""
-    global whatsapp_messages_storage
-    
-    try:
-        from datetime import timedelta
-        cutoff_date = datetime.now() - timedelta(days=MESSAGE_RETENTION_DAYS)
-        cutoff_timestamp = cutoff_date.isoformat()
-        
-        removed_count = 0
-        for phone in list(whatsapp_messages_storage["messages"].keys()):
-            original_count = len(whatsapp_messages_storage["messages"][phone])
-            
-            # Filtrar mensagens recentes
-            recent_messages = [
-                msg for msg in whatsapp_messages_storage["messages"][phone]
-                if msg.get("timestamp", "") > cutoff_timestamp
-            ]
-            
-            # Atualizar lista de mensagens
-            whatsapp_messages_storage["messages"][phone] = recent_messages
-            
-            # Remover chat se não há mais mensagens
-            if len(recent_messages) == 0:
-                del whatsapp_messages_storage["messages"][phone]
-                if phone in whatsapp_messages_storage["chats"]:
-                    del whatsapp_messages_storage["chats"][phone]
-            
-            removed_count += original_count - len(recent_messages)
-        
-        if removed_count > 0:
-            logger.info(f"🧹 Limpeza automática: {removed_count} mensagens antigas removidas")
-        
-        # Atualizar contador total
-        total_messages = sum(len(messages) for messages in whatsapp_messages_storage["messages"].values())
-        whatsapp_messages_storage["total_messages"] = total_messages
-        
-    except Exception as e:
-        logger.error(f"❌ Erro na limpeza automática: {e}")
 
-def get_whatsapp_messages(phone=None, limit=100, since=None):
-    """Buscar mensagens WhatsApp"""
-    global whatsapp_messages_storage
-    
-    try:
-        if phone:
-            # Buscar mensagens de um telefone específico
-            messages = whatsapp_messages_storage["messages"].get(phone, [])
-            chat_info = whatsapp_messages_storage["chats"].get(phone, {})
-            
-            # Filtrar por data se especificado
-            if since:
-                try:
-                    # Normalizar timestamp para evitar problemas de timezone
-                    since_str = since.replace('Z', '+00:00') if 'Z' in since else since
-                    since_time = datetime.fromisoformat(since_str)
-                    
-                    filtered_messages = []
-                    for msg in messages:
-                        try:
-                            msg_timestamp = msg.get("timestamp", "")
-                            if msg_timestamp:
-                                msg_str = msg_timestamp.replace('Z', '+00:00') if 'Z' in msg_timestamp else msg_timestamp
-                                msg_time = datetime.fromisoformat(msg_str)
-                                if msg_time > since_time:
-                                    filtered_messages.append(msg)
-                        except Exception as msg_e:
-                            logger.warning(f"⚠️ Erro ao processar timestamp da mensagem: {msg_e}")
-                            # Incluir mensagem mesmo com erro de timestamp
-                            filtered_messages.append(msg)
-                    
-                    messages = filtered_messages
-                except Exception as e:
-                    logger.error(f"❌ Erro no filtro: {e}")
-                    # Em caso de erro, retornar todas as mensagens
-                    pass
-            
-            # Limitar número de mensagens
-            messages = messages[-limit:] if limit else messages
-            
-            return {
-                "success": True,
-                "data": {
-                    "messages": messages,
-                    "chat_info": chat_info,
-                    "total": len(messages)
-                }
-            }
-        else:
-            # Buscar todos os chats
-            chats = []
-            for phone, chat_info in whatsapp_messages_storage["chats"].items():
-                messages = whatsapp_messages_storage["messages"].get(phone, [])
-                chats.append({
-                    **chat_info,
-                    "message_count": len(messages),
-                    "last_message": messages[-1] if messages else None
-                })
-            
-            # Ordenar por última mensagem
-            chats.sort(key=lambda x: x.get("last_message_time", ""), reverse=True)
-            
-            return {
-                "success": True,
-                "data": {
-                    "chats": chats,
-                    "total_chats": len(chats),
-                    "total_messages": whatsapp_messages_storage["total_messages"]
-                }
-            }
-            
-    except Exception as e:
-        logger.error(f"❌ Erro ao buscar mensagens WhatsApp: {e}")
-        return {
-            "success": False,
-            "error": str(e)
-    }
+
+
+
+
 
 async def process_message_async(message_data):
     """Processar mensagem de forma assíncrona"""
@@ -501,12 +373,23 @@ async def process_message_async(message_data):
         logger.error(f"❌ Erro no processamento assíncrono: {e}")
         message_data["processed"] = False
 
-@app.post("/")
+@app.post("/webhook/waha")
 async def webhook_handler(request: Request):
     """Webhook do WAHA - Captura TODAS as mensagens automaticamente"""
-    global new_messages_queue
     
     try:
+        # Rate limiting básico por IP
+        client_ip = request.client.host
+        current_time = time.time()
+        
+        # Verificar rate limit (máximo 100 requests por minuto por IP)
+        if not await check_rate_limit(client_ip, current_time):
+            logger.warning(f"⚠️ Rate limit excedido para IP: {client_ip}")
+            return JSONResponse(
+                content={"status": "error", "message": "Rate limit exceeded"}, 
+                status_code=429
+            )
+        
         # Log do webhook recebido
         logger.info("📱 Webhook WAHA recebido")
         
@@ -516,12 +399,44 @@ async def webhook_handler(request: Request):
             auth_header = request.headers.get("authorization")
             if not auth_header or auth_header != f"Bearer {webhook_secret}":
                 logger.warning("⚠️ Webhook sem autenticação válida")
-                return {"status": "error", "message": "Unauthorized"}, 401
+                return JSONResponse(
+                    content={"status": "error", "message": "Unauthorized"}, 
+                    status_code=401
+                )
         
-        # Obter dados do webhook
-        webhook_data = await request.json()
-        logger.info(f"📱 Dados do webhook: {webhook_data}")
+        # Obter dados do webhook com timeout
+        try:
+            webhook_data = await asyncio.wait_for(request.json(), timeout=10.0)
+            logger.info(f"📱 Webhook recebido do tipo: {webhook_data.get('event', 'unknown')}")
+        except asyncio.TimeoutError:
+            logger.error("⏰ Timeout ao ler dados do webhook")
+            return JSONResponse(
+                content={"status": "error", "message": "Request timeout"}, 
+                status_code=408
+            )
+        except Exception as json_error:
+            logger.error(f"❌ Erro ao processar JSON do webhook: {json_error}")
+            return JSONResponse(
+                content={"status": "error", "message": "Invalid JSON"}, 
+                status_code=400
+            )
         
+        # Processar webhook de forma assíncrona (não bloquear resposta)
+        asyncio.create_task(process_webhook_async(webhook_data))
+        
+        # Retornar resposta imediata
+        return JSONResponse(content={"status": "success", "message": "Webhook received"})
+        
+    except Exception as e:
+        logger.error(f"❌ Erro no webhook: {e}")
+        return JSONResponse(
+            content={"status": "error", "message": "Internal server error"}, 
+            status_code=500
+        )
+
+async def process_webhook_async(webhook_data: Dict[str, Any]):
+    """Processar webhook de forma assíncrona"""
+    try:
         # Processar TODOS os tipos de eventos de mensagem
         messages_processed = 0
         
@@ -577,16 +492,13 @@ async def webhook_handler(request: Request):
                     messages_processed += 1
         
         logger.info(f"✅ Webhook processado: {messages_processed} mensagens salvas")
-        return {"status": "success", "message": f"{messages_processed} mensagens processadas"}
         
     except Exception as e:
-        logger.error(f"❌ Erro no webhook: {e}")
-        return {"status": "error", "message": str(e)}
+        logger.error(f"❌ Erro no processamento assíncrono do webhook: {e}")
+        # Não retornar erro aqui pois é processamento assíncrono
 
 async def process_and_save_message(message_data):
-    """Processar e salvar uma mensagem individual - SIMPLES COMO WHATSAPP"""
-    global new_messages_queue
-    
+    """Processar e salvar uma mensagem individual - DIRETO NO POSTGRESQL"""
     try:
         # Verificar se é mensagem válida (não vazia e não de nós mesmos)
         if not message_data["chat_id"] or not message_data["message_text"] or message_data.get("from_me", False):
@@ -595,35 +507,11 @@ async def process_and_save_message(message_data):
         
         logger.info(f"📱 SALVANDO mensagem de {message_data['chat_id']} ({message_data['notify_name']}): {message_data['message_text']}")
         
-        # SALVAR MENSAGEM DIRETAMENTE - SEM COMPLICAÇÕES
+        # SALVAR MENSAGEM DIRETAMENTE NO POSTGRESQL
         save_success = save_whatsapp_message(message_data["chat_id"], message_data)
         
         if save_success:
-            # Criar objeto da mensagem para compatibilidade
-            new_message = {
-                "id": message_data.get("message_id") or f"{message_data['chat_id']}_{int(datetime.now().timestamp())}",
-                "phone": message_data["chat_id"],
-                "message": message_data["message_text"],
-                "senderName": message_data["notify_name"] or message_data["chat_id"],
-                "timestamp": message_data["timestamp"],
-                "received_at": datetime.now().isoformat(),
-                "processed": False,
-                "retry_count": 0
-            }
-            
-            # Adicionar à fila de mensagens
-            new_messages_queue.append(new_message)
-            
-            # Manter tamanho da fila controlado
-            if len(new_messages_queue) > max_queue_size:
-                new_messages_queue = new_messages_queue[-max_queue_size:]
-            
-            logger.info(f"✅ MENSAGEM SALVA COM SUCESSO: {message_data['notify_name'] or message_data['chat_id']}")
-            
-            # Processar assincronamente
-            import asyncio
-            asyncio.create_task(process_message_async(new_message))
-            
+            logger.info(f"✅ MENSAGEM SALVA NO POSTGRESQL: {message_data['notify_name'] or message_data['chat_id']}")
             return True
         else:
             logger.error(f"❌ FALHA AO SALVAR: {message_data['chat_id']}")
@@ -635,58 +523,53 @@ async def process_and_save_message(message_data):
 
 @app.get("/api/whatsapp/new-messages")
 async def get_new_messages(since: str = None):
-    """Endpoint para o frontend buscar novas mensagens recebidas"""
-    global new_messages_queue
-    
+    """Buscar novas mensagens do PostgreSQL (sistema limpo)"""
     try:
-        logger.info(f"📡 Buscando novas mensagens. Fila atual: {len(new_messages_queue)} mensagens")
-        logger.info(f"📡 Parâmetro since: {since}")
+        if not whatsapp_persistence:
+            return {
+                "success": False,
+                "error": "Serviço de persistência não disponível"
+            }
         
-        # Se since foi fornecido, filtrar mensagens mais recentes
-        if since:
-            try:
-                # Normalizar timestamp para evitar problemas de timezone
-                since_str = since.replace('Z', '+00:00') if 'Z' in since else since
-                since_time = datetime.fromisoformat(since_str)
-                logger.info(f"📡 Filtrando mensagens após: {since_time}")
-                
-                filtered_messages = []
-                for msg in new_messages_queue:
-                    try:
-                        # Normalizar timestamp da mensagem
-                        msg_timestamp = msg.get("received_at", "")
-                        if msg_timestamp:
-                            msg_str = msg_timestamp.replace('Z', '+00:00') if 'Z' in msg_timestamp else msg_timestamp
-                            msg_time = datetime.fromisoformat(msg_str)
-                            if msg_time > since_time:
-                                filtered_messages.append(msg)
-                                logger.info(f"📡 Mensagem incluída: {msg['phone']} - {msg['message'][:20]}...")
-                            else:
-                                logger.info(f"📡 Mensagem filtrada (muito antiga): {msg['phone']} - {msg['message'][:20]}...")
-                        else:
-                            # Se não tem timestamp, incluir a mensagem
-                            filtered_messages.append(msg)
-                            logger.info(f"📡 Mensagem sem timestamp incluída: {msg['phone']} - {msg['message'][:20]}...")
-                    except Exception as msg_error:
-                        logger.warning(f"⚠️ Erro ao processar timestamp da mensagem: {msg_error}")
-                        # Incluir mensagem mesmo com erro de timestamp
-                        filtered_messages.append(msg)
-                        logger.info(f"📡 Mensagem com erro de timestamp incluída: {msg['phone']} - {msg['message'][:20]}...")
-                        
-            except Exception as filter_error:
-                logger.error(f"❌ Erro no filtro: {filter_error}")
-                # Em caso de erro, retornar todas as mensagens
-                filtered_messages = new_messages_queue
-        else:
-            filtered_messages = new_messages_queue
-            logger.info(f"📡 Retornando todas as {len(filtered_messages)} mensagens")
+        logger.info(f"📡 Buscando novas mensagens do PostgreSQL. Since: {since}")
         
-        logger.info(f"📡 Retornando {len(filtered_messages)} mensagens para o frontend")
+        # Buscar mensagens recentes do PostgreSQL
+        # Se since não fornecido, buscar últimas mensagens da última hora
+        if not since:
+            since_time = datetime.now() - timedelta(hours=1)
+            since = since_time.isoformat()
+        
+        # Buscar de todos os chats
+        all_messages = []
+        chats = whatsapp_persistence.get_chats(limit=50)
+        
+        for chat in chats:
+            phone = chat.get("phone")
+            if phone:
+                messages = whatsapp_persistence.get_messages(phone=phone, limit=5, since=since)
+                for msg in messages:
+                    # Formatar para compatibilidade com frontend
+                    formatted_msg = {
+                        "id": msg.get("id") or msg.get("message_id"),
+                        "phone": msg.get("chat_phone", phone),
+                        "message": msg.get("content"),
+                        "senderName": msg.get("sender"),
+                        "timestamp": msg.get("timestamp"),
+                        "received_at": msg.get("created_at"),
+                        "processed": False,
+                        "retry_count": 0
+                    }
+                    all_messages.append(formatted_msg)
+        
+        # Ordenar por timestamp (mais recentes primeiro)
+        all_messages.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+        
+        logger.info(f"📡 Retornando {len(all_messages)} mensagens do PostgreSQL")
         
         return {
             "success": True,
-            "count": len(filtered_messages),
-            "data": filtered_messages
+            "count": len(all_messages),
+            "data": all_messages
         }
     except Exception as e:
         logger.error(f"❌ Erro ao buscar novas mensagens: {e}")
@@ -698,22 +581,15 @@ async def get_new_messages(since: str = None):
 
 @app.post("/api/whatsapp/confirm-messages")
 async def confirm_messages_processed(message_ids: List[str] = None):
-    """Endpoint para o frontend confirmar que processou as mensagens"""
-    global new_messages_queue
-    
+    """Endpoint para o frontend confirmar que processou as mensagens (PostgreSQL)"""
     try:
-        if message_ids:
-            # Remover mensagens específicas
-            new_messages_queue = [msg for msg in new_messages_queue if msg.get("id") not in message_ids]
-        else:
-            # Limpar toda a fila (frontend processou todas)
-            new_messages_queue.clear()
-        
-        logger.info(f"✅ Mensagens confirmadas como processadas. Fila restante: {len(new_messages_queue)}")
+        # No sistema PostgreSQL, não precisamos confirmar mensagens
+        # Elas já estão persistidas permanentemente
+        logger.info(f"✅ Confirmação de mensagens recebida (PostgreSQL - não necessária)")
         
         return {
             "success": True,
-            "remaining_count": len(new_messages_queue)
+            "message": "Mensagens já persistidas no PostgreSQL"
         }
     except Exception as e:
         logger.error(f"❌ Erro ao confirmar mensagens: {e}")
@@ -730,9 +606,8 @@ async def health_check():
         "timestamp": datetime.now().isoformat(),
         "version": "3.0.0",
         "waha_available": waha_service is not None,
-        "message_queue_size": len(new_messages_queue),
-        "processed_messages": len([msg for msg in new_messages_queue if msg.get("processed", False)]),
-        "pending_messages": len([msg for msg in new_messages_queue if not msg.get("processed", False)])
+        "postgresql_storage": "active",
+        "memory_storage": "disabled"
     }
 
 @app.get("/api/whatsapp/status")
@@ -748,16 +623,9 @@ async def whatsapp_status():
             "success": True,
             "data": {
                 "waha_status": waha_status,
-                "message_queue": {
-                    "total": len(new_messages_queue),
-                    "processed": len([msg for msg in new_messages_queue if msg.get("processed", False)]),
-                    "pending": len([msg for msg in new_messages_queue if not msg.get("processed", False)]),
-                    "retry_count": sum([msg.get("retry_count", 0) for msg in new_messages_queue])
-                },
-                "persistent_storage": {
-                    "total_chats": len(whatsapp_messages_storage["chats"]),
-                    "total_messages": whatsapp_messages_storage["total_messages"],
-                    "last_update": whatsapp_messages_storage["last_update"]
+                "postgresql_storage": {
+                    "status": "active",
+                    "persistence_service": whatsapp_persistence is not None
                 },
                 "system": {
                     "version": "3.0.0",
@@ -776,32 +644,28 @@ async def whatsapp_status():
 # NOVO: Endpoints para persistência de mensagens WhatsApp
 @app.get("/api/whatsapp/chats")
 async def get_whatsapp_chats():
-    """Buscar todos os chats salvos no storage local"""
+    """Buscar todos os chats salvos no PostgreSQL (sistema limpo)"""
     try:
-        # Usar apenas o storage local, não depender do WAHA
-        chats = []
-        for phone, chat_info in whatsapp_messages_storage["chats"].items():
-            messages = whatsapp_messages_storage["messages"].get(phone, [])
-            chats.append({
-                **chat_info,
-                "message_count": len(messages),
-                "last_message": messages[-1] if messages else None
-            })
+        if not whatsapp_persistence:
+            logger.error("❌ Serviço de persistência não disponível")
+            return {
+                "success": False,
+                "error": "Serviço de persistência não disponível"
+            }
         
-        # Ordenar por última mensagem
-        chats.sort(key=lambda x: x.get("last_message_time", ""), reverse=True)
-        
-        logger.info(f"📱 Retornando {len(chats)} chats do storage local")
+        # Buscar chats do PostgreSQL
+        chats = whatsapp_persistence.get_chats(limit=200)
+        logger.info(f"✅ {len(chats)} chats carregados do PostgreSQL")
         
         return {
             "success": True,
             "data": {
                 "chats": chats,
                 "total_chats": len(chats),
-                "total_messages": whatsapp_messages_storage["total_messages"],
-                "source": "local_storage"
+                "source": "postgresql"
             }
         }
+        
     except Exception as e:
         logger.error(f"❌ Erro ao buscar chats: {e}")
         return {
@@ -811,26 +675,46 @@ async def get_whatsapp_chats():
 
 @app.get("/api/whatsapp/messages/{phone}")
 async def get_whatsapp_chat_messages(phone: str, limit: int = 100, since: str = None, include_sent: bool = True):
-    """Buscar mensagens de um chat específico (incluindo enviadas)"""
+    """Buscar mensagens de um chat específico do PostgreSQL (sistema limpo)"""
     try:
-        result = get_whatsapp_messages(phone=phone, limit=limit, since=since)
+        if not whatsapp_persistence:
+            logger.error("❌ Serviço de persistência não disponível")
+            return {
+                "success": False,
+                "error": "Serviço de persistência não disponível"
+            }
         
-        if result["success"] and include_sent:
-            # Garantir que mensagens enviadas também sejam incluídas
-            messages = result["data"]["messages"]
-            
-            # Ordenar por timestamp
-            messages.sort(key=lambda x: x.get("timestamp", ""))
-            
-            # Limitar se necessário
-            if limit:
-                messages = messages[-limit:]
-            
-            result["data"]["messages"] = messages
-            result["data"]["total"] = len(messages)
+        # Buscar mensagens do PostgreSQL
+        messages = whatsapp_persistence.get_messages(phone=phone, limit=limit, since=since)
+        logger.info(f"✅ {len(messages)} mensagens carregadas para {phone}")
         
-        logger.info(f"📱 Retornando {result['data']['total']} mensagens para {phone}")
-        return result
+        # Formatar mensagens para o frontend (compatibilidade completa)
+        formatted_messages = []
+        for msg in messages:
+            formatted_msg = {
+                "id": msg.get("id") or msg.get("message_id"),
+                "phone": msg.get("chat_phone", phone),
+                "content": msg.get("content"),
+                "text": msg.get("content"),  # Alias para compatibilidade
+                "sender": msg.get("sender"),
+                "timestamp": msg.get("timestamp"),
+                "type": msg.get("direction", "received"),  # received/sent para frontend
+                "direction": msg.get("direction", "received"),  # Manter original
+                "status": msg.get("status", "received"),
+                "created_at": msg.get("created_at"),
+                "originalTimestamp": msg.get("timestamp")  # Para compatibilidade
+            }
+            formatted_messages.append(formatted_msg)
+        
+        return {
+            "success": True,
+            "data": {
+                "messages": formatted_messages,
+                "total": len(formatted_messages),
+                "phone": phone,
+                "source": "postgresql"
+            }
+        }
         
     except Exception as e:
         logger.error(f"❌ Erro ao buscar mensagens do chat {phone}: {e}")
@@ -841,7 +725,7 @@ async def get_whatsapp_chat_messages(phone: str, limit: int = 100, since: str = 
 
 @app.post("/api/whatsapp/create-chat")
 async def create_whatsapp_chat(request: Request):
-    """Criar chat WhatsApp manualmente"""
+    """Criar chat WhatsApp manualmente (PostgreSQL)"""
     try:
         data = await request.json()
         phone = data.get("phone")
@@ -853,31 +737,41 @@ async def create_whatsapp_chat(request: Request):
                 "error": "Telefone é obrigatório"
             }
         
-        # Criar chat se não existir
-        if phone not in whatsapp_messages_storage["chats"]:
-            whatsapp_messages_storage["messages"][phone] = []
-            whatsapp_messages_storage["chats"][phone] = {
+        # Verificar se o serviço está disponível
+        if not whatsapp_persistence:
+            return {
+                "success": False,
+                "error": "Serviço de persistência não disponível"
+            }
+        
+        # Criar chat no PostgreSQL
+        chat_data = {
                 "phone": phone,
                 "name": name,
                 "last_message": "Chat criado",
-                "last_message_time": datetime.now().isoformat(),
-                "unread_count": 0,
-                "message_count": 0,
-                "created_at": datetime.now().isoformat(),
-                "updated_at": datetime.now().isoformat()
-            }
-            
-            logger.info(f"✅ Chat criado manualmente: {phone} ({name})")
-            
+            "last_message_time": datetime.now(),
+            "unread_count": 0
+        }
+        
+        success = whatsapp_persistence.save_chat(phone, chat_data)
+        
+        if success:
+            logger.info(f"✅ Chat criado no PostgreSQL: {phone} ({name})")
             return {
                 "success": True,
                 "message": "Chat criado com sucesso",
-                "chat": whatsapp_messages_storage["chats"][phone]
+                "chat": {
+                    "phone": phone,
+                    "name": name,
+                    "last_message": "Chat criado",
+                    "last_message_time": datetime.now().isoformat(),
+                    "unread_count": 0
+                }
             }
         else:
             return {
                 "success": False,
-                "error": "Chat já existe"
+                "error": "Erro ao criar chat"
             }
             
     except Exception as e:
@@ -900,11 +794,13 @@ async def mark_chat_as_read(request: Request):
                 "error": "Telefone é obrigatório"
             }
         
-        # Marcar como lido
-        if phone in whatsapp_messages_storage["chats"]:
-            whatsapp_messages_storage["chats"][phone]["unread_count"] = 0
-            whatsapp_messages_storage["chats"][phone]["updated_at"] = datetime.now().isoformat()
-            logger.info(f"✅ Chat {phone} marcado como lido")
+        # Marcar como lido no PostgreSQL
+        if whatsapp_persistence:
+            success = whatsapp_persistence.mark_chat_as_read(phone)
+            if success:
+                logger.info(f"✅ Chat {phone} marcado como lido no PostgreSQL")
+            else:
+                logger.warning(f"⚠️ Falha ao marcar chat {phone} como lido")
             
             return {
                 "success": True,
@@ -992,21 +888,37 @@ async def send_whatsapp_message(request: Request):
 
 @app.post("/api/whatsapp/cleanup")
 async def cleanup_whatsapp_messages():
-    """Limpar mensagens antigas (endpoint administrativo)"""
+    """Limpar mensagens antigas do PostgreSQL - REGRA: apenas últimos 15 dias!"""
     try:
-        cleanup_old_messages()
+        if not whatsapp_persistence:
+            return {
+                "success": False,
+                "error": "Serviço de persistência não disponível"
+            }
+        
+        logger.info("🧹 Limpeza manual WhatsApp iniciada via API")
+        
+        # Executar limpeza no PostgreSQL (15 dias)
+        removed_count = whatsapp_persistence.cleanup_old_messages(days=15)
+        
+        # Obter estatísticas pós-limpeza
+        stats = whatsapp_persistence.get_stats()
+        
+        logger.info(f"✅ Limpeza manual concluída: {removed_count} mensagens removidas")
+        
         return {
             "success": True,
-            "message": "Limpeza automática executada",
-            "storage_info": {
-                "total_chats": len(whatsapp_messages_storage["chats"]),
-                "total_messages": whatsapp_messages_storage["total_messages"],
-                "memory_usage_mb": whatsapp_messages_storage["memory_usage"],
-                "last_update": whatsapp_messages_storage["last_update"]
+            "message": f"Limpeza executada com sucesso - Regra: últimos 15 dias apenas",
+            "details": {
+                "removed_messages": removed_count,
+                "retention_days": 15,
+                "cleanup_rule": "Mensagens com mais de 15 dias são automaticamente removidas",
+                "current_stats": stats
             }
         }
+        
     except Exception as e:
-        logger.error(f"❌ Erro na limpeza: {e}")
+        logger.error(f"❌ Erro na limpeza manual PostgreSQL: {e}")
         return {
             "success": False,
             "error": str(e)
@@ -1014,15 +926,14 @@ async def cleanup_whatsapp_messages():
 
 @app.post("/api/whatsapp/clear-cache")
 async def clear_processed_cache():
-    """Limpar cache de mensagens processadas"""
+    """Limpar cache de mensagens processadas (PostgreSQL)"""
     try:
-        global processed_message_ids, new_messages_queue
+        global processed_message_ids
         
-        # Limpar cache
+        # Limpar apenas o cache de IDs processados
         processed_message_ids.clear()
-        new_messages_queue.clear()
         
-        logger.info("🧹 Cache de mensagens processadas limpo")
+        logger.info("🧹 Cache de IDs processados limpo")
         
         return {
             "success": True,
@@ -1041,53 +952,60 @@ async def clear_processed_cache():
 
 @app.get("/api/whatsapp/stats")
 async def get_whatsapp_stats():
-    """Obter estatísticas completas do sistema de mensagens"""
+    """Obter estatísticas completas do sistema PostgreSQL"""
     try:
-        # Calcular estatísticas detalhadas
-        total_received = 0
-        total_sent = 0
-        chats_with_messages = 0
+        if not whatsapp_persistence:
+            return {
+                "success": False,
+                "error": "Serviço de persistência não disponível"
+            }
         
-        for phone, messages in whatsapp_messages_storage["messages"].items():
-            if messages:
-                chats_with_messages += 1
-                for msg in messages:
-                    if msg.get("type") == "sent" or msg.get("from_me"):
-                        total_sent += 1
-                    else:
-                        total_received += 1
+        # Obter estatísticas do PostgreSQL
+        stats = whatsapp_persistence.get_stats()
         
         return {
             "success": True,
             "data": {
-                "storage": {
-                    "total_chats": len(whatsapp_messages_storage["chats"]),
-                    "chats_with_messages": chats_with_messages,
-                    "total_messages": whatsapp_messages_storage["total_messages"],
-                    "messages_received": total_received,
-                    "messages_sent": total_sent,
-                    "memory_usage_mb": whatsapp_messages_storage["memory_usage"],
-                    "last_update": whatsapp_messages_storage["last_update"]
-                },
-                "queue": {
-                    "pending_messages": len(new_messages_queue),
-                    "processed_ids": len(processed_message_ids)
-                },
-                "limits": {
-                    "max_messages_per_chat": MAX_MESSAGES_PER_CHAT,
-                    "max_total_messages": MAX_TOTAL_MESSAGES,
-                    "retention_days": MESSAGE_RETENTION_DAYS,
-                    "max_memory_mb": MAX_MEMORY_USAGE_MB
-                },
+                "postgresql_storage": stats,
                 "system": {
                     "webhook_active": True,
                     "persistence_enabled": True,
-                    "auto_cleanup_enabled": True
+                    "storage_type": "postgresql",
+                    "memory_storage": "disabled"
                 }
             }
         }
     except Exception as e:
         logger.error(f"❌ Erro ao obter estatísticas: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.post("/api/whatsapp/retry-failed")
+async def retry_failed_messages():
+    """Tentar reprocessar mensagens que falharam"""
+    try:
+        if not whatsapp_persistence:
+            return {
+                "success": False,
+                "error": "Serviço de persistência não disponível"
+            }
+        
+        # Tentar reprocessar mensagens falhadas
+        retry_count = whatsapp_persistence.retry_failed_messages(limit=20)
+        
+        return {
+            "success": True,
+            "message": f"Reprocessamento concluído",
+            "details": {
+                "messages_reprocessed": retry_count,
+                "timestamp": datetime.now().isoformat()
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Erro ao reprocessar mensagens: {e}")
         return {
             "success": False,
             "error": str(e)
@@ -1136,6 +1054,39 @@ async def test_database():
         return {
             "status": "error",
             "message": f"Erro na conexão: {str(e)}",
+            "timestamp": datetime.now().isoformat()
+        }
+
+@app.post("/api/database/setup-whatsapp")
+async def setup_whatsapp_tables():
+    """Criar tabelas WhatsApp no PostgreSQL"""
+    try:
+        if not whatsapp_persistence:
+            return {
+                "status": "error",
+                "message": "Serviço de persistência WhatsApp não disponível"
+            }
+        
+        # Garantir que as tabelas existem
+        success = whatsapp_persistence.ensure_tables_exist()
+        
+        if success:
+            return {
+                "status": "success",
+                "message": "Tabelas WhatsApp criadas/verificadas com sucesso",
+                "timestamp": datetime.now().isoformat()
+            }
+        else:
+            return {
+                "status": "error",
+                "message": "Erro ao criar tabelas WhatsApp",
+                "timestamp": datetime.now().isoformat()
+            }
+    except Exception as e:
+        logger.error(f"Erro ao configurar tabelas WhatsApp: {e}")
+        return {
+            "status": "error",
+            "message": f"Erro: {str(e)}",
             "timestamp": datetime.now().isoformat()
         }
 
@@ -1385,25 +1336,52 @@ async def startup_event():
     # NOVO: Inicializar sistema de persistência WhatsApp
     try:
         # Executar limpeza automática na inicialização
-        cleanup_old_messages()
+        if whatsapp_persistence:
+            whatsapp_persistence.cleanup_old_messages(days=15)
         logger.info("✅ Sistema de persistência WhatsApp inicializado")
     except Exception as e:
         logger.warning(f"⚠️ Erro ao inicializar persistência WhatsApp: {e}")
     
-    # Configurar limpeza automática periódica (a cada 6 horas)
+    # Configurar limpeza automática inteligente (diária às 3:00 AM)
     import asyncio
-    async def periodic_cleanup():
+    from datetime import time as time_module
+    
+    async def smart_periodic_cleanup():
+        """
+        Limpeza inteligente: executa uma vez por dia às 3:00 AM
+        Remove mensagens WhatsApp com mais de 15 dias automaticamente
+        """
         while True:
             try:
-                await asyncio.sleep(6 * 60 * 60)  # 6 horas
-                cleanup_old_messages()
-                logger.info("🧹 Limpeza automática periódica executada")
+                now = datetime.now()
+                target_time = now.replace(hour=3, minute=0, second=0, microsecond=0)
+                
+                # Se já passou das 3:00 hoje, agendar para amanhã
+                if now >= target_time:
+                    target_time += timedelta(days=1)
+                
+                # Calcular tempo até a próxima limpeza
+                sleep_seconds = (target_time - now).total_seconds()
+                logger.info(f"🗓️ Próxima limpeza automática WhatsApp agendada para: {target_time.strftime('%d/%m/%Y às %H:%M')}")
+                
+                await asyncio.sleep(sleep_seconds)
+                
+                # Executar limpeza
+                if whatsapp_persistence:
+                    logger.info("⏰ Executando limpeza automática diária WhatsApp (3:00 AM)")
+                    removed_count = whatsapp_persistence.cleanup_old_messages(days=15)
+                    logger.info(f"🎯 Limpeza diária concluída: {removed_count} mensagens antigas removidas")
+                else:
+                    logger.warning("⚠️ Limpeza cancelada: serviço de persistência não disponível")
+                    
             except Exception as e:
-                logger.error(f"❌ Erro na limpeza periódica: {e}")
+                logger.error(f"❌ Erro na limpeza automática diária: {e}")
+                # Em caso de erro, aguardar 1 hora antes de tentar novamente
+                await asyncio.sleep(3600)
     
-    # Iniciar tarefa de limpeza periódica
-    asyncio.create_task(periodic_cleanup())
-    logger.info("✅ Limpeza automática periódica configurada")
+    # Iniciar tarefa de limpeza inteligente
+    asyncio.create_task(smart_periodic_cleanup())
+    logger.info("✅ Limpeza automática diária configurada (3:00 AM)")
 
 @app.on_event("shutdown")
 async def shutdown_event():
